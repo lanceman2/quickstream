@@ -1,0 +1,12 @@
+
+INSTALL_DIR = $(PREFIX)/lib
+
+libquickstream.so_SOURCES :=\
+ debug.c
+
+
+libquickstream.so_LDFLAGS := -lpthread -ldl -lrt
+# TODO: need to add something like: -export-symbols-regex '^qs'
+
+
+include ../quickbuild.make

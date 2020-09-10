@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# The tag can be "master" or a full git check-in hash in lower case hex
+# like for example:
+#tag=dc184319be9a272ffa4528f5bb5d0902f1edbbbb
+tag=0.2
+url=https://raw.githubusercontent.com/lanceman2/quickbuild/$tag/quickbuild.make
+
+
+sha512sum=d72c983ea6e308312be9b2e2503c754840c98b7d78\
+f3b37c64c45d84fc844e0b4773e33ad3addf8267d84ccc626ae0\
+afb41530f46769f6584da279c7fd4519e3
+
+
+function usage()
+{
+    cat <<EOF
+
+  Usage: $0
+
+  This should be run only if this quickstream package came from a
+  respository checkout.  This will download and/or create some of
+  the files needed to make a quickstream software package tarball.
+
+EOF
+    exit 1
+}
+
+
+[ "$1" = "--help" ] && usage
+[ "$1" = "-h" ] && usage
+
+set -ex
+
+# Go to the directory there this script is.
+cd $(dirname ${BASH_SOURCE[0]})
+
+
+[ -e config.make ] || cp config.make.example config.make
+
+
+function PrintSuccess() {
+
+cat <<EOF
+
+
+  $0 SUCCESS
+
+EOF
+    exit 0
+}
+
+
+if [ -z "$*" ] && [ -e quickbuild.make ] ; then
+    set +x
+    cat <<EOF
+
+  The file quickbuild.make exists.
+
+EOF
+    PrintSuccess
+fi
+
+
+############################################################
+# The rest of this script is for creating quickbuild.make
+############################################################
+
+set -e
+cat <<EOF > quickbuild.make.tmp
+# This is a generated file
+#
+#  You can get the uncompressed and better commented original version
+#  of this file from:
+#
+#      $url
+#
+
+EOF
+
+
+# get the quickbuild.make file from the web
+wget $url -O quickbuild.make.org 
+
+if [ -n "$sha512sum" ] ; then
+    set +x
+    # We wanted a particular file, so we checks it's sha512 sum.
+    echo "$sha512sum  quickbuild.make.org" | sha512sum -c
+    set -x
+else
+    set +x
+    echo "The sha512sum of the downloaded file, before compressing it:"
+    set -x
+    sha512sum quickbuild.make.org
+fi
+
+sed quickbuild.make.org -e 's/^\s*\#.*$//g' -e '/^$/d' >> quickbuild.make.tmp
+
+rm quickbuild.make.org
+mv quickbuild.make.tmp quickbuild.make
+
+set +x
+PrintSuccess
