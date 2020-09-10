@@ -44,30 +44,36 @@ draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
     return FALSE;
 }
 
+static inline void
+Connect(GtkBuilder *builder, const char *id, const char *action,
+        void *callback, void *userData) {
+    g_signal_connect(gtk_builder_get_object(builder, id),
+            action, G_CALLBACK(callback), userData);
+}
+
 
 static inline void
 setup_widget_connections(void) {
-    GtkBuilder *builder = gtk_builder_new_from_resource(
-          "/quickstream/quickstreamBuilder.ui");
 
-    /* Connect signal handlers to the constructed widgets. */
-    g_signal_connect(gtk_builder_get_object(builder, "window"),
-            "destroy", G_CALLBACK(gtk_main_quit), NULL);
+    // From the XML files: quickstreamBuilder.gresource.xml and
+    // quickstreamBuilder.ui, a gObject compiler, named
+    // glib-compile-resources, builds quickstreamBuilder_resources.c.
+    // quickstreamBuilder_resources.c is compiled into an object and the
+    // object is linked with this file.  The call to
+    // gtk_builder_new_from_resource() calls some generated functions from
+    // quickstreamBuilder_resources.c to get the builder struct that has
+    // lots of widgets in it which we connect action callbacks to by id;
+    // as in for example: <object class="GtkMenuItem" id="quitMenu">.
 
-    g_signal_connect(gtk_builder_get_object(builder, "quitMenu"),
-            "activate", G_CALLBACK(gtk_main_quit), NULL);
+    GtkBuilder *b = gtk_builder_new_from_resource(
+            "/quickstream/quickstreamBuilder.ui");
 
-    GObject *button = gtk_builder_get_object(builder, "button1");
-    g_signal_connect(button, "clicked", G_CALLBACK(print_hello), NULL);
-
-    button = gtk_builder_get_object(builder, "button2");
-    g_signal_connect(button, "clicked", G_CALLBACK(print_hello), NULL);
-
-    button = gtk_builder_get_object(builder, "quitButton");
-    g_signal_connect(button, "clicked", G_CALLBACK(gtk_main_quit), NULL);
-
-    g_signal_connect(gtk_builder_get_object(builder, "workArea"), "draw",
-            G_CALLBACK(draw_callback), NULL);
+    Connect(b, "window", "destroy", gtk_main_quit, 0);
+    Connect(b, "quitMenu", "activate", gtk_main_quit, 0);
+    Connect(b, "button1", "clicked", print_hello, 0);
+    Connect(b, "button2", "clicked", print_hello, 0);
+    Connect(b, "quitButton", "clicked", gtk_main_quit, 0);
+    Connect(b, "workArea", "draw", draw_callback, 0);
 }
 
 
