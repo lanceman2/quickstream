@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <gtk/gtk.h>
 
+#include <libxml2/libxml/parser.h>
+#include <libxml2/libxml/tree.h>
+
 #include "../lib/debug.h"
 
 
@@ -85,6 +88,6 @@ int main(int argc, char *argv[]) {
 
     gtk_main();
 
-    DSPEW();
+    DSPEW("xmlReadFile=%p", xmlReadFile);
     return 0;
 }
