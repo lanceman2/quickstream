@@ -47,6 +47,14 @@ draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
     return FALSE;
 }
 
+static gboolean WorkAreaCB(GtkWidget *widget,
+        GdkEvent *event, gpointer data) {
+
+    WARN("data=%p", data);
+
+    return FALSE;
+}
+
 static inline void
 Connect(GtkBuilder *builder, const char *id, const char *action,
         void *callback, void *userData) {
@@ -77,6 +85,10 @@ setup_widget_connections(void) {
     Connect(b, "button2", "clicked", print_hello, 0);
     Connect(b, "quitButton", "clicked", gtk_main_quit, 0);
     Connect(b, "workArea", "draw", draw_callback, 0);
+    Connect(b, "workArea", "button-release-event", WorkAreaCB, (void *) 0x01);
+    Connect(b, "workArea", "button-press-event", WorkAreaCB, (void *) 0x02);
+    Connect(b, "workArea", "motion-notify-event", WorkAreaCB, (void *) 0x03);
+    Connect(b, "workArea", "focus", WorkAreaCB, (void *) 0x04);
 }
 
 

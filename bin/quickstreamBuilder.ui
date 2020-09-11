@@ -15,7 +15,7 @@
                 <property name="hexpand">True</property>
                 <property name="vexpand">True</property>
                 <property name="orientation">vertical</property>
-                <property name="spacing">12</property>
+                <property name="spacing">2</property>
 
                 <child>
                 <!--**********************************************************-->
@@ -95,6 +95,12 @@
                 <!--**********************************************************-->
                     <object id="workArea" class="GtkLayout">
                         <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="focus_on_click">True</property>
+                        <property name="events">GDK_STRUCTURE_MASK | GDK_SCROLL_MASK |
+                            GDK_POINTER_MOTION_MASK | GDK_BUTTON_RELEASE_MASK |
+                            GDK_BUTTON_PRESS_MASK
+                        </property>
                     </object>
                     <packing>
                         <property name="expand">True</property>
