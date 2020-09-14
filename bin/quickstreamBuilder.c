@@ -16,12 +16,56 @@
 #include "../lib/debug.h"
 
 
-#define BLOCK_CREATE_BUTTON  (1)
+#define BLOCK_CREATE_BUTTON  (3)
+#define BLOCK_CONNECT_BUTTON  (1)
 
 
-GtkTextView *status = 0;
-GdkPixbuf *inputIcon = 0;
-GdkPixbuf *outputIcon = 0;
+
+static GtkTextView *status = 0;
+static GdkPixbuf *inputIcon = 0;
+static GdkPixbuf *outputIcon = 0;
+
+// List of cursors with images:
+// https://developer.gnome.org/gdk3/stable/gdk3-Cursors.html#GdkCursorType
+static GdkCursor *moveCursor = 0;
+static GdkCursor *crosshairCursor = 0;
+static GdkCursor *configureBlockCursor = 0;
+
+static GdkCursor *getHoverCursor = 0;
+static GdkCursor *setHoverCursor = 0;
+static GdkCursor *inputHoverCursor = 0;
+static GdkCursor *outputHoverCursor = 0;
+
+static GdkCursor *getActiveCursor = 0;
+static GdkCursor *setActiveCursor = 0;
+static GdkCursor *inputActiveCursor = 0;
+static GdkCursor *outputActiveCursor = 0;
+
+
+static GtkWidget *window = 0;
+
+
+enum ConnectMode {
+
+    CM_NONE = 0,
+    CM_HAVE_GET,
+    CM_HAVE_SET,
+    CM_HAVE_INPUT,
+    CM_HAVE_OUTPUT
+};
+
+
+struct Block {
+    GtkWidget *grid;
+
+    enum ConnectMode connectMode;
+};
+
+
+static inline void SetCursor(GdkCursor *cursor) {
+    gdk_window_set_cursor(gtk_widget_get_window(window), cursor);
+}
+
 
 void
 WriteStatus(const char *fmt, ...) {
@@ -100,12 +144,19 @@ static void CSS() {
                 "background-color: rgba(83,138,250,0.5);\n"
                 "}\n"
             "#block {\n"
-                "box-shadow: 0px 0px 5px black;\n"
                 "border: 1px solid black;\n"
                 "}\n"
-            "#block > #label {\n"
-                "background-color: rgba(83,138,250,0.0);\n"
-                "border: 8px solid rgba(0,0,0,0.0);\n"
+            "#block > #get, #set, #input, #output {\n"
+                "background-color: rgba(147,176,223,0.5);\n"
+                "border: 1px solid rgb(118,162,247);\n"
+                "color: black;\n"
+                "font-size: 130%;\n"
+                "}\n"
+            "#block > #get:hover {\n"
+                "background-color: rgba(157,186,243,0.8);\n"
+                "border: 1px solid rgb(100,142,207);\n"
+            "}\n"
+             "#block > #label {\n"
                 "color: black;\n"
                 "font-size: 130%;\n"
                 "}\n"
@@ -119,16 +170,138 @@ static void CSS() {
 }
 
 
+static gboolean
+BlockButtonCB(GtkWidget *w, GdkEvent *event, struct Block *b) {
+
+    errno = 0;
+
+    DSPEW("block=%p", b);
+    GdkEventButton *e = (GdkEventButton *) event;
+
+    switch(event->type) {
+
+        case GDK_BUTTON_PRESS:
+
+            WARN("got button press at x=%lg y=%lg",
+                    e->x, e->y);
+            break;
+
+        case GDK_BUTTON_RELEASE:
+        {
+            break;
+        }
+
+        default:
+            break;
+    }
+
+
+    return TRUE; // TRUE = do not go to next child
+}
+
+
+static gboolean
+ConnectButtonCB(GtkWidget *w, GdkEvent *event, struct Block *b) {
+
+    errno = 0;
+
+    DSPEW("block=%p", b);
+    GdkEventButton *e = (GdkEventButton *) event;
+
+    switch(event->type) {
+
+        case GDK_BUTTON_PRESS:
+
+            WARN("got button press at x=%lg y=%lg",
+                    e->x, e->y);
+            break;
+
+        case GDK_BUTTON_RELEASE:
+        {
+            break;
+        }
+
+        default:
+            break;
+    }
+
+
+    return TRUE; // TRUE = do not go to next child
+}
+
+
+static gboolean
+BlockEnterCB(GtkWidget *w, GdkEvent *e, struct Block *b) {
+
+    errno = 0;
+
+    DSPEW("block=%p", b);
+
+    return TRUE; // TRUE = do not go to next child
+}
+
+
+static gboolean
+ConnectEnterCB(GtkWidget *w, GdkEvent *e, struct Block *b) {
+
+    errno = 0;
+
+    DSPEW("block=%p", b);
+
+    return TRUE; // TRUE = do not go to next child
+}
+
+
+static void MakeBlockConnector(GtkWidget *grid,
+        const char *type,
+        const char *imageFile,
+        gint x, gint y, gint w, gint h,
+        struct Block *block) {
+
+    GtkWidget *ebox = gtk_event_box_new();
+
+    gtk_widget_set_can_focus(ebox, TRUE);
+    gtk_widget_set_events(ebox,
+                    GDK_BUTTON_RELEASE_MASK|
+                    GDK_BUTTON_PRESS_MASK|
+                    GDK_ENTER_NOTIFY_MASK|
+                    GDK_LEAVE_NOTIFY_MASK
+                    );
+    g_signal_connect(ebox, "button-release-event",
+            G_CALLBACK(ConnectButtonCB), block);
+    g_signal_connect(ebox, "button-press-event",
+            G_CALLBACK(ConnectButtonCB), block);
+    g_signal_connect(ebox, "leave-notify-event",
+            G_CALLBACK(ConnectEnterCB), block);
+    g_signal_connect(ebox, "enter-notify-event",
+            G_CALLBACK(ConnectEnterCB), block);
+    gtk_widget_set_name(ebox, type);
+    gtk_widget_show(ebox);
+    gtk_grid_attach(GTK_GRID(grid), ebox, x, y, w, h);
+
+    GtkWidget *img = gtk_image_new_from_file(imageFile);
+    gtk_container_add(GTK_CONTAINER(ebox), img);
+    gtk_widget_set_name(img, type);
+    gtk_widget_show(img);
+}
+
+
+
 static GtkWidget *CreateBlock(GtkLayout *layout,
         const char *name,
         double x, double y) {
 
+    struct Block *block = calloc(1, sizeof(*block));
+    ASSERT(block, "calloc(1,%zu) failed", sizeof(*block));
+
+
     GtkWidget *grid = gtk_grid_new();
+    block->grid = grid;
+
     // As of GTK3 version 3.24.20; gtk widget name is more like a CSS
     // class name.  Name is not a unique ID.  It's more like a CSS
     // class.
     gtk_widget_set_name(grid, "block");
-    gtk_layout_put(layout, grid, x, y);
     gtk_widget_set_visible(grid, TRUE);
 
     // Sets the minimum size of grid.
@@ -136,7 +309,32 @@ static GtkWidget *CreateBlock(GtkLayout *layout,
     gtk_grid_set_column_spacing(GTK_GRID(grid), 0);
     gtk_grid_set_row_spacing(GTK_GRID(grid), 0);
     gtk_grid_set_column_homogeneous(GTK_GRID(grid), FALSE);
-    gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
+    gtk_grid_set_row_homogeneous(GTK_GRID(grid), FALSE);
+
+    GtkWidget *ebox = gtk_event_box_new();
+
+    gtk_widget_set_can_focus(ebox, TRUE);
+    gtk_widget_set_events(ebox,
+                GDK_BUTTON_RELEASE_MASK|
+                GDK_BUTTON_PRESS_MASK|
+                GDK_ENTER_NOTIFY_MASK|
+                GDK_LEAVE_NOTIFY_MASK
+                );
+    g_signal_connect(ebox, "button-release-event",
+        G_CALLBACK(BlockButtonCB), block);
+    g_signal_connect(ebox, "button-press-event",
+        G_CALLBACK(BlockButtonCB), block);
+    g_signal_connect(ebox, "leave-notify-event",
+        G_CALLBACK(BlockEnterCB), block);
+    g_signal_connect(ebox, "enter-notify-event",
+        G_CALLBACK(BlockEnterCB), block);
+    gtk_widget_set_name(ebox, "get");
+    gtk_widget_show(ebox);
+    gtk_container_add(GTK_CONTAINER(ebox), grid);
+    gtk_layout_put(layout, ebox, x, y);
+
+
+
     // The Grid of a block
     //
     // 0,0  1,0  2,0  3,0  4,0  5,0  6,0
@@ -180,27 +378,18 @@ static GtkWidget *CreateBlock(GtkLayout *layout,
         gtk_widget_show(w);
         gtk_grid_attach(GTK_GRID(grid), w, 3, 0, 1, 1);
 
-        w = gtk_image_new_from_file("get.png");
-        gtk_widget_set_name(w, "get");
-        gtk_widget_show(w);
-        gtk_grid_attach(GTK_GRID(grid), w, 3, 4, 1, 1);
+        MakeBlockConnector(grid, "get", "get.png", 3, 4, 1, 1, block);
      }
 
     gtk_widget_show(grid);
 
-    return grid;
+    return ebox;
 }
 
 
-static GdkCursor *moveCursor = 0;
-static GdkCursor *crosshairCursor = 0;
-
-
-static GtkWidget *window = 0;
-
 
 static gboolean WorkAreaCB(GtkLayout *layout,
-        GdkEvent *event, gpointer data) {
+        GdkEvent *event, void *data) {
 
     DASSERT(moveCursor);
     DASSERT(window);
@@ -220,12 +409,9 @@ static gboolean WorkAreaCB(GtkLayout *layout,
             WARN("got button press at x=%lg y=%lg",
                     e->x, e->y);
             name = strdup("block Name larger block Name ya");
-            newBlock = CreateBlock(layout,
-                    name, e->x, e->y);
+            newBlock = CreateBlock(layout, name, e->x, e->y);
             movingBlock = false;
-            gdk_window_set_cursor(
-                    gtk_widget_get_window(window),
-                    crosshairCursor);
+            SetCursor(crosshairCursor);
             break;
 
         case GDK_MOTION_NOTIFY:
@@ -234,11 +420,8 @@ static gboolean WorkAreaCB(GtkLayout *layout,
 
             if(!movingBlock) {
                 movingBlock = true;
-                gdk_window_set_cursor(
-                    gtk_widget_get_window(window),
-                    moveCursor);
+                SetCursor(moveCursor);
             }
-
             gtk_layout_move(layout, newBlock, e->x, e->y);
 
             break;
@@ -264,7 +447,7 @@ static gboolean WorkAreaCB(GtkLayout *layout,
 
             newBlock = 0;
             movingBlock = false;
-            gdk_window_set_cursor(gtk_widget_get_window(window), 0);
+            SetCursor(0);
             free(name);
             break;
         }
@@ -285,9 +468,13 @@ Connect(GtkBuilder *builder, const char *id, const char *action,
             action, G_CALLBACK(callback), userData);
 }
 
+static inline GdkCursor *GetCursor(GdkCursorType type) {
+    return gdk_cursor_new_for_display(gdk_display_get_default(), type);
+}
 
 static inline void
 setup_widget_connections(void) {
+    
 
     // From the XML files: quickstreamBuilder.gresource.xml and
     // quickstreamBuilder.ui, a gObject compiler, named
@@ -303,9 +490,28 @@ setup_widget_connections(void) {
             "/quickstream/quickstreamBuilder.ui");
 
 
+    ///////////////////////////////////////////////////////////////////
+    //    Here is where cursors are configured
+    //////////////////////////////////////////////////////////////////
 
-    moveCursor = gdk_cursor_new_for_display(gdk_display_get_default(), GDK_FLEUR);
-    crosshairCursor = gdk_cursor_new_for_display(gdk_display_get_default(), GDK_CROSSHAIR);
+    moveCursor = GetCursor(GDK_FLEUR);
+    crosshairCursor = GetCursor(GDK_CROSSHAIR);
+    configureBlockCursor = GetCursor(GDK_DIAMOND_CROSS);
+
+
+    getHoverCursor = GetCursor(GDK_BOTTOM_SIDE);
+    setHoverCursor = GetCursor(GDK_TOP_SIDE);
+    inputHoverCursor = GetCursor(GDK_RIGHT_SIDE);
+    outputHoverCursor = GetCursor(GDK_LEFT_SIDE);
+
+    getActiveCursor = GetCursor(GDK_BOTTOM_TEE);
+    setActiveCursor = GetCursor(GDK_TOP_TEE);
+    inputActiveCursor = GetCursor(GDK_RIGHT_TEE);
+    outputActiveCursor = GetCursor(GDK_LEFT_TEE);
+
+    //////////////////////////////////////////////////////////////////
+
+
     window = GTK_WIDGET(gtk_builder_get_object(b, "window"));
 
     GtkIconTheme *icon_theme = gtk_icon_theme_get_default();
@@ -346,9 +552,9 @@ setup_widget_connections(void) {
     Connect(b, "quitMenu", "activate", gtk_main_quit, 0);
     Connect(b, "quitButton", "clicked", gtk_main_quit, 0);
     Connect(b, "workArea", "draw", draw_callback, 0);
-    Connect(b, "workArea", "button-release-event", WorkAreaCB, (void *) 0x01);
-    Connect(b, "workArea", "button-press-event", WorkAreaCB, (void *) 0x02);
-    Connect(b, "workArea", "motion-notify-event", WorkAreaCB, (void *) 0x03);
+    Connect(b, "workArea", "button-release-event", WorkAreaCB, (void *) 1);
+    Connect(b, "workArea", "button-press-event", WorkAreaCB, (void *) 2);
+    Connect(b, "workArea", "motion-notify-event", WorkAreaCB, (void *) 3);
 }
 
 void
