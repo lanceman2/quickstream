@@ -126,7 +126,7 @@
                 <!--**********************************************************-->
                 <!--                   Vertical Pane                          -->
                 <!--**********************************************************-->
-                    <object id="vpane1" class="GtkPaned">
+                    <object id="vpanel" class="GtkPaned">
                         <property name="visible">True</property>
                         <property name="orientation">vertical</property>
                         <property name="can_focus">True</property>
@@ -162,7 +162,7 @@
                             <object id="statusScroll" class="GtkScrolledWindow">
                                 <property name="visible">True</property>
                                 <child>
-                                    <object id="grid" class="GtkTextView">
+                                    <object id="status" class="GtkTextView">
                                         <property name="visible">True</property>
                                     </object>
                                 </child>
@@ -186,4 +186,17 @@
         </child>
 
     </object>
+
 </interface>
+
+
+
+<object class="GtkIconFactory" id="iconFactory">
+    <sources>
+        <source stock-id="inputIcon" filename="input.png"/>
+    </sources>
+    <sources>
+        <source stock-id="inputIcon" filename="output.png"/>
+    </sources>
+</object>
+

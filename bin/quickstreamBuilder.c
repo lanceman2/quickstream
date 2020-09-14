@@ -20,7 +20,8 @@
 
 
 GtkTextView *status = 0;
-
+GdkPixbuf *inputIcon = 0;
+GdkPixbuf *outputIcon = 0;
 
 void
 WriteStatus(const char *fmt, ...) {
@@ -94,18 +95,19 @@ static void CSS() {
             // and compiling it into the code like the .ui widgets.
             // There currently does not appear to be a way to do this.
             "#vpanel {\n"
-                "border: 10px solid black;\n"
+                "}\n"
+            "#block, #top {\n"
+                "background-color: rgba(83,138,250,0.5);\n"
                 "}\n"
             "#block {\n"
-                "background-color: rgba(83,138,250,0.5);\n"
-                "text-shadow: 1px 1px 5px black;\n"
                 "box-shadow: 0px 0px 5px black;\n"
                 "border: 1px solid black;\n"
                 "}\n"
             "#block > #label {\n"
-                "background-color: rgba(255,0,10,0.5);\n"
-                "border: 1px solid black;\n"
-                "color: white;\n"
+                "background-color: rgba(83,138,250,0.0);\n"
+                "border: 8px solid rgba(0,0,0,0.0);\n"
+                "color: black;\n"
+                "font-size: 130%;\n"
                 "}\n"
             "#block > #bar:hover {\n"
                 "color: red;\n"
@@ -130,25 +132,59 @@ static GtkWidget *CreateBlock(GtkLayout *layout,
     gtk_widget_set_visible(grid, TRUE);
 
     // Sets the minimum size of grid.
-    gtk_widget_set_size_request(grid, 150, 90);
-
+    gtk_widget_set_size_request(grid, -1, -1);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), 0);
+    gtk_grid_set_row_spacing(GTK_GRID(grid), 0);
+    gtk_grid_set_column_homogeneous(GTK_GRID(grid), FALSE);
+    gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
+    // The Grid of a block
+    //
+    // 0,0  1,0  2,0  3,0  4,0  5,0  6,0
+    // 
+    // 0,1  1,1  2,1  3,1  4,1  5,1  6,1
+    //
+    // 0,2  1,2  2,2  3,2  4,2  5,2  6,2
+    //
+    // 0,3  1,3  2,3  3,3  4,3  5,3  6,3
+    //
+    // 0,4  1,4  2,4  3,4  4,4  5,4  6,4
     {
-        GtkWidget *label = gtk_label_new(name);
-        gtk_widget_set_name(label, "label");
-        gtk_widget_show(label);
-        gtk_grid_attach(GTK_GRID(grid), label, 20, 0, 20, 20);
+        GtkWidget *w = gtk_label_new(name);
+        gtk_widget_set_name(w, "label");
+        gtk_widget_show(w);
+        gtk_grid_attach(GTK_GRID(grid), w, 2, 1, 3, 1);
 
-        label = gtk_label_new("");
-        gtk_widget_set_name(label, "label");
-        gtk_widget_show(label);
-        gtk_grid_attach(GTK_GRID(grid), label, 20, 100, 20, 20);
+        w = gtk_label_new("block type 923rj wefj    23r0923j r");
+        gtk_widget_set_name(w, "label");
+        gtk_widget_show(w);
+        gtk_grid_attach(GTK_GRID(grid), w, 2, 2, 3, 1);
 
+        w = gtk_label_new("boston");
+        gtk_widget_set_name(w, "label");
+        gtk_widget_show(w);
+        gtk_grid_attach(GTK_GRID(grid), w, 2, 3, 3, 1);
 
-        GtkWidget *button = gtk_button_new_with_label("BUTTON");
-        gtk_widget_set_name(button, "bar");
-        gtk_widget_show(button);
-        gtk_grid_attach(GTK_GRID(grid), button, 10, 40, 20, 20);
-    }
+ 
+        w = gtk_image_new_from_file("input.png");
+        gtk_widget_set_name(w, "input");
+        gtk_widget_show(w);
+        gtk_grid_attach(GTK_GRID(grid), w, 0, 2, 1, 1);
+
+        w = gtk_image_new_from_file("output.png");
+        gtk_widget_set_name(w, "output");
+        gtk_widget_show(w);
+        gtk_grid_attach(GTK_GRID(grid), w, 6, 2, 1, 1);
+
+        w = gtk_image_new_from_file("set.png");
+        gtk_widget_set_name(w, "set");
+        gtk_widget_show(w);
+        gtk_grid_attach(GTK_GRID(grid), w, 3, 0, 1, 1);
+
+        w = gtk_image_new_from_file("get.png");
+        gtk_widget_set_name(w, "get");
+        gtk_widget_show(w);
+        gtk_grid_attach(GTK_GRID(grid), w, 3, 4, 1, 1);
+     }
 
     gtk_widget_show(grid);
 
@@ -183,7 +219,7 @@ static gboolean WorkAreaCB(GtkLayout *layout,
 
             WARN("got button press at x=%lg y=%lg",
                     e->x, e->y);
-            name = strdup("block Name");
+            name = strdup("block Name larger block Name ya");
             newBlock = CreateBlock(layout,
                     name, e->x, e->y);
             movingBlock = false;
@@ -271,6 +307,24 @@ setup_widget_connections(void) {
     moveCursor = gdk_cursor_new_for_display(gdk_display_get_default(), GDK_FLEUR);
     crosshairCursor = gdk_cursor_new_for_display(gdk_display_get_default(), GDK_CROSSHAIR);
     window = GTK_WIDGET(gtk_builder_get_object(b, "window"));
+
+    GtkIconTheme *icon_theme = gtk_icon_theme_get_default();
+    GError *error = 0;
+    inputIcon = gtk_icon_theme_load_icon(icon_theme,
+                                   "list-add", // icon name
+                                   32, // icon size
+                                   0,  // flags
+                                   &error);
+    DASSERT(inputIcon);
+    outputIcon = gtk_icon_theme_load_icon(icon_theme,
+                                   "list-remove", // icon name
+                                   32, // icon size
+                                   0,  // flags
+                                   &error);
+    DASSERT(outputIcon);
+
+
+
 
     status = GTK_TEXT_VIEW(gtk_builder_get_object(b, "status"));
 
