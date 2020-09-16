@@ -29,7 +29,7 @@ static GdkPixbuf *outputIcon = 0;
 // List of cursors with images:
 // https://developer.gnome.org/gdk3/stable/gdk3-Cursors.html#GdkCursorType
 static GdkCursor *moveCursor = 0;
-static GdkCursor *grabCursor = 0;
+static GdkCursor *pointerCursor = 0;
 static GdkCursor *configureBlockCursor = 0;
 
 static GdkCursor *getHoverCursor = 0;
@@ -46,7 +46,6 @@ static GdkCursor *outputActiveCursor = 0;
 static GtkWidget *window = 0;
 
 struct Block;
-static struct Block *movingBlock = 0;
 
 enum BlockMode {
 
@@ -68,8 +67,8 @@ struct Block {
 };
 
 
-static inline void SetCursor(GdkCursor *cursor) {
-    gdk_window_set_cursor(gtk_widget_get_window(window), cursor);
+static inline void SetCursor(GtkWidget *w, GdkCursor *cursor) {
+    gdk_window_set_cursor(gtk_widget_get_window(w), cursor);
 }
 
 
@@ -175,23 +174,79 @@ static void CSS() {
     g_object_unref (provider);
 }
 
+static void PopForward(GtkLayout *layout, struct Block *b) {
+
+    // 1. get one more reference to the widget; otherwise
+    //    the widget will be destroyed in the next call.
+    g_object_ref(G_OBJECT(b->top));
+    // 2. remove the widget which removes one reference
+    gtk_container_remove(GTK_CONTAINER(layout), b->top);
+    // Now we have at least one reference.
+    // 3. re-add the widget which will take ownership of the
+    //    one reference.
+    gtk_layout_put(layout, b->top, b->x, b->y);
+}
+
 
 static gboolean
-BlockButtonCB(GtkWidget *widget, GdkEvent *event, struct Block *b) {
+BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
 
     errno = 0;
+    static bool moving = false;
+    static bool gotPress = false;
 
-    switch(event->type) {
+    switch(e->type) {
     
         case GDK_BUTTON_PRESS:
         {
-            GdkEventButton *e = (GdkEventButton *) event;
-
             if(e->button != BLOCK_MOVE_BUTTON)
                 break;
 
-            //gtk_grab_add(GTK_WIDGET(b->layout));
-            movingBlock = b;
+            SetCursor(GTK_WIDGET(b->layout), pointerCursor);
+            b->xOffset = e->x_root;
+            b->yOffset = e->y_root;
+            PopForward(b->layout, b);
+            moving = false;
+            gotPress = true;
+            gtk_grab_add(widget);
+            break;
+        }
+
+        case GDK_MOTION_NOTIFY:
+
+            // We get e->x and e->y that are relative to the widget where
+            // this event first was received by a callback and it may not
+            // be this Layout widget; so we must use the x_root and y_root
+            // position values, which are positions relative to root
+            // (whatever the hell that is).
+                
+            if(!gotPress) break;
+
+            if(!moving) {
+                moving = true;
+                SetCursor(GTK_WIDGET(b->layout), moveCursor);
+            }
+
+            b->x += ((gint) e->x_root) - b->xOffset;
+            b->y += ((gint) e->y_root) - b->yOffset;
+
+            b->xOffset = (gint) e->x_root;
+            b->yOffset = (gint) e->y_root;
+            gtk_layout_move(b->layout, b->top, b->x, b->y);
+            break;
+
+        case GDK_BUTTON_RELEASE:
+        {
+            SetCursor(GTK_WIDGET(b->layout), pointerCursor);
+
+            if(e->button != BLOCK_MOVE_BUTTON) break;
+
+            gtk_grab_remove(widget);
+
+            b->xOffset = 0;
+            b->yOffset = 0;
+            gotPress = false;
+
             break;
         }
 
@@ -199,45 +254,18 @@ BlockButtonCB(GtkWidget *widget, GdkEvent *event, struct Block *b) {
             break;
     }
 
-    return FALSE; // FALSE = go to next widget
+    return TRUE; // FALSE = go to next widget
 }
 
-
-static gboolean
-ConnectButtonCB(GtkWidget *w, GdkEvent *event, struct Block *b) {
-
-    errno = 0;
-    
-    DSPEW("block=%p", b);
-    GdkEventButton *e = (GdkEventButton *) event;
-
-    switch(event->type) {
-
-        case GDK_BUTTON_PRESS:
-
-            WARN("got button press at x=%lg y=%lg",
-                    e->x, e->y);
-            break;
-
-        default:
-            break;
-    }
-
-
-    return TRUE; // TRUE = do not go to next widget
-}
-
-
+#if 0
 static gboolean
 BlockEnterCB(GtkWidget *w, GdkEvent *e, struct Block *b) {
 
     errno = 0;
 
-    DSPEW();
+    //DSPEW();
+    if(movingBlock) return FALSE;
 
-    if(movingBlock) return TRUE;
-
-    SetCursor(grabCursor);
     return TRUE; // TRUE = do not go to next widget
 }
 
@@ -246,25 +274,57 @@ BlockLeaveCB(GtkWidget *w, GdkEvent *e, struct Block *b) {
 
     errno = 0;
 
-    DSPEW();
+    //DSPEW();
+    if(movingBlock) return FALSE;
+
+    return TRUE; // TRUE = do not go to next widget
+}
+#endif
 
 
 
-    if(movingBlock) return TRUE;
+static gboolean
+ConnectPressCB(GtkWidget *w, GdkEventButton *e, struct Block *b) {
 
+    errno = 0;
 
-    SetCursor(0);
-    return TRUE; // TRUE = do not go to next child
+    DASSERT(e->type == GDK_BUTTON_PRESS);
+
+    DSPEW("                                       Press=%p", b);
+
+    return TRUE; // TRUE = do not go to next widget
 }
 
+static gboolean
+ConnectReleaseCB(GtkWidget *w, GdkEventButton *e, struct Block *b) {
 
+    errno = 0;
+
+    DASSERT(e->type == GDK_BUTTON_RELEASE);
+    
+    DSPEW("                                       Release=%p", b);
+
+    return TRUE; // TRUE = do not go to next widget
+}
 
 static gboolean
 ConnectEnterCB(GtkWidget *w, GdkEvent *e, struct Block *b) {
 
     errno = 0;
+    DASSERT(GDK_ENTER_NOTIFY == e->type);
 
-    DSPEW("block=%p", b);
+    //DSPEW("                                 ENTER=%p", b);
+
+    return TRUE; // TRUE = do not go to next child
+}
+
+static gboolean
+ConnectLeaveCB(GtkWidget *w, GdkEvent *e, struct Block *b) {
+
+    errno = 0;
+    DASSERT(GDK_LEAVE_NOTIFY == e->type);
+
+    //DSPEW("                                LEAVE=%p", b);
 
     return TRUE; // TRUE = do not go to next child
 }
@@ -280,16 +340,22 @@ static void MakeBlockConnector(GtkWidget *grid,
 
     gtk_widget_set_can_focus(ebox, TRUE);
     gtk_widget_set_events(ebox,
-                    GDK_BUTTON_RELEASE_MASK|
-                    GDK_BUTTON_PRESS_MASK|
-                    GDK_ENTER_NOTIFY_MASK|
-                    GDK_LEAVE_NOTIFY_MASK
-                    );
+            GDK_STRUCTURE_MASK |
+            GDK_SCROLL_MASK |
+            GDK_POINTER_MOTION_MASK |
+            GDK_BUTTON_RELEASE_MASK |
+            GDK_BUTTON_PRESS_MASK|
+            GDK_STRUCTURE_MASK);
+
     g_signal_connect(ebox, "button-press-event",
-            G_CALLBACK(ConnectButtonCB), block);
+            G_CALLBACK(ConnectPressCB), block);
+    g_signal_connect(ebox, "button-release-event",
+            G_CALLBACK(ConnectReleaseCB), block);
     g_signal_connect(ebox, "enter-notify-event",
             G_CALLBACK(ConnectEnterCB), block);
-    gtk_widget_set_name(ebox, type);
+    g_signal_connect(ebox, "leave-notify-event",
+            G_CALLBACK(ConnectLeaveCB), block);
+     gtk_widget_set_name(ebox, type);
     gtk_widget_show(ebox);
     gtk_grid_attach(GTK_GRID(grid), ebox, x, y, w, h);
 
@@ -349,22 +415,25 @@ static struct Block *CreateBlock(GtkLayout *layout,
 
     gtk_widget_set_can_focus(ebox, TRUE);
     gtk_widget_set_events(ebox,
-                GDK_BUTTON_RELEASE_MASK|
                 GDK_BUTTON_PRESS_MASK|
+                GDK_BUTTON_RELEASE_MASK|
                 GDK_POINTER_MOTION_MASK|
                 GDK_ENTER_NOTIFY_MASK|
                 GDK_LEAVE_NOTIFY_MASK
                 );
+
+    g_signal_connect(ebox, "button-press-event",
+        G_CALLBACK(BlockButtonCB), block);
     g_signal_connect(ebox, "button-release-event",
         G_CALLBACK(BlockButtonCB), block);
     g_signal_connect(ebox, "motion-notify-event",
         G_CALLBACK(BlockButtonCB), block);
-    g_signal_connect(ebox, "button-press-event",
-        G_CALLBACK(BlockButtonCB), block);
+#if 0
      g_signal_connect(ebox, "leave-notify-event",
         G_CALLBACK(BlockLeaveCB), block);
     g_signal_connect(ebox, "enter-notify-event",
         G_CALLBACK(BlockEnterCB), block);
+#endif
     gtk_widget_set_name(ebox, "get");
     gtk_widget_show(ebox);
     gtk_container_add(GTK_CONTAINER(ebox), grid);
@@ -398,53 +467,36 @@ static struct Block *CreateBlock(GtkLayout *layout,
 }
 
 
-
 static gboolean WorkAreaCB(GtkLayout *layout,
-        GdkEvent *event, void *data) {
+        GdkEventButton *e, void *data) {
 
     DASSERT(moveCursor);
     DASSERT(window);
 
-    static char *name = 0;
-    static bool moving = false;
+    static bool moving = 0;
+    static struct Block *movingBlock = 0;
     errno = 0;
-    GdkEventButton *e = (GdkEventButton *) event;
 
-    switch(event->type) {
+    switch(e->type) {
 
         case GDK_BUTTON_PRESS:
-
-            moving = false;
-
-            if(movingBlock) {
-                DASSERT(movingBlock->layout == layout);
-                // This was set in BlockButtonCB() and then the event
-                // fell-through to here.
-                SetCursor(grabCursor);
-                movingBlock->xOffset = e->x_root;
-                movingBlock->yOffset = e->y_root;
-
-                // Pop to front like this next 2 lines:
-                g_object_ref(G_OBJECT(movingBlock->top));
-                gtk_container_remove(GTK_CONTAINER(layout), movingBlock->top);
-                gtk_layout_put(layout, movingBlock->top,
-                        movingBlock->x, movingBlock->y);
-
-                break;
-            }
-
+        {
             if(e->button != BLOCK_CREATE_BUTTON) break;
 
+            moving = 0;
+
             // Create a new block and then move it.
-            name = strdup("block Name larger block Name ya");
+            char *name = strdup("block Name larger block Name ya");
             movingBlock = CreateBlock(layout, name, e->x, e->y);
 
             movingBlock->xOffset = e->x_root;
             movingBlock->yOffset = e->y_root;
 
-            SetCursor(grabCursor);
+            SetCursor(GTK_WIDGET(layout), pointerCursor);
             WriteStatus("created block \"%s\"", name);
+            free(name);
             break;
+        }
 
         case GDK_MOTION_NOTIFY:
 
@@ -458,7 +510,7 @@ static gboolean WorkAreaCB(GtkLayout *layout,
 
             if(!moving) {
                 moving = true;
-                SetCursor(moveCursor);
+                SetCursor(GTK_WIDGET(layout), moveCursor);
             }
 
             movingBlock->x += ((gint) e->x_root) - movingBlock->xOffset;
@@ -472,21 +524,14 @@ static gboolean WorkAreaCB(GtkLayout *layout,
 
         case GDK_BUTTON_RELEASE:
 
-            SetCursor(grabCursor);
+            SetCursor(GTK_WIDGET(layout), pointerCursor);
 
             if(e->button != BLOCK_CREATE_BUTTON ||
                     movingBlock == 0) break;
-            
-            //gtk_grab_remove(GTK_WIDGET(layout));
 
             movingBlock->xOffset = 0;
             movingBlock->yOffset = 0;
             movingBlock = 0;
-            moving = false;
-            if(name) {
-                free(name);
-                name =0;
-            }
             break;
 
         default:
@@ -512,6 +557,13 @@ static inline GdkCursor *GetCursor_(GdkCursorType type) {
     return gdk_cursor_new_for_display(gdk_display_get_default(), type);
 }
 
+static gboolean MapWorkAreaCB(GtkWidget *w, GdkEvent *e, void *d) {
+
+    DASSERT(e->type == GDK_MAP);
+    SetCursor(w, pointerCursor);
+    return FALSE;
+}
+
 static inline void
 setup_widget_connections(void) {
     
@@ -535,7 +587,7 @@ setup_widget_connections(void) {
     //////////////////////////////////////////////////////////////////
 
     moveCursor = GetCursor("grabbing");
-    grabCursor = GetCursor("grab");
+    pointerCursor = GetCursor("pointer");
     configureBlockCursor = GetCursor("crosshair");
 
 
@@ -588,6 +640,7 @@ setup_widget_connections(void) {
         gtk_window_resize(GTK_WINDOW(window), 1000, 1000);
     }
 
+
     Connect(b, "window", "destroy", gtk_main_quit, 0);
     Connect(b, "quitMenu", "activate", gtk_main_quit, 0);
     Connect(b, "quitButton", "clicked", gtk_main_quit, 0);
@@ -595,6 +648,7 @@ setup_widget_connections(void) {
     Connect(b, "workArea", "button-release-event", WorkAreaCB, (void *) 1);
     Connect(b, "workArea", "button-press-event", WorkAreaCB, (void *) 2);
     Connect(b, "workArea", "motion-notify-event", WorkAreaCB, (void *) 3);
+    Connect(b, "workArea", "map-event", MapWorkAreaCB, 0);
 }
 
 void
