@@ -21,50 +21,56 @@
 #define BLOCK_MOVE_BUTTON  (1)
 
 
-
 static GtkTextView *status = 0;
 static GdkPixbuf *inputIcon = 0;
 static GdkPixbuf *outputIcon = 0;
 
+// Changing cursor is not well supported in GTK+3 (as of version 3.24.20):
+//   1. CSS setting of cursor does not work at all.
+//   2. Setting the cursor with  gdk_window_set_cursor() for a widget
+//      sets it for all it's children, so that makes it difficult to
+//      manage cursors.  There appears to be no stack of cursors,
+//      which is the obvious way to manage changing cursors in code.
+
 // List of cursors with images:
 // https://developer.gnome.org/gdk3/stable/gdk3-Cursors.html#GdkCursorType
 static GdkCursor *moveCursor = 0;
-static GdkCursor *pointerCursor = 0;
-static GdkCursor *configureBlockCursor = 0;
 
-static GdkCursor *getHoverCursor = 0;
-static GdkCursor *setHoverCursor = 0;
-static GdkCursor *inputHoverCursor = 0;
-static GdkCursor *outputHoverCursor = 0;
-
-static GdkCursor *getActiveCursor = 0;
-static GdkCursor *setActiveCursor = 0;
-static GdkCursor *inputActiveCursor = 0;
-static GdkCursor *outputActiveCursor = 0;
+static GdkCursor *getCursor = 0;
+static GdkCursor *inputCursor = 0;
 
 
 static GtkWidget *window = 0;
 
 struct Block;
 
-enum BlockMode {
+enum ConnectionType {
 
-    BM_NONE = 0,
-    BM_HAVE_GET,
-    BM_HAVE_SET,
-    BM_HAVE_INPUT,
-    BM_HAVE_OUTPUT
+    CT_GET,
+    CT_SET,
+    CT_INPUT,
+    CT_OUTPUT
+};
+
+struct ConnectionPoint {
+
+    struct Block *block;
+    enum ConnectionType type;
+    bool gotPress;
 };
 
 
 struct Block {
-    GtkWidget *top;
+    GtkWidget *container;
     GtkLayout *layout;
 
-    gint xOffset,yOffset; // position in layout from root
-    gint x, y; // position in layout from layout
-    enum BlockMode mode;
+    // This provides a struct that we can send to the connection
+    // widget callbacks, without requiring another allocation.
+    struct ConnectionPoint get, set, input, output;
+
+    gint x, y; // current position in layout from layout
 };
+
 
 
 static inline void SetCursor(GtkWidget *w, GdkCursor *cursor) {
@@ -145,10 +151,8 @@ static void CSS() {
             // There currently does not appear to be a way to do this.
             "#vpanel {\n"
                 "}\n"
-            "#block, #top {\n"
-                "background-color: rgba(83,138,250,0.5);\n"
-                "}\n"
             "#block {\n"
+                "background-color: rgba(83,138,250,0.5);\n"
                 "border: 1px solid black;\n"
                 "}\n"
             "#block > #get, #set, #input, #output {\n"
@@ -178,13 +182,14 @@ static void PopForward(GtkLayout *layout, struct Block *b) {
 
     // 1. get one more reference to the widget; otherwise
     //    the widget will be destroyed in the next call.
-    g_object_ref(G_OBJECT(b->top));
+    g_object_ref(G_OBJECT(b->container
+                ));
     // 2. remove the widget which removes one reference
-    gtk_container_remove(GTK_CONTAINER(layout), b->top);
+    gtk_container_remove(GTK_CONTAINER(layout), b->container);
     // Now we have at least one reference.
     // 3. re-add the widget which will take ownership of the
     //    one reference.
-    gtk_layout_put(layout, b->top, b->x, b->y);
+    gtk_layout_put(layout, b->container, b->x, b->y);
 }
 
 
@@ -192,8 +197,9 @@ static gboolean
 BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
 
     errno = 0;
-    static bool moving = false;
     static bool gotPress = false;
+    static gint xOffset = 0, yOffset = 0;
+
 
     switch(e->type) {
     
@@ -202,11 +208,10 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
             if(e->button != BLOCK_MOVE_BUTTON)
                 break;
 
-            SetCursor(GTK_WIDGET(b->layout), pointerCursor);
-            b->xOffset = e->x_root;
-            b->yOffset = e->y_root;
+            SetCursor(GTK_WIDGET(b->layout), moveCursor);
+            xOffset = e->x_root;
+            yOffset = e->y_root;
             PopForward(b->layout, b);
-            moving = false;
             gotPress = true;
             gtk_grab_add(widget);
             break;
@@ -222,29 +227,22 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
                 
             if(!gotPress) break;
 
-            if(!moving) {
-                moving = true;
-                SetCursor(GTK_WIDGET(b->layout), moveCursor);
-            }
+            b->x += ((gint) e->x_root) - xOffset;
+            b->y += ((gint) e->y_root) - yOffset;
 
-            b->x += ((gint) e->x_root) - b->xOffset;
-            b->y += ((gint) e->y_root) - b->yOffset;
-
-            b->xOffset = (gint) e->x_root;
-            b->yOffset = (gint) e->y_root;
-            gtk_layout_move(b->layout, b->top, b->x, b->y);
+            xOffset = e->x_root;
+            yOffset = e->y_root;
+            gtk_layout_move(b->layout, b->container, b->x, b->y);
             break;
 
         case GDK_BUTTON_RELEASE:
         {
-            SetCursor(GTK_WIDGET(b->layout), pointerCursor);
+            SetCursor(GTK_WIDGET(b->layout), 0);
 
             if(e->button != BLOCK_MOVE_BUTTON) break;
 
             gtk_grab_remove(widget);
 
-            b->xOffset = 0;
-            b->yOffset = 0;
             gotPress = false;
 
             break;
@@ -282,51 +280,92 @@ BlockLeaveCB(GtkWidget *w, GdkEvent *e, struct Block *b) {
 #endif
 
 
+static gint connectX0 = 0;
+static gint connectY0 = 0;
+static gint connectX = 0;
+static gint connectY = 0;
+
+
 
 static gboolean
-ConnectPressCB(GtkWidget *w, GdkEventButton *e, struct Block *b) {
+ConnectPressCB(GtkWidget *w, GdkEventButton *e, struct ConnectionPoint *p) {
 
     errno = 0;
 
+    DSPEW("type=%s", gtk_widget_get_name(w));
+
     DASSERT(e->type == GDK_BUTTON_PRESS);
 
-    DSPEW("                                       Press=%p", b);
+    DSPEW("                                       Press=%d", p->type);
+
+    connectX = connectX0 = e->x_root;
+    connectY = connectY0 = e->y_root;
+
+    DASSERT(p->gotPress == false);
+
+    p->gotPress = true;
 
     return TRUE; // TRUE = do not go to next widget
 }
 
+
 static gboolean
-ConnectReleaseCB(GtkWidget *w, GdkEventButton *e, struct Block *b) {
+ConnectMotionCB(GtkWidget *w, GdkEventButton *e, struct ConnectionPoint *p) {
+
+
+    gint x = e->x_root;
+    gint y = e->y_root;
+
+    if(p->gotPress) {
+        DSPEW(" FROM (%d,%d) TO (%d, %d)", connectX, connectY, x, y);
+    }
+
+    connectX = (gint) e->x_root;
+    connectY = (gint) e->y_root;
+
+    return TRUE; // TRUE = do not go to next widget
+}
+
+
+static gboolean
+ConnectReleaseCB(GtkWidget *w, GdkEventButton *e, struct ConnectionPoint *p) {
 
     errno = 0;
 
     DASSERT(e->type == GDK_BUTTON_RELEASE);
     
-    DSPEW("                                       Release=%p", b);
+    DSPEW("                                       Release=%d", p->type);
+
+    if(p->gotPress) {
+
+        DSPEW(" FROM (%d,%d) TO (%d, %d)", connectX0, connectY0, connectX, connectY);
+
+        p->gotPress = false;
+    }
 
     return TRUE; // TRUE = do not go to next widget
 }
 
 static gboolean
-ConnectEnterCB(GtkWidget *w, GdkEvent *e, struct Block *b) {
+ConnectEnterCB(GtkWidget *w, GdkEvent *e, struct ConnectionPoint *p) {
 
     errno = 0;
     DASSERT(GDK_ENTER_NOTIFY == e->type);
 
-    //DSPEW("                                 ENTER=%p", b);
+    DSPEW("                                 ENTER=%d", p->type);
 
-    return TRUE; // TRUE = do not go to next child
+    return TRUE; // TRUE = do not go to next widget
 }
 
 static gboolean
-ConnectLeaveCB(GtkWidget *w, GdkEvent *e, struct Block *b) {
+ConnectLeaveCB(GtkWidget *w, GdkEvent *e, struct ConnectionPoint *p) {
 
     errno = 0;
     DASSERT(GDK_LEAVE_NOTIFY == e->type);
 
-    //DSPEW("                                LEAVE=%p", b);
+    DSPEW("                                LEAVE=%d", p->type);
 
-    return TRUE; // TRUE = do not go to next child
+    return TRUE; // TRUE = do not go to next widget
 }
 
 
@@ -334,7 +373,9 @@ static void MakeBlockConnector(GtkWidget *grid,
         const char *type,
         const char *imageFile,
         gint x, gint y, gint w, gint h,
-        struct Block *block) {
+        struct Block *block,
+        struct ConnectionPoint *p
+        ) {
 
     GtkWidget *ebox = gtk_event_box_new();
 
@@ -348,14 +389,17 @@ static void MakeBlockConnector(GtkWidget *grid,
             GDK_STRUCTURE_MASK);
 
     g_signal_connect(ebox, "button-press-event",
-            G_CALLBACK(ConnectPressCB), block);
+            G_CALLBACK(ConnectPressCB), p);
+    g_signal_connect(ebox, "motion-notify-event",
+            G_CALLBACK(ConnectMotionCB), p);
     g_signal_connect(ebox, "button-release-event",
-            G_CALLBACK(ConnectReleaseCB), block);
+            G_CALLBACK(ConnectReleaseCB), p);
     g_signal_connect(ebox, "enter-notify-event",
-            G_CALLBACK(ConnectEnterCB), block);
+            G_CALLBACK(ConnectEnterCB), p);
     g_signal_connect(ebox, "leave-notify-event",
-            G_CALLBACK(ConnectLeaveCB), block);
-     gtk_widget_set_name(ebox, type);
+            G_CALLBACK(ConnectLeaveCB), p);
+
+    gtk_widget_set_name(ebox, type);
     gtk_widget_show(ebox);
     gtk_grid_attach(GTK_GRID(grid), ebox, x, y, w, h);
 
@@ -379,8 +423,8 @@ static void MakeBlockLabel(GtkWidget *grid,
 static void DestroyBlock(struct Block *block) {
 
     DASSERT(block);
-    DASSERT(block->top);
-    gtk_widget_destroy(block->top);
+    DASSERT(block->container);
+    gtk_widget_destroy(block->container);
 }
 #endif
 
@@ -390,12 +434,20 @@ static struct Block *CreateBlock(GtkLayout *layout,
 
     struct Block *block = calloc(1, sizeof(*block));
     ASSERT(block, "calloc(1,%zu) failed", sizeof(*block));
+    block->get.type = CT_GET;
+    block->get.block = block;
+    block->set.type = CT_SET;
+    block->set.block = block;
+    block->input.type = CT_INPUT;
+    block->input.block = block;
+    block->output.type = CT_OUTPUT;
+    block->output.block = block;
 
 
     GtkWidget *grid = gtk_grid_new();
     GtkWidget *ebox = gtk_event_box_new();
 
-    block->top = ebox;
+    block->container = ebox;
     block->layout = layout;
     block->x = x;
     block->y = y;
@@ -456,10 +508,10 @@ static struct Block *CreateBlock(GtkLayout *layout,
     MakeBlockLabel(grid, "block type 923rj", 2, 2, 3, 1);
     MakeBlockLabel(grid, "Boston", 2, 3, 3, 1);
 
-    MakeBlockConnector(grid, "input", "input.png", 0, 2, 1, 1, block);
-    MakeBlockConnector(grid, "output", "output.png", 6, 2, 1, 1, block);
-    MakeBlockConnector(grid, "set", "set.png", 3, 0, 1, 1, block);
-    MakeBlockConnector(grid, "get", "get.png", 3, 4, 1, 1, block);
+    MakeBlockConnector(grid, "input", "input.png", 0, 2, 1, 1, block, &block->input);
+    MakeBlockConnector(grid, "output", "output.png", 6, 2, 1, 1, block, &block->output);
+    MakeBlockConnector(grid, "set", "set.png", 3, 0, 1, 1, block, &block->set);
+    MakeBlockConnector(grid, "get", "get.png", 3, 4, 1, 1, block, &block->get);
 
     gtk_widget_show(grid);
 
@@ -473,7 +525,7 @@ static gboolean WorkAreaCB(GtkLayout *layout,
     DASSERT(moveCursor);
     DASSERT(window);
 
-    static bool moving = 0;
+    static gint xOffset = 0, yOffset = 0;
     static struct Block *movingBlock = 0;
     errno = 0;
 
@@ -483,16 +535,14 @@ static gboolean WorkAreaCB(GtkLayout *layout,
         {
             if(e->button != BLOCK_CREATE_BUTTON) break;
 
-            moving = 0;
-
             // Create a new block and then move it.
             char *name = strdup("block Name larger block Name ya");
             movingBlock = CreateBlock(layout, name, e->x, e->y);
 
-            movingBlock->xOffset = e->x_root;
-            movingBlock->yOffset = e->y_root;
+            xOffset = e->x_root;
+            yOffset = e->y_root;
 
-            SetCursor(GTK_WIDGET(layout), pointerCursor);
+            SetCursor(GTK_WIDGET(layout), moveCursor);
             WriteStatus("created block \"%s\"", name);
             free(name);
             break;
@@ -508,29 +558,22 @@ static gboolean WorkAreaCB(GtkLayout *layout,
 
             if(!movingBlock) break;
 
-            if(!moving) {
-                moving = true;
-                SetCursor(GTK_WIDGET(layout), moveCursor);
-            }
+            movingBlock->x += ((gint) e->x_root) - xOffset;
+            movingBlock->y += ((gint) e->y_root) - yOffset;
 
-            movingBlock->x += ((gint) e->x_root) - movingBlock->xOffset;
-            movingBlock->y += ((gint) e->y_root) - movingBlock->yOffset;
+            xOffset = e->x_root;
+            yOffset = e->y_root;
 
-            movingBlock->xOffset = (gint) e->x_root;
-            movingBlock->yOffset = (gint) e->y_root;
-            gtk_layout_move(layout, movingBlock->top,
+            gtk_layout_move(layout, movingBlock->container,
                     movingBlock->x, movingBlock->y);
             break;
 
         case GDK_BUTTON_RELEASE:
 
-            SetCursor(GTK_WIDGET(layout), pointerCursor);
+            SetCursor(GTK_WIDGET(layout), 0);
 
-            if(e->button != BLOCK_CREATE_BUTTON ||
-                    movingBlock == 0) break;
+            if(e->button != BLOCK_CREATE_BUTTON) break;
 
-            movingBlock->xOffset = 0;
-            movingBlock->yOffset = 0;
             movingBlock = 0;
             break;
 
@@ -560,7 +603,6 @@ static inline GdkCursor *GetCursor_(GdkCursorType type) {
 static gboolean MapWorkAreaCB(GtkWidget *w, GdkEvent *e, void *d) {
 
     DASSERT(e->type == GDK_MAP);
-    SetCursor(w, pointerCursor);
     return FALSE;
 }
 
@@ -587,19 +629,10 @@ setup_widget_connections(void) {
     //////////////////////////////////////////////////////////////////
 
     moveCursor = GetCursor("grabbing");
-    pointerCursor = GetCursor("pointer");
-    configureBlockCursor = GetCursor("crosshair");
 
+    getCursor = GetCursor_(GDK_BOTTOM_SIDE);
+    inputCursor = GetCursor_(GDK_RIGHT_SIDE);
 
-    getHoverCursor = GetCursor_(GDK_BOTTOM_SIDE);
-    setHoverCursor = GetCursor_(GDK_TOP_SIDE);
-    inputHoverCursor = GetCursor_(GDK_RIGHT_SIDE);
-    outputHoverCursor = GetCursor_(GDK_LEFT_SIDE);
-
-    getActiveCursor = GetCursor_(GDK_BOTTOM_TEE);
-    setActiveCursor = GetCursor_(GDK_TOP_TEE);
-    inputActiveCursor = GetCursor_(GDK_RIGHT_TEE);
-    outputActiveCursor = GetCursor_(GDK_LEFT_TEE);
 
     //////////////////////////////////////////////////////////////////
 
@@ -650,6 +683,7 @@ setup_widget_connections(void) {
     Connect(b, "workArea", "motion-notify-event", WorkAreaCB, (void *) 3);
     Connect(b, "workArea", "map-event", MapWorkAreaCB, 0);
 }
+
 
 void
 catcher(int sig) {
