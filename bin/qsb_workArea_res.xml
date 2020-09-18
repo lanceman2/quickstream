@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- GTK+3 widgets for quickstreamBuilder work areas that go in each
+     notebook (tab) page -->
+<gresources>
+    <gresource prefix="/quickstreamBuilder">
+        <file compressed="true">qsb_workArea_res.ui</file>
+    </gresource>
+</gresources>

@@ -13,25 +13,29 @@ G_COMPILE_RES := glib-compile-resources
 quickstream_SOURCES := quickstream.c
 quickstream_LDFLAGS := -L../lib -lquickstream -Wl,-rpath=\$$ORIGIN/../lib
 
+scribble_SOURCES := scribble.c
+scribble_LDFLAGS := $(GTK_LDFLAGS) 
+scribble_CPPFLAGS := $(GTK_CFLAGS)
 
 ifeq ($(GTK_LDFLAGS),)
 $(warning "Not building quickstreamBuilder")
 else
 
-CLEANFILES := quickstreamBuilder_resources.c
+CLEANFILES := qsb_res.c qsb_workArea_res.c
 
-quickstreamBuilder_resources.c:\
- quickstreamBuilder.gresource.xml\
- quickstreamBuilder.ui
+
+%_res.c: %_res.xml %_res.ui
 	glib-compile-resources $< --target=$@ --sourcedir=. --generate-source
 
 
+
 quickstreamBuilder_SOURCES :=\
- quickstreamBuilder.c\
+ qsb.c\
  ../lib/debug.c\
- quickstreamBuilder_resources.c
+ qsb_res.c\
+ qsb_workArea_res.c
+
 quickstreamBuilder_CPPFLAGS := $(GTK_CFLAGS) $(XML2_CFLAGS)
-#quickstreamBuilder_resources.o_CPPFLAGS := $(GTK_CFLAGS)
 quickstreamBuilder_LDFLAGS := $(GTK_LDFLAGS) $(XML2_LDFLAGS)
 
 

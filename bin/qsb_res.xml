@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+    <gresource prefix="/quickstreamBuilder">
+        <file compressed="true">qsb_res.ui</file>
+    </gresource>
+</gresources>

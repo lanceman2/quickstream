@@ -2,6 +2,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -22,8 +23,6 @@
 
 
 static GtkTextView *status = 0;
-static GdkPixbuf *inputIcon = 0;
-static GdkPixbuf *outputIcon = 0;
 
 // Changing cursor is not well supported in GTK+3 (as of version 3.24.20):
 //   1. CSS setting of cursor does not work at all.
@@ -35,7 +34,6 @@ static GdkPixbuf *outputIcon = 0;
 // List of cursors with images:
 // https://developer.gnome.org/gdk3/stable/gdk3-Cursors.html#GdkCursorType
 static GdkCursor *moveCursor = 0;
-
 static GdkCursor *getCursor = 0;
 static GdkCursor *inputCursor = 0;
 
@@ -72,6 +70,18 @@ struct Block {
 };
 
 
+struct DrawData {
+    // draw callback data.
+
+    // Where is the pointer relative to root?
+    gint root_x, root_y;
+
+    // Set if this is for drawing a particular connection.
+    struct ConnectionPoint *from, *to;
+};
+
+
+
 
 static inline void SetCursor(GtkWidget *w, GdkCursor *cursor) {
     gdk_window_set_cursor(gtk_widget_get_window(w), cursor);
@@ -89,29 +99,32 @@ WriteStatus(const char *fmt, ...) {
     va_end(ap);
     ASSERT(size > 0);
 
-    DSPEW("STATUS append: %s", buf);
+    NOTICE("STATUS append: %s", buf);
 }
 
 
-static gboolean
-draw_callback(GtkWidget *widget, cairo_t *cr, gpointer data)
+
+static inline void
+ClearSurface(cairo_t *cr) {
+  cairo_set_source_rgb(cr, 224/255.0, 233/255.0, 244/255.0);
+  cairo_paint(cr);
+}
+
+
+static struct DrawData drawData;
+
+/* Redraw the screen from the surface. Note that the ::draw
+ * signal receives a ready-to-be-used cairo_t that is already
+ * clipped to only draw the exposed areas of the widget
+ */
+static gboolean draw(GtkWidget *widget, cairo_t *cr,
+        struct DrawData *d)
 {
-  
-    guint width, height;
-    GtkStyleContext *context;
-
-    context = gtk_widget_get_style_context(widget);
-
-    width = gtk_widget_get_allocated_width(widget);
-    height = gtk_widget_get_allocated_height(widget);
-
-    gtk_render_background(context, cr, 0, 0, width, height);
-
-    cairo_set_source_rgb (cr, 224/255.0, 233/255.0, 244/255.0);
-    cairo_paint(cr);
-
-    return FALSE;
+    DSPEW();
+    ClearSurface(cr);
+    return FALSE; // Call other callbacks?
 }
+
 
 
 static void CSS() {
@@ -286,6 +299,29 @@ static gint connectX = 0;
 static gint connectY = 0;
 
 
+/*               Block
+
+ ***************************************
+ *                get                  *
+ *                                     *
+ * input                        output *
+ *                                     *
+ *                set                  *
+ ***************************************
+*/
+
+
+// Output is on the left of the block
+static
+void DrawBlockOutput(struct ConnectionPoint *p) {
+
+    gint w = gtk_widget_get_allocated_width(GTK_WIDGET(p->block->layout));
+    gint h = gtk_widget_get_allocated_height(GTK_WIDGET(p->block->layout));
+    /* Now invalidate the affected region of the drawing area. */
+    gtk_widget_queue_draw_area(GTK_WIDGET(p->block->layout), 0, 0, w, h);
+
+}
+
 
 static gboolean
 ConnectPressCB(GtkWidget *w, GdkEventButton *e, struct ConnectionPoint *p) {
@@ -302,8 +338,32 @@ ConnectPressCB(GtkWidget *w, GdkEventButton *e, struct ConnectionPoint *p) {
     connectY = connectY0 = e->y_root;
 
     DASSERT(p->gotPress == false);
-
     p->gotPress = true;
+
+    switch(p->type) {
+
+        case CT_INPUT:
+
+
+            break;
+
+        case CT_OUTPUT:
+
+            DrawBlockOutput(p);
+
+            break;
+
+        case CT_GET:
+
+
+            break;
+
+        case CT_SET:
+
+
+            break;
+    }
+
 
     return TRUE; // TRUE = do not go to next widget
 }
@@ -508,10 +568,10 @@ static struct Block *CreateBlock(GtkLayout *layout,
     MakeBlockLabel(grid, "block type 923rj", 2, 2, 3, 1);
     MakeBlockLabel(grid, "Boston", 2, 3, 3, 1);
 
-    MakeBlockConnector(grid, "input", "input.png", 0, 2, 1, 1, block, &block->input);
-    MakeBlockConnector(grid, "output", "output.png", 6, 2, 1, 1, block, &block->output);
-    MakeBlockConnector(grid, "set", "set.png", 3, 0, 1, 1, block, &block->set);
-    MakeBlockConnector(grid, "get", "get.png", 3, 4, 1, 1, block, &block->get);
+    MakeBlockConnector(grid, "input", "input.png", 0, 0, 1, 5, block, &block->input);
+    MakeBlockConnector(grid, "output", "output.png", 6, 0, 1, 5, block, &block->output);
+    MakeBlockConnector(grid, "set", "set.png", 1, 0, 4, 1, block, &block->set);
+    MakeBlockConnector(grid, "get", "get.png", 1, 4, 4, 1, block, &block->get);
 
     gtk_widget_show(grid);
 
@@ -600,28 +660,70 @@ static inline GdkCursor *GetCursor_(GdkCursorType type) {
     return gdk_cursor_new_for_display(gdk_display_get_default(), type);
 }
 
-static gboolean MapWorkAreaCB(GtkWidget *w, GdkEvent *e, void *d) {
 
-    DASSERT(e->type == GDK_MAP);
-    return FALSE;
+static int tabCreateCount = 0;
+static GtkNotebook *noteBook = 0;
+
+
+static void MakeWorkArea(void) {
+
+    GtkBuilder *b = gtk_builder_new_from_resource(
+            "/quickstreamBuilder/qsb_workArea_res.ui");
+
+    Connect(b, "workArea", "draw", draw, &drawData);
+    Connect(b, "workArea", "button-release-event", WorkAreaCB, (void *) 1);
+    Connect(b, "workArea", "button-press-event", WorkAreaCB, (void *) 2);
+    Connect(b, "workArea", "motion-notify-event", WorkAreaCB, (void *) 3);
+
+    status = GTK_TEXT_VIEW(gtk_builder_get_object(b, "status"));
+
+    // As of gtk+3 version 3.24.20 "configure-event" does not work for
+    // a GtkLayout widget.  That may be because the  GtkLayout widget
+    // changes size as we add child widgets to it.
+    //Connect(b, "workArea", "configure-event", ConfigureLayout, 0);
+
+    char tagName[64];
+    if(tabCreateCount) {
+        ++tabCreateCount;
+        snprintf(tagName, 64, "Untitled_%d", tabCreateCount);
+    } else {
+        ++tabCreateCount;
+        strcpy(tagName, "Untitled");
+    }
+
+    gint rt = gtk_notebook_append_page(noteBook,
+            GTK_WIDGET(gtk_builder_get_object(b, "vpanel")),
+            gtk_label_new(tagName));
+    ASSERT(rt >= 0);
+
+    // We are done with this builder
+    g_object_unref(G_OBJECT(b));
 }
+
+
+static gboolean NewTab(GtkWidget *w, gpointer data) {
+    MakeWorkArea();
+    return TRUE;
+}
+
 
 static inline void
 setup_widget_connections(void) {
     
 
-    // From the XML files: quickstreamBuilder.gresource.xml and
-    // quickstreamBuilder.ui, a gObject compiler, named
-    // glib-compile-resources, builds quickstreamBuilder_resources.c.
-    // quickstreamBuilder_resources.c is compiled into an object and the
-    // object is linked with this file.  The call to
-    // gtk_builder_new_from_resource() calls some generated functions from
-    // quickstreamBuilder_resources.c to get the builder struct that has
+    // From the XML files: qsb_res.xml and qsb_res.ui, a gObject compiler,
+    // named glib-compile-resources, builds qsb_res.c.  qsb_res.c is
+    // compiled into an object and the object is linked with this file.
+    // The call to gtk_builder_new_from_resource() calls some generated
+    // functions from qsb_resources.c to get the builder struct that has
     // lots of widgets in it which we connect action callbacks to by id;
     // as in for example: <object class="GtkMenuItem" id="quitMenu">.
+    //
+    // Similarly for qsb_workArea_res.* which are used to
+    // get the main work area draw widget in MakeWorkArea() above.
 
     GtkBuilder *b = gtk_builder_new_from_resource(
-            "/quickstream/quickstreamBuilder.ui");
+            "/quickstreamBuilder/qsb_res.ui");
 
 
     ///////////////////////////////////////////////////////////////////
@@ -633,31 +735,9 @@ setup_widget_connections(void) {
     getCursor = GetCursor_(GDK_BOTTOM_SIDE);
     inputCursor = GetCursor_(GDK_RIGHT_SIDE);
 
-
     //////////////////////////////////////////////////////////////////
 
-
     window = GTK_WIDGET(gtk_builder_get_object(b, "window"));
-
-    GtkIconTheme *icon_theme = gtk_icon_theme_get_default();
-    GError *error = 0;
-    inputIcon = gtk_icon_theme_load_icon(icon_theme,
-                                   "list-add", // icon name
-                                   32, // icon size
-                                   0,  // flags
-                                   &error);
-    DASSERT(inputIcon);
-    outputIcon = gtk_icon_theme_load_icon(icon_theme,
-                                   "list-remove", // icon name
-                                   32, // icon size
-                                   0,  // flags
-                                   &error);
-    DASSERT(outputIcon);
-
-
-
-
-    status = GTK_TEXT_VIEW(gtk_builder_get_object(b, "status"));
 
     {
         GdkGeometry geo;
@@ -673,15 +753,17 @@ setup_widget_connections(void) {
         gtk_window_resize(GTK_WINDOW(window), 1000, 1000);
     }
 
+    noteBook = GTK_NOTEBOOK(gtk_builder_get_object(b, "notebook"));
+
+    NewTab(0, 0);
 
     Connect(b, "window", "destroy", gtk_main_quit, 0);
     Connect(b, "quitMenu", "activate", gtk_main_quit, 0);
     Connect(b, "quitButton", "clicked", gtk_main_quit, 0);
-    Connect(b, "workArea", "draw", draw_callback, 0);
-    Connect(b, "workArea", "button-release-event", WorkAreaCB, (void *) 1);
-    Connect(b, "workArea", "button-press-event", WorkAreaCB, (void *) 2);
-    Connect(b, "workArea", "motion-notify-event", WorkAreaCB, (void *) 3);
-    Connect(b, "workArea", "map-event", MapWorkAreaCB, 0);
+    Connect(b, "newTabButton", "clicked", NewTab, 0);
+
+    // We are done with this builder
+    g_object_unref(G_OBJECT(b));
 }
 
 

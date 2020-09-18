@@ -1,0 +1,51 @@
+<!-- GTK+3 widgets for quickstreamBuilder work areas that go in each
+     notebook (tab) page -->
+<interface>
+    <!--**********************************************************-->
+    <!--                   Vertical Pane                          -->
+    <!--**********************************************************-->
+    <object id="vpanel" class="GtkPaned">
+        <property name="visible">True</property>
+        <property name="orientation">vertical</property>
+        <property name="can_focus">True</property>
+        <child>
+            <!--**********************************************************-->
+            <!--                   Main Work Area                         -->
+            <!--**********************************************************-->
+            <object id="workArea" class="GtkLayout">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="focus_on_click">True</property>
+                <property name="events">GDK_STRUCTURE_MASK |
+                                    GDK_POINTER_MOTION_MASK |
+                                    GDK_BUTTON_RELEASE_MASK |
+                                    GDK_BUTTON_PRESS_MASK|
+                                    GDK_STRUCTURE_MASK |
+                                    GDK_EXPOSURE_MASK |
+                                    GDK_ALL_EVENTS_MASK
+                </property>
+            </object>
+            <packing>
+                <property name="resize">True</property>
+                <property name="shrink">True</property>
+            </packing>
+        </child>
+        <child>
+            <!--**********************************************************-->
+            <!--                   Status Bar                             -->
+            <!--**********************************************************-->
+            <object id="statusScroll" class="GtkScrolledWindow">
+                <property name="visible">True</property>
+                <child>
+                    <object id="status" class="GtkTextView">
+                        <property name="visible">True</property>
+                    </object>
+                </child>
+            </object>
+            <packing>
+                <property name="resize">False</property>
+                <property name="shrink">True</property>
+            </packing>
+        </child>
+    </object>
+</interface>
