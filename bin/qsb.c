@@ -1,6 +1,3 @@
-/* from: file:///usr/share/gtk-doc/html/gtk3/ch01s03.html
- */
-
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -16,10 +13,13 @@
 
 #include "../lib/debug.h"
 
+#include "qsb.h"
+
 
 #define BLOCK_CREATE_BUTTON   (1)
 #define BLOCK_CONNECT_BUTTON  (1)
 #define BLOCK_MOVE_BUTTON  (1)
+
 
 
 static GtkTextView *status = 0;
@@ -40,47 +40,16 @@ static GdkCursor *inputCursor = 0;
 
 static GtkWidget *window = 0;
 
-struct Block;
+static bool waitingForConnectEnter = false;
 
-enum ConnectionType {
-
-    CT_GET,
-    CT_SET,
-    CT_INPUT,
-    CT_OUTPUT
-};
-
-struct ConnectionPoint {
-
-    struct Block *block;
-    enum ConnectionType type;
-    bool gotPress;
-};
+const static double lineWidth = 3.1;
 
 
-struct Block {
-    GtkWidget *container;
-    GtkLayout *layout;
+static void ClearNewConnectionDraw(struct Page *page) {
 
-    // This provides a struct that we can send to the connection
-    // widget callbacks, without requiring another allocation.
-    struct ConnectionPoint get, set, input, output;
-
-    gint x, y; // current position in layout from layout
-};
-
-
-struct DrawData {
-    // draw callback data.
-
-    // Where is the pointer relative to root?
-    gint root_x, root_y;
-
-    // Set if this is for drawing a particular connection.
-    struct ConnectionPoint *from, *to;
-};
-
-
+    page->from = 0;
+    waitingForConnectEnter = false;
+}
 
 
 static inline void SetCursor(GtkWidget *w, GdkCursor *cursor) {
@@ -103,28 +72,232 @@ WriteStatus(const char *fmt, ...) {
 }
 
 
-
 static inline void
 ClearSurface(cairo_t *cr) {
   cairo_set_source_rgb(cr, 224/255.0, 233/255.0, 244/255.0);
   cairo_paint(cr);
 }
 
+// We have this stupid surface re-allocator because the GTK layout widget
+// will not receive configure events, which are when the widget window
+// resizes.
+static inline cairo_surface_t
+*GetSurface(struct Page *page, GtkWidget *widget, cairo_surface_t *s) {
 
-static struct DrawData drawData;
+    gint w = gtk_widget_get_allocated_width(widget);
+    gint h = gtk_widget_get_allocated_height(widget);
+
+    if(s == 0 || page->w != w || page->h != h) {
+        if(s)
+            cairo_surface_destroy(s);
+        GdkWindow *win = gtk_widget_get_window(widget);
+
+        s = gdk_window_create_similar_surface(win,
+                CAIRO_CONTENT_COLOR_ALPHA, w, h);
+
+        cairo_t *cr = cairo_create(s);
+        cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+        cairo_set_source_rgba(cr, 0, 0, 0, 0);
+        cairo_paint(cr);
+        cairo_destroy(cr);
+
+        page->w = w;
+        page->h = h;
+
+        return s;
+    }
+    return 0;
+}
+
+
+
+
+static inline void GetConnectionColor(struct Connector *c,
+        double *r, double *g, double *b, double *a) {
+
+    switch(c->type) {
+        case CT_INPUT:
+            *r = 1.0;
+            *g = 0.0;
+            *b = 0.0;
+            *a = 0.5;
+            break;
+        case CT_OUTPUT:
+            *r = 1.0;
+            *g = 0.0;
+            *b = 0.0;
+            *a = 0.5;
+            break;
+        case CT_GET:
+            *r = 0.0;
+            *g = 1.0;
+            *b = 0.0;
+            *a = 0.5;
+            break;
+        case CT_SET:
+            *r = 0.0;
+            *g = 1.0;
+            *b = 0.0;
+            *a = 0.5;
+    }
+}
+
+
+static bool CanConnect(struct Connector *from,
+            struct Connector *to) {
+
+    switch(from->type) {
+        case CT_INPUT:
+            if(to->type == CT_OUTPUT)
+                return true;
+            return false;
+        case CT_OUTPUT:
+            if(to->type == CT_INPUT)
+                return true;
+            return false;
+        case CT_GET:
+            if(to->type == CT_SET)
+                return true;
+            return false;
+        case CT_SET:
+            if(to->type == CT_GET)
+                return true;
+            return false;
+#ifdef DEBUG
+        default:
+            DASSERT(0, "missing case");
+            return false;
+#endif
+    }
+}
+
+
+
+/*               Block
+
+ ***************************************
+ *                set                  *
+ *                                     *
+ * input                        output *
+ *                                     *
+ *                get                  *
+ ***************************************
+*/
+
+
+
+// Wouldn't is be nice if C had pass by reference.
+//
+// Figures out where to draw to or from for a connection
+// to the input, output, get or set side of a block.
+// All done relative to the layout widget.
+//
+void GetConnectionPoint(const struct Connector *c,
+        double *x, double *y) {
+
+    DASSERT(c);
+    struct Block *block = c->block;
+    DASSERT(block);
+    DASSERT(block->container);
+
+    // block width and height
+    gint w = gtk_widget_get_allocated_width(block->container);
+    gint h = gtk_widget_get_allocated_height(block->container);
+
+    // Draw from (relative to the layout widget):
+    *x = c->block->x, *y = c->block->y;
+
+    switch(c->type) {
+        case CT_INPUT:
+            *y += h/2;
+            break;
+        case CT_OUTPUT:
+            *x += w;
+            *y += h/2;
+            break;
+        case CT_GET:
+            *x += w/2;
+            *y += h;
+            break;
+        case CT_SET:
+            *x += w/2;
+    }
+}
+
+
+// Draw onto the cairo surface page->newLine the line as the mouse is
+// pressed and the pointer is moving.
+//
+void AddNewLine(struct Page *page) {
+
+    errno = 0;
+ERROR();
+
+    DASSERT(page);
+    DASSERT(page->newLine);
+    DASSERT(page->from);
+    DASSERT(page->from->block);
+
+    double x0, y0, x1, y1;
+    GetConnectionPoint(page->from, &x0, &y0);
+    GtkAllocation alloc;
+    gtk_widget_get_allocation(page->from->widget, &alloc);
+    x1 = page->pointer_x + alloc.x;
+    y1 = page->pointer_y + alloc.y;
+    double r, g, b, a;
+    GetConnectionColor(page->from, &r, &g, &b, &a);
+
+    // draw onto page->newLine
+    cairo_t *cr = cairo_create(page->newLine);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    // clear the surface
+    cairo_set_source_rgba(cr, 0, 0, 0, 0.0);
+    cairo_paint(cr);
+    // Set the line color
+    cairo_set_source_rgba(cr, r, g, b, a);
+    cairo_set_line_width(cr, lineWidth);
+    cairo_move_to(cr, x0, y0);
+    cairo_line_to(cr, x1, y1);
+    cairo_stroke(cr);
+    cairo_destroy(cr);
+} 
+
 
 /* Redraw the screen from the surface. Note that the ::draw
  * signal receives a ready-to-be-used cairo_t that is already
  * clipped to only draw the exposed areas of the widget
  */
-static gboolean draw(GtkWidget *widget, cairo_t *cr,
-        struct DrawData *d)
+static gboolean drawLayout(GtkWidget *widget, cairo_t *cr,
+        struct Page *page)
 {
+    DASSERT(page);
     DSPEW();
-    ClearSurface(cr);
-    return FALSE; // Call other callbacks?
-}
 
+    cairo_surface_t *n = GetSurface(page, widget, page->newLine);
+
+    if(n) {
+        // we resized or created new; so now these surfaces have nothing
+        // on them.
+        page->newLine = n;
+        page->oldLines = GetSurface(page, widget, 0);
+    }
+
+    // 1. make new line that are still being drawn or are just being
+    // finished.
+    if(page->from)
+        AddNewLine(page);
+
+    ClearSurface(cr);
+
+    cairo_set_source_surface(cr, page->oldLines, 0, 0);
+    cairo_paint(cr);
+    if(page->from) {
+        cairo_set_source_surface(cr, page->newLine, 0, 0);
+        cairo_paint(cr);
+    }
+
+    return FALSE; // FALSE == Call other callbacks
+}
 
 
 static void CSS() {
@@ -237,7 +410,9 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
             // be this Layout widget; so we must use the x_root and y_root
             // position values, which are positions relative to root
             // (whatever the hell that is).
-                
+            if(waitingForConnectEnter)
+                ClearNewConnectionDraw(b->page);
+
             if(!gotPress) break;
 
             b->x += ((gint) e->x_root) - xOffset;
@@ -293,151 +468,171 @@ BlockLeaveCB(GtkWidget *w, GdkEvent *e, struct Block *b) {
 #endif
 
 
-static gint connectX0 = 0;
-static gint connectY0 = 0;
-static gint connectX = 0;
-static gint connectY = 0;
 
-
-/*               Block
-
- ***************************************
- *                get                  *
- *                                     *
- * input                        output *
- *                                     *
- *                set                  *
- ***************************************
-*/
-
-
-// Output is on the left of the block
 static
-void DrawBlockOutput(struct ConnectionPoint *p) {
+void QueueConnectionsDraw(struct Block *b) {
 
-    gint w = gtk_widget_get_allocated_width(GTK_WIDGET(p->block->layout));
-    gint h = gtk_widget_get_allocated_height(GTK_WIDGET(p->block->layout));
+    DASSERT(b);
+    GtkWidget *layout = GTK_WIDGET(b->layout);
+    DASSERT(layout);
+
+    gint w = gtk_widget_get_allocated_width(layout);
+    gint h = gtk_widget_get_allocated_height(layout);
     /* Now invalidate the affected region of the drawing area. */
-    gtk_widget_queue_draw_area(GTK_WIDGET(p->block->layout), 0, 0, w, h);
-
+    gtk_widget_queue_draw_area(layout, 0, 0, w, h);
 }
 
 
 static gboolean
-ConnectPressCB(GtkWidget *w, GdkEventButton *e, struct ConnectionPoint *p) {
+ConnectPressCB(GtkWidget *w, GdkEventButton *e, struct Connector *c) {
 
     errno = 0;
 
     DSPEW("type=%s", gtk_widget_get_name(w));
 
     DASSERT(e->type == GDK_BUTTON_PRESS);
+    DASSERT(c);
+    DASSERT(c->block);
+    waitingForConnectEnter = false;
+    c->block->page->from = c;
 
-    DSPEW("                                       Press=%d", p->type);
+    DASSERT(c->block->page);
+    // page->pointer_x|y be the pointer position relative to the layout.
+    c->block->page->pointer_x = e->x + c->block->x;
+    c->block->page->pointer_y = e->y + c->block->y;
 
-    connectX = connectX0 = e->x_root;
-    connectY = connectY0 = e->y_root;
+    c->block->page->from = c;
 
-    DASSERT(p->gotPress == false);
-    p->gotPress = true;
-
-    switch(p->type) {
-
-        case CT_INPUT:
-
-
-            break;
-
-        case CT_OUTPUT:
-
-            DrawBlockOutput(p);
-
-            break;
-
-        case CT_GET:
-
-
-            break;
-
-        case CT_SET:
-
-
-            break;
-    }
-
+    QueueConnectionsDraw(c->block);
 
     return TRUE; // TRUE = do not go to next widget
 }
 
 
 static gboolean
-ConnectMotionCB(GtkWidget *w, GdkEventButton *e, struct ConnectionPoint *p) {
+ConnectMotionCB(GtkWidget *w, GdkEventButton *e, struct Connector *c) {
 
 
-    gint x = e->x_root;
-    gint y = e->y_root;
-
-    if(p->gotPress) {
-        DSPEW(" FROM (%d,%d) TO (%d, %d)", connectX, connectY, x, y);
+    if(waitingForConnectEnter) {
+        ClearNewConnectionDraw(c->block->page);
+        return TRUE;
     }
 
-    connectX = (gint) e->x_root;
-    connectY = (gint) e->y_root;
+    if(c->block->page->from) {
+        c->block->page->pointer_x = e->x + c->block->x;
+        c->block->page->pointer_y = e->y + c->block->y;
+
+        QueueConnectionsDraw(c->block);
+    }
 
     return TRUE; // TRUE = do not go to next widget
 }
 
 
 static gboolean
-ConnectReleaseCB(GtkWidget *w, GdkEventButton *e, struct ConnectionPoint *p) {
+ConnectReleaseCB(GtkWidget *w, GdkEventButton *e, struct Connector *c) {
+
+fprintf(stderr, "FUCKING RELEASE\n");
 
     errno = 0;
 
     DASSERT(e->type == GDK_BUTTON_RELEASE);
-    
-    DSPEW("                                       Release=%d", p->type);
+    DASSERT(c);
+    DASSERT(c->block);
+    struct Page *page = c->block->page;
+    DASSERT(page);
+    DASSERT(page->newLine);
 
-    if(p->gotPress) {
+    // Clear the new line surface
+    cairo_t *cr = cairo_create(page->newLine);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    cairo_set_source_rgba(cr, 0, 0, 0, 0.0);
+    cairo_paint(cr);
+    cairo_destroy(cr);
+    QueueConnectionsDraw(c->block);
 
-        DSPEW(" FROM (%d,%d) TO (%d, %d)", connectX0, connectY0, connectX, connectY);
-
-        p->gotPress = false;
+    if(!page->from) {
+        return TRUE;
     }
+
+    if(page->from)
+        waitingForConnectEnter = true;
 
     return TRUE; // TRUE = do not go to next widget
 }
 
 static gboolean
-ConnectEnterCB(GtkWidget *w, GdkEvent *e, struct ConnectionPoint *p) {
+ConnectEnterCB(GtkWidget *w, GdkEvent *e, struct Connector *to) {
 
     errno = 0;
     DASSERT(GDK_ENTER_NOTIFY == e->type);
 
-    DSPEW("                                 ENTER=%d", p->type);
+    DASSERT(to);
+    DASSERT(to->block);
+    struct Page *page = to->block->page;
+    DASSERT(page);
+
+    if(!page->from || !waitingForConnectEnter ||
+            !CanConnect(page->from, to))
+        return TRUE;
+
+    DASSERT(page->from->block);
+    DASSERT(page->from->block->page == page);
+
+    ERROR("                                   ADDING NEW LINE");
+
+    // We got a connect release just before this.  We now setup
+    // a connection.
+    //
+    // TODO: add more here to record the connection.
+
+    double x0, y0, x1, y1;
+    GetConnectionPoint(page->from, &x0, &y0);
+    GetConnectionPoint(to, &x1, &y1);
+
+    double r, g, b, a;
+    GetConnectionColor(page->from, &r, &g, &b, &a);
+
+    // Now put the finished new line on the old lines surface
+    cairo_t *cr = cairo_create(page->oldLines);
+    cairo_set_source_rgba(cr, r, g, b, a);
+    cairo_set_line_width(cr, lineWidth);
+    cairo_move_to(cr, x0, y0);
+    cairo_line_to(cr, x1, y1);
+    cairo_stroke(cr);
+    cairo_destroy(cr);
+
+    // Reset for next connection
+    page->from = 0;
+    waitingForConnectEnter = false;
+    QueueConnectionsDraw(to->block);
 
     return TRUE; // TRUE = do not go to next widget
 }
 
+#if 0
 static gboolean
-ConnectLeaveCB(GtkWidget *w, GdkEvent *e, struct ConnectionPoint *p) {
+ConnectLeaveCB(GtkWidget *w, GdkEvent *e, struct Connector *c) {
 
     errno = 0;
     DASSERT(GDK_LEAVE_NOTIFY == e->type);
 
-    DSPEW("                                LEAVE=%d", p->type);
+    DSPEW("                                LEAVE");
 
     return TRUE; // TRUE = do not go to next widget
 }
-
+#endif
 
 static void MakeBlockConnector(GtkWidget *grid,
         const char *type,
         const char *imageFile,
         gint x, gint y, gint w, gint h,
         struct Block *block,
-        struct ConnectionPoint *p
+        struct Connector *c
         ) {
 
     GtkWidget *ebox = gtk_event_box_new();
+    c->widget = ebox;
 
     gtk_widget_set_can_focus(ebox, TRUE);
     gtk_widget_set_events(ebox,
@@ -449,15 +644,16 @@ static void MakeBlockConnector(GtkWidget *grid,
             GDK_STRUCTURE_MASK);
 
     g_signal_connect(ebox, "button-press-event",
-            G_CALLBACK(ConnectPressCB), p);
+            G_CALLBACK(ConnectPressCB), c);
     g_signal_connect(ebox, "motion-notify-event",
-            G_CALLBACK(ConnectMotionCB), p);
+            G_CALLBACK(ConnectMotionCB), c);
     g_signal_connect(ebox, "button-release-event",
-            G_CALLBACK(ConnectReleaseCB), p);
+            G_CALLBACK(ConnectReleaseCB), c);
     g_signal_connect(ebox, "enter-notify-event",
-            G_CALLBACK(ConnectEnterCB), p);
-    g_signal_connect(ebox, "leave-notify-event",
-            G_CALLBACK(ConnectLeaveCB), p);
+            G_CALLBACK(ConnectEnterCB), c);
+
+    //g_signal_connect(ebox, "leave-notify-event",
+            //G_CALLBACK(ConnectLeaveCB), c);
 
     gtk_widget_set_name(ebox, type);
     gtk_widget_show(ebox);
@@ -488,12 +684,19 @@ static void DestroyBlock(struct Block *block) {
 }
 #endif
 
-static struct Block *CreateBlock(GtkLayout *layout,
+static struct Block *CreateBlock(struct Page *page,
+        GtkLayout *layout,
         const char *name,
         double x, double y) {
 
+    DASSERT(page);
+
     struct Block *block = calloc(1, sizeof(*block));
     ASSERT(block, "calloc(1,%zu) failed", sizeof(*block));
+
+    block->page = page;
+    
+    // Setup the 4 connector types.
     block->get.type = CT_GET;
     block->get.block = block;
     block->set.type = CT_SET;
@@ -580,7 +783,7 @@ static struct Block *CreateBlock(GtkLayout *layout,
 
 
 static gboolean WorkAreaCB(GtkLayout *layout,
-        GdkEventButton *e, void *data) {
+        GdkEventButton *e, struct Page *page) {
 
     DASSERT(moveCursor);
     DASSERT(window);
@@ -597,7 +800,7 @@ static gboolean WorkAreaCB(GtkLayout *layout,
 
             // Create a new block and then move it.
             char *name = strdup("block Name larger block Name ya");
-            movingBlock = CreateBlock(layout, name, e->x, e->y);
+            movingBlock = CreateBlock(page, layout, name, e->x, e->y);
 
             xOffset = e->x_root;
             yOffset = e->y_root;
@@ -610,14 +813,18 @@ static gboolean WorkAreaCB(GtkLayout *layout,
 
         case GDK_MOTION_NOTIFY:
 
+
+            if(waitingForConnectEnter)
+                ClearNewConnectionDraw(page);
+
+            if(!movingBlock) break;
+
             // We get e->x and e->y that are relative to the widget where
             // this event first was received by a callback and it may not
             // be this Layout widget; so we must use the x_root and y_root
             // position values, which are positions relative to root
-            // (whatever the hell that is).
-
-            if(!movingBlock) break;
-
+            // (which I guess is relative to the root X11 window).
+            //
             movingBlock->x += ((gint) e->x_root) - xOffset;
             movingBlock->y += ((gint) e->y_root) - yOffset;
 
@@ -661,19 +868,38 @@ static inline GdkCursor *GetCursor_(GdkCursorType type) {
 }
 
 
+// Just to get a tab name like "Untitled_3"
 static int tabCreateCount = 0;
+
+
+static gboolean TestPress(GtkLayout *layout,
+        GdkEventButton *e, struct Page *page) {
+
+    DSPEW();
+
+    return FALSE;
+}
+
+
+
+
+
+
 static GtkNotebook *noteBook = 0;
 
 
-static void MakeWorkArea(void) {
+static inline void MakeWorkArea(struct Page *page) {
 
     GtkBuilder *b = gtk_builder_new_from_resource(
             "/quickstreamBuilder/qsb_workArea_res.ui");
 
-    Connect(b, "workArea", "draw", draw, &drawData);
-    Connect(b, "workArea", "button-release-event", WorkAreaCB, (void *) 1);
-    Connect(b, "workArea", "button-press-event", WorkAreaCB, (void *) 2);
-    Connect(b, "workArea", "motion-notify-event", WorkAreaCB, (void *) 3);
+    Connect(b, "workArea", "draw", drawLayout, page);
+
+    Connect(b, "workArea", "button-press-event", TestPress, page);
+
+    Connect(b, "workArea", "button-release-event", WorkAreaCB, page);
+    Connect(b, "workArea", "button-press-event", WorkAreaCB, page);
+    Connect(b, "workArea", "motion-notify-event", WorkAreaCB, page);
 
     status = GTK_TEXT_VIEW(gtk_builder_get_object(b, "status"));
 
@@ -701,8 +927,15 @@ static void MakeWorkArea(void) {
 }
 
 
+// TODO: free(page);
+
+
 static gboolean NewTab(GtkWidget *w, gpointer data) {
-    MakeWorkArea();
+
+    struct Page *page = calloc(1, sizeof(*page));
+    ASSERT(page, "calloc(1, %zu) failed", sizeof(*page));
+
+    MakeWorkArea(page);
     return TRUE;
 }
 
