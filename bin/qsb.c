@@ -226,12 +226,14 @@ void GetConnectionPoint(const struct Connector *c,
 
 
 // Draw onto the cairo surface page->newLine the line as the mouse is
-// pressed and the pointer is moving.
+// pressed and the pointer moves.  The line is from the connector widget
+// that is referred to with page->from (x0,y0) and to the pointer position
+// (x1,y1).
 //
-void AddNewLine(struct Page *page) {
+void DrawDragLine(struct Page *page) {
 
+    // GTK (the piece of shit) seems to be setting errno all the time.
     errno = 0;
-ERROR();
 
     DASSERT(page);
     DASSERT(page->newLine);
@@ -244,8 +246,6 @@ ERROR();
     gtk_widget_get_allocation(page->from->widget, &alloc);
     x1 = page->pointer_x + alloc.x;
     y1 = page->pointer_y + alloc.y;
-    double r, g, b, a;
-    GetConnectionColor(page->from, &r, &g, &b, &a);
 
     // draw onto page->newLine
     cairo_t *cr = cairo_create(page->newLine);
@@ -253,7 +253,21 @@ ERROR();
     // clear the surface
     cairo_set_source_rgba(cr, 0, 0, 0, 0.0);
     cairo_paint(cr);
+
+    if(waitingForConnectEnter)
+        // We are waiting for the "enter-notify-event"
+        // for the other connector widget.  If a good
+        // widget gets that event it will a draw the
+        // line and log the connection into the more
+        // permanent record.
+        return;
+
+    // Else we draw a temporary line as the pointer moves
+    // and the mouse is still pressed.
+    //
     // Set the line color
+    double r, g, b, a;
+    GetConnectionColor(page->from, &r, &g, &b, &a);
     cairo_set_source_rgba(cr, r, g, b, a);
     cairo_set_line_width(cr, lineWidth);
     cairo_move_to(cr, x0, y0);
@@ -282,19 +296,24 @@ static gboolean drawLayout(GtkWidget *widget, cairo_t *cr,
         page->oldLines = GetSurface(page, widget, 0);
     }
 
-    // 1. make new line that are still being drawn or are just being
-    // finished.
-    if(page->from)
-        AddNewLine(page);
-
+    // 1. Clear cr
     ClearSurface(cr);
 
-    cairo_set_source_surface(cr, page->oldLines, 0, 0);
-    cairo_paint(cr);
-    if(page->from) {
+    // 2. make new line that are still being drawn with the moving mouse
+    // or are just being finished.
+    if(page->from && !waitingForConnectEnter) {
+        // !waitingForConnectEnter == We NOT are waiting for the
+        // "enter-notify-event" for the other connector widget.  If a good
+        // widget gets that event it will a draw the line and log the
+        // connection into the more permanent record.
+        DrawDragLine(page);
         cairo_set_source_surface(cr, page->newLine, 0, 0);
         cairo_paint(cr);
     }
+
+    // 3. Add the connections that we know so far.
+    cairo_set_source_surface(cr, page->oldLines, 0, 0);
+    cairo_paint(cr);
 
     return FALSE; // FALSE == Call other callbacks
 }
