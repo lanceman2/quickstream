@@ -88,6 +88,9 @@ static inline cairo_surface_t
     gint h = gtk_widget_get_allocated_height(widget);
 
     if(s == 0 || page->w != w || page->h != h) {
+
+ERROR("           GOT RESIZE");
+
         if(s)
             cairo_surface_destroy(s);
         GdkWindow *win = gtk_widget_get_window(widget);
@@ -225,6 +228,75 @@ void GetConnectionPoint(const struct Connector *c,
 }
 
 
+static void DrawConnection(struct Connector *c0, struct Connector *c1,
+        cairo_surface_t *s) {
+
+    double x0, y0, x1, y1;
+    GetConnectionPoint(c0, &x0, &y0);
+    GetConnectionPoint(c1, &x1, &y1);
+    double r, g, b, a;
+    GetConnectionColor(c0, &r, &g, &b, &a);
+
+    // TODO: if this is called in a loop we may need to keep the cr
+    // alive between lines.
+    cairo_t *cr = cairo_create(s);
+    cairo_set_source_rgba(cr, r, g, b, a);
+    cairo_set_line_width(cr, lineWidth);
+    cairo_move_to(cr, x0, y0);
+    cairo_line_to(cr, x1, y1);
+    cairo_stroke(cr);
+    cairo_destroy(cr);
+}
+
+
+static void RedrawOldLines(struct Page *page) {
+
+    // draw onto page->oldLines
+    cairo_t *cr = cairo_create(page->oldLines);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    // clear the surface
+    cairo_set_source_rgba(cr, 0, 0, 0, 0.0);
+    cairo_paint(cr);
+
+    for(size_t i=0; i<page->numConnections; ++i)
+        DrawConnection(page->connections[i].from,
+                page->connections[i].to,
+                page->oldLines);
+}
+
+
+
+
+// The add to the record of connections between the blocks.
+//
+static void AddConnection(struct Connector *c0, struct Connector *c1) {
+
+    DASSERT(c0);
+    DASSERT(c1);
+    DASSERT(c0->block);
+    DASSERT(c1->block);
+    DASSERT(c0->block->page);
+    DASSERT(c1->block->page);
+    struct Page *page = c0->block->page;
+    DASSERT(page == c1->block->page);
+    
+    size_t num = page->numConnections;
+
+    page->connections = realloc(page->connections, 
+            sizeof(*page->connections)*(num+1));
+    ASSERT(page->connections);
+
+    if(c0->type == CT_OUTPUT || c0->type == CT_GET) {
+        page->connections[num].from = c0;
+        page->connections[num].to = c1;
+    } else {
+        page->connections[num].from = c1;
+        page->connections[num].to = c0;
+    }
+    ++page->numConnections;
+}
+
+
 // Draw onto the cairo surface page->newLine the line as the mouse is
 // pressed and the pointer moves.  The line is from the connector widget
 // that is referred to with page->from (x0,y0) and to the pointer position
@@ -274,7 +346,9 @@ void DrawDragLine(struct Page *page) {
     cairo_line_to(cr, x1, y1);
     cairo_stroke(cr);
     cairo_destroy(cr);
-} 
+}
+
+static bool blockMoved = false;
 
 
 /* Redraw the screen from the surface. Note that the ::draw
@@ -287,6 +361,8 @@ static gboolean drawLayout(GtkWidget *widget, cairo_t *cr,
     DASSERT(page);
     DSPEW();
 
+    bool needOldLineRedraw = false;
+
     cairo_surface_t *n = GetSurface(page, widget, page->newLine);
 
     if(n) {
@@ -294,6 +370,13 @@ static gboolean drawLayout(GtkWidget *widget, cairo_t *cr,
         // on them.
         page->newLine = n;
         page->oldLines = GetSurface(page, widget, 0);
+        // Draw any old lines to the oldLines surface.
+        needOldLineRedraw = true;
+    }
+
+    if(needOldLineRedraw || blockMoved) {
+        RedrawOldLines(page);
+        blockMoved = false;
     }
 
     // 1. Clear cr
@@ -434,6 +517,9 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
 
             if(!gotPress) break;
 
+            blockMoved = true;
+
+ 
             b->x += ((gint) e->x_root) - xOffset;
             b->y += ((gint) e->y_root) - yOffset;
 
@@ -447,6 +533,8 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
             SetCursor(GTK_WIDGET(b->layout), 0);
 
             if(e->button != BLOCK_MOVE_BUTTON) break;
+
+            blockMoved = true;
 
             gtk_grab_remove(widget);
 
@@ -604,22 +692,8 @@ ConnectEnterCB(GtkWidget *w, GdkEvent *e, struct Connector *to) {
     // a connection.
     //
     // TODO: add more here to record the connection.
-
-    double x0, y0, x1, y1;
-    GetConnectionPoint(page->from, &x0, &y0);
-    GetConnectionPoint(to, &x1, &y1);
-
-    double r, g, b, a;
-    GetConnectionColor(page->from, &r, &g, &b, &a);
-
-    // Now put the finished new line on the old lines surface
-    cairo_t *cr = cairo_create(page->oldLines);
-    cairo_set_source_rgba(cr, r, g, b, a);
-    cairo_set_line_width(cr, lineWidth);
-    cairo_move_to(cr, x0, y0);
-    cairo_line_to(cr, x1, y1);
-    cairo_stroke(cr);
-    cairo_destroy(cr);
+    DrawConnection(page->from, to, page->oldLines);
+    AddConnection(page->from, to);
 
     // Reset for next connection
     page->from = 0;

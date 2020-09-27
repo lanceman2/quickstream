@@ -121,6 +121,14 @@ struct Block {
     gint x, y; // current position in layout widget.
 };
 
+struct Connection {
+
+    // By convention "from" is a "output" or "get" and
+    // to is a "input" or "set".
+    struct Connector *from, *to;
+};
+
+
 
 struct Page {
     // This struct is created for each GtkLayout widget that is the widget
@@ -145,4 +153,7 @@ struct Page {
     //
     // width and height of the above surfaces.
     gint w, h;
+
+    size_t numConnections;
+    struct Connection *connections;
 };
