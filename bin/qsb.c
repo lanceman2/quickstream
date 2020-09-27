@@ -42,7 +42,7 @@ static GtkWidget *window = 0;
 
 static bool waitingForConnectEnter = false;
 
-const static double lineWidth = 6.0;
+const static double lineWidth = 4.2;
 
 
 static void ClearNewConnectionDraw(struct Page *page) {
@@ -239,8 +239,11 @@ static inline void GetConnectionPoint(const struct Connector *c,
 // Gets 4 points that are used to draw connections using cubic Bézier
 // spline using 2 points for the 2 connectors, giving 4 points for the
 // cubic Bézier spline curve for each connection.
-// See https://www.cairographics.org/manual/cairo-Paths.html#cairo-curve-to
-//
+// 
+// See:
+// https://www.cairographics.org/manual/cairo-Paths.html#cairo-curve-to
+// https://www.cairographics.org/samples/curve_to/
+// https://stackoverflow.com/questions/15374806
 //
 static inline void GetConnectionPoints(const struct Connector *c,
         double *x0, double *y0, double *x1, double *y1) {
@@ -291,8 +294,6 @@ static void DrawConnection(struct Connector *c0, struct Connector *c1,
     cairo_set_source_rgba(cr, r, g, b, a);
     cairo_set_line_width(cr, lineWidth);
     cairo_move_to(cr, x0, y0);
-    // https://www.cairographics.org/samples/curve_to/
-    // https://stackoverflow.com/questions/15374806
     cairo_curve_to(cr, x1, y1, x2, y2, x3, y3);
     cairo_stroke(cr);
     cairo_destroy(cr);

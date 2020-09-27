@@ -71,15 +71,19 @@ struct InputPort {
 /*
       Block and the 4 Connectors
 
+      Their default positions are:
+
 
  ***************************************
- *                get                  *
+ *                set                  *
  *                                     *
  * input                        output *
  *                                     *
- *                set                  *
+ *                get                  *
  ***************************************
 
+ 
+  But the blocks can be rotated and flipped.
 
   The user will act on one of these 4 block areas.
 
