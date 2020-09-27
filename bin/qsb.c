@@ -114,7 +114,6 @@ ERROR("           GOT RESIZE");
 
 
 
-
 static inline void GetConnectionColor(struct Connector *c,
         double *r, double *g, double *b, double *a) {
 
@@ -292,6 +291,8 @@ static void DrawConnection(struct Connector *c0, struct Connector *c1,
     cairo_set_source_rgba(cr, r, g, b, a);
     cairo_set_line_width(cr, lineWidth);
     cairo_move_to(cr, x0, y0);
+    // https://www.cairographics.org/samples/curve_to/
+    // https://stackoverflow.com/questions/15374806
     cairo_curve_to(cr, x1, y1, x2, y2, x3, y3);
     cairo_stroke(cr);
     cairo_destroy(cr);
