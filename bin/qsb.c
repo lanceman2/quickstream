@@ -42,7 +42,7 @@ static GtkWidget *window = 0;
 
 static bool waitingForConnectEnter = false;
 
-const static double lineWidth = 3.1;
+const static double lineWidth = 6.0;
 
 
 static void ClearNewConnectionDraw(struct Page *page) {
@@ -133,14 +133,14 @@ static inline void GetConnectionColor(struct Connector *c,
             break;
         case CT_GET:
             *r = 0.0;
-            *g = 1.0;
-            *b = 0.0;
+            *g = 0.0;
+            *b = 1.0;
             *a = 0.5;
             break;
         case CT_SET:
             *r = 0.0;
-            *g = 1.0;
-            *b = 0.0;
+            *g = 0.0;
+            *b = 1.0;
             *a = 0.5;
     }
 }
@@ -188,20 +188,21 @@ static bool CanConnect(struct Connector *from,
 */
 
 
-
 // Wouldn't is be nice if C had pass by reference.
 //
 // Figures out where to draw to or from for a connection
 // to the input, output, get or set side of a block.
 // All done relative to the layout widget.
 //
-void GetConnectionPoint(const struct Connector *c,
+static inline void GetConnectionPoint(const struct Connector *c,
         double *x, double *y) {
 
     DASSERT(c);
     struct Block *block = c->block;
     DASSERT(block);
     DASSERT(block->container);
+
+    // TODO: deal with rotated blocks.
 
     // block width and height
     gint w = gtk_widget_get_allocated_width(block->container);
@@ -228,22 +229,70 @@ void GetConnectionPoint(const struct Connector *c,
 }
 
 
+/* All the connector image sizes are 32x32 pixels.  We use the 32 as part
+ * of the distance to the cubic Bézier spline control point, that we use
+ * to draw the lines with using cairo_curve_to().
+ */
+
+#define CONNECT_LEN  ((double) 32 * 3.5)
+
+
+// Gets 4 points that are used to draw connections using cubic Bézier
+// spline using 2 points for the 2 connectors, giving 4 points for the
+// cubic Bézier spline curve for each connection.
+// See https://www.cairographics.org/manual/cairo-Paths.html#cairo-curve-to
+//
+//
+static inline void GetConnectionPoints(const struct Connector *c,
+        double *x0, double *y0, double *x1, double *y1) {
+
+    DASSERT(c);
+    struct Block *block = c->block;
+    DASSERT(block);
+    DASSERT(block->container);
+
+    GetConnectionPoint(c, x0, y0);
+
+    // TODO: deal with rotated blocks.
+
+    switch(c->type) {
+        case CT_INPUT:
+            *x1 = *x0 - CONNECT_LEN;
+            *y1 = *y0;
+            break;
+        case CT_OUTPUT:
+            *x1 = *x0 + CONNECT_LEN;
+            *y1 = *y0;
+            break;
+        case CT_GET:
+            *x1 = *x0; 
+            *y1 = *y0 + CONNECT_LEN;
+            break;
+        case CT_SET:
+            *x1 = *x0;
+            *y1 = *y0 - CONNECT_LEN;
+    }
+}
+
+
+
 static void DrawConnection(struct Connector *c0, struct Connector *c1,
         cairo_surface_t *s) {
 
-    double x0, y0, x1, y1;
-    GetConnectionPoint(c0, &x0, &y0);
-    GetConnectionPoint(c1, &x1, &y1);
+    double x0, y0, x1, y1, x2, y2, x3, y3;
+    GetConnectionPoints(c0, &x0, &y0, &x1, &y1);
+    GetConnectionPoints(c1, &x3, &y3, &x2, &y2);
     double r, g, b, a;
     GetConnectionColor(c0, &r, &g, &b, &a);
 
     // TODO: if this is called in a loop we may need to keep the cr
     // alive between lines.
+    //
     cairo_t *cr = cairo_create(s);
     cairo_set_source_rgba(cr, r, g, b, a);
     cairo_set_line_width(cr, lineWidth);
     cairo_move_to(cr, x0, y0);
-    cairo_line_to(cr, x1, y1);
+    cairo_curve_to(cr, x1, y1, x2, y2, x3, y3);
     cairo_stroke(cr);
     cairo_destroy(cr);
 }
