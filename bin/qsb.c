@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <math.h>
 
 #include <gtk/gtk.h>
 #include <gdk/gdkevents.h>
@@ -16,9 +17,10 @@
 #include "qsb.h"
 
 
-#define BLOCK_CREATE_BUTTON   (1)
+#define BLOCK_CREATE_BUTTON   (3)
+#define CLEAR_SELECT_BUTTON   (1) // In layout
 #define BLOCK_CONNECT_BUTTON  (1)
-#define BLOCK_MOVE_BUTTON  (1)
+#define BLOCK_MOVE_BUTTON     (1)
 
 
 
@@ -55,6 +57,40 @@ static void ClearNewConnectionDraw(struct Page *page) {
 static inline void SetCursor(GtkWidget *w, GdkCursor *cursor) {
     gdk_window_set_cursor(gtk_widget_get_window(w), cursor);
 }
+
+
+static void UnselectBlock(struct Block *b) {
+
+    DASSERT(b);
+    // Put it on the page selected stack.
+    struct Page *page = b->page;
+    DASSERT(page);
+    g_tree_remove(page->selectedBlocks, b);
+    gtk_widget_set_name(b->grid, "block");
+}
+
+static gboolean UnselectCB(struct Block *key, struct Block *val,
+                  gpointer data) {
+    UnselectBlock(key);
+    return FALSE; // Keep traversing.
+}
+
+static void UnselectAllBlocks(struct Page *page) {
+
+    DASSERT(page);
+    g_tree_foreach(page->selectedBlocks, (GTraverseFunc) UnselectCB, 0);
+}
+
+static void SelectBlock(struct Block *b) {
+
+    DASSERT(b);
+    // Put it on the page selected stack.
+    struct Page *page = b->page;
+    DASSERT(page);
+    g_tree_insert(page->selectedBlocks, b, b);
+    gtk_widget_set_name(b->grid, "selectedBlock");
+}
+
 
 
 void
@@ -233,7 +269,9 @@ static inline void GetConnectionPoint(const struct Connector *c,
  * to draw the lines with using cairo_curve_to().
  */
 
-#define CONNECT_LEN  ((double) 32 * 3.5)
+#define CONNECT_IMAGE_LEN   (32)
+
+#define CONNECT_LEN  ((double) CONNECT_IMAGE_LEN * 3.5)
 
 
 // Gets 4 points that are used to draw connections using cubic Bézier
@@ -491,26 +529,49 @@ static void CSS() {
             "#vpanel {\n"
                 "}\n"
             "#block {\n"
-                "background-color: rgba(83,138,250,0.5);\n"
-                "border: 1px solid black;\n"
+                "background-color: rgba(83,138,250,0.0);\n"
+                "border: 2px solid black;\n"
                 "}\n"
-            "#block > #get, #set, #input, #output {\n"
+            "#disabledBlock {\n"
+                "background-color: rgba(83,138,250,0.0);\n"
+                "border: 2px solid rgba(118,162,247,0.3);\n"
+                "}\n"
+            "#selectedBlock {\n"
+                "background-color: rgba(83,138,250,0.0);\n"
+                "border: 2px solid rgba(234,12,234,0.8);\n"
+                "}\n"
+
+            "#block > #get,\n"
+            "#block > #set,\n"
+            "#block > #input,\n"
+            "#block > #output {\n"
                 "background-color: rgba(147,176,223,0.5);\n"
                 "border: 1px solid rgb(118,162,247);\n"
-                "color: black;\n"
                 "font-size: 130%;\n"
                 "}\n"
-            "#block > #get:hover {\n"
-                "background-color: rgba(157,186,243,0.8);\n"
-                "border: 1px solid rgb(100,142,207);\n"
-            "}\n"
-             "#block > #label {\n"
-                "color: black;\n"
-                "font-size: 130%;\n"
+            "#selectedBlock > #get,\n"
+            "#selectedBlock > #set,\n"
+            "#selectedBlock > #input,\n"
+            "#selectedBlock > #output {\n"
+                "background-color: rgba(76,230,228,0.6);\n"
+                "border: 1px solid rgba(8,2,7,0.1);\n"
                 "}\n"
-            "#block > #bar:hover {\n"
-                "color: red;\n"
-                "background-color: rgba(255,90,10,0.5);\n"
+
+            "#disabledBlock > #label {\n"
+                "background-color: rgba(83,138,250,0.1);\n"
+                "border: 1px solid rgba(118,162,247,0.1);\n"
+                "color: rgba(218,242,247,0.5);\n"
+                "}\n"
+            "#selectedBlock > #label {\n"
+                "background-color: rgba(76,230,228,0.6);\n"
+                "color: rgba(88,88,88,0.6);\n"
+                "}\n"
+            "#block > #label {\n"
+                "background-color: rgba(156,190,224,0.6);\n"
+                "color: black;\n"
+                "}\n"
+            "#label {\n"
+                "font-size: 130%;\n"
                 "}\n"
             , -1, &error);
 
@@ -539,6 +600,8 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
     static bool gotPress = false;
     static gint xOffset = 0, yOffset = 0;
 
+    DASSERT(b);
+    DASSERT(b->page);
 
     switch(e->type) {
     
@@ -546,6 +609,13 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
         {
             if(e->button != BLOCK_MOVE_BUTTON)
                 break;
+
+            if(!(e->state & GDK_SHIFT_MASK))
+                // Holding down shift key will not unselect any
+                // previously selected blocks.
+                UnselectAllBlocks(b->page);
+
+            SelectBlock(b);
 
             SetCursor(GTK_WIDGET(b->layout), moveCursor);
             xOffset = e->x_root;
@@ -767,6 +837,75 @@ ConnectLeaveCB(GtkWidget *w, GdkEvent *e, struct Connector *c) {
 }
 #endif
 
+/*
+     Block with 0 degrees rotation:
+
+ ***************************************
+ *                set                  *
+ *                                     *
+ * input                        output *
+ *                                     *
+ *                get                  *
+ ***************************************
+ */
+
+static void DrawConnectImageSurface(struct Connector *c, uint32_t rot) {
+
+    DASSERT(c);
+    cairo_surface_t *s = c->surface;
+    DASSERT(s);
+
+    double r, g, b, a;
+    GetConnectionColor(c, &r, &g, &b, &a);
+    // override the alpha.
+    //a = 0.4;
+
+    cairo_t *cr = cairo_create(s);
+    cairo_set_source_rgba(cr, r, g, b, a);
+    cairo_set_line_width(cr, 6);
+
+
+    cairo_translate(cr, 16, 16);
+
+    if(c->type == CT_INPUT || c->type == CT_OUTPUT)
+        cairo_rotate(cr, (rot + 2) * M_PI/2.0);
+    else // if(c->type == CT_GET || c->type == CT_SET)
+        cairo_rotate(cr, (rot + 3) * M_PI/2.0);
+
+    cairo_rotate(cr, M_PI);
+
+    cairo_translate(cr, -16, -16);
+
+    cairo_move_to(cr, 0, 0);
+    cairo_line_to(cr, 31, 15);
+    cairo_line_to(cr, 0, 31);
+
+
+    cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+    cairo_stroke(cr);
+    cairo_destroy(cr);
+}
+
+
+//
+// rot - is rotation is units a 90 degrees up to 270 degrees and then back
+// to zero degrees.
+//
+static inline cairo_surface_t *
+CreateConnectImageSurface(struct Connector *c, uint32_t rot) {
+
+    cairo_surface_t *s = cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
+            CONNECT_IMAGE_LEN, CONNECT_IMAGE_LEN);
+    DASSERT(s);
+    DASSERT(c->surface == 0);
+    c->surface = s;
+    DrawConnectImageSurface(c, rot);
+
+    return s;
+}
+
+
+
 static void MakeBlockConnector(GtkWidget *grid,
         const char *type,
         const char *imageFile,
@@ -803,7 +942,13 @@ static void MakeBlockConnector(GtkWidget *grid,
     gtk_widget_show(ebox);
     gtk_grid_attach(GTK_GRID(grid), ebox, x, y, w, h);
 
-    GtkWidget *img = gtk_image_new_from_file(imageFile);
+    cairo_surface_t *surface = CreateConnectImageSurface(c, 0);
+
+    GtkWidget *img = gtk_image_new_from_surface(surface);
+    // Decreases the reference count on surface by one.  The GTK image will
+    // add its' own reference.
+    cairo_surface_destroy(surface);
+
     gtk_container_add(GTK_CONTAINER(ebox), img);
     gtk_widget_set_name(img, type);
     gtk_widget_show(img);
@@ -852,6 +997,7 @@ static struct Block *CreateBlock(struct Page *page,
 
 
     GtkWidget *grid = gtk_grid_new();
+    block->grid = grid;
     GtkWidget *ebox = gtk_event_box_new();
 
     block->container = ebox;
@@ -893,7 +1039,7 @@ static struct Block *CreateBlock(struct Page *page,
     g_signal_connect(ebox, "enter-notify-event",
         G_CALLBACK(BlockEnterCB), block);
 #endif
-    gtk_widget_set_name(ebox, "get");
+    //gtk_widget_set_name(ebox, "get");
     gtk_widget_show(ebox);
     gtk_container_add(GTK_CONTAINER(ebox), grid);
     gtk_layout_put(layout, ebox, x, y);
@@ -901,24 +1047,24 @@ static struct Block *CreateBlock(struct Page *page,
 
     // The Grid of a block
     //
-    // 0,0  1,0  2,0  3,0  4,0  5,0  6,0
+    // 0,0  1,0  2,0
     // 
-    // 0,1  1,1  2,1  3,1  4,1  5,1  6,1
+    // 0,1  1,1  2,1
     //
-    // 0,2  1,2  2,2  3,2  4,2  5,2  6,2
+    // 0,2  1,2  2,2
     //
-    // 0,3  1,3  2,3  3,3  4,3  5,3  6,3
+    // 0,3  1,3  2,3
     //
-    // 0,4  1,4  2,4  3,4  4,4  5,4  6,4
+    // 0,4  1,4  2,4
 
-    MakeBlockLabel(grid, name, 2, 1, 3, 1);
-    MakeBlockLabel(grid, "block type 923rj", 2, 2, 3, 1);
-    MakeBlockLabel(grid, "Boston", 2, 3, 3, 1);
+    MakeBlockLabel(grid, name, 1, 1, 1, 1);
+    MakeBlockLabel(grid, "block type 923rj", 1, 2, 1, 1);
+    MakeBlockLabel(grid, "Boston", 1, 3, 1, 1);
 
     MakeBlockConnector(grid, "input", "input.png", 0, 0, 1, 5, block, &block->input);
-    MakeBlockConnector(grid, "output", "output.png", 6, 0, 1, 5, block, &block->output);
-    MakeBlockConnector(grid, "set", "set.png", 1, 0, 4, 1, block, &block->set);
-    MakeBlockConnector(grid, "get", "get.png", 1, 4, 4, 1, block, &block->get);
+    MakeBlockConnector(grid, "output", "output.png", 2, 0, 1, 5, block, &block->output);
+    MakeBlockConnector(grid, "set", "set.png", 1, 0, 1, 1, block, &block->set);
+    MakeBlockConnector(grid, "get", "get.png", 1, 4, 1, 1, block, &block->get);
 
     gtk_widget_show(grid);
 
@@ -940,11 +1086,17 @@ static gboolean WorkAreaCB(GtkLayout *layout,
 
         case GDK_BUTTON_PRESS:
         {
+
+            if(e->button == CLEAR_SELECT_BUTTON)
+                UnselectAllBlocks(page);
+
             if(e->button != BLOCK_CREATE_BUTTON) break;
 
             // Create a new block and then move it.
             char *name = strdup("block Name larger block Name ya");
             movingBlock = CreateBlock(page, layout, name, e->x, e->y);
+
+            SelectBlock(movingBlock);
 
             xOffset = e->x_root;
             yOffset = e->y_root;
@@ -1070,6 +1222,15 @@ static inline void MakeWorkArea(struct Page *page) {
     g_object_unref(G_OBJECT(b));
 }
 
+static gint BlockSelectCompareCB(gconstpointer a, gconstpointer b) {
+
+    if(a > b)
+        return 1;
+    if(a < b)
+        return -1;
+    return 0;
+}
+
 
 // TODO: free(page);
 
@@ -1078,6 +1239,8 @@ static gboolean NewTab(GtkWidget *w, gpointer data) {
 
     struct Page *page = calloc(1, sizeof(*page));
     ASSERT(page, "calloc(1, %zu) failed", sizeof(*page));
+
+    page->selectedBlocks = g_tree_new(BlockSelectCompareCB);
 
     MakeWorkArea(page);
     return TRUE;

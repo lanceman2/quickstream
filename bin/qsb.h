@@ -23,10 +23,12 @@ struct Block *sources = 0;
 
 enum ConnectionType {
 
-    CT_GET,
-    CT_SET,
-    CT_INPUT,
-    CT_OUTPUT
+    // There will be only 4 types of block
+    // connection thingys.
+    CT_SET = 0,
+    CT_OUTPUT = 1,
+    CT_GET = 2,
+    CT_INPUT = 3
 };
 
 
@@ -82,6 +84,7 @@ struct InputPort {
  *                get                  *
  ***************************************
 
+  
  
   But the blocks can be rotated and flipped.
 
@@ -97,6 +100,11 @@ struct Connector {
      * be passed as a pointer to GTK event callbacks. */
     //
     struct Block *block;
+
+    // Surface used to draw the GTK image widget.  This image will change
+    // when the block is rotated, and we redraw on this surface.
+    cairo_surface_t *surface;
+
     // The GTK widget that will represent this connection area that is a
     // descendent (child or child's child) of the block widget.
     GtkWidget *widget;
@@ -108,8 +116,10 @@ struct Page;
 
 struct Block {
 
+
     GtkWidget *container;
     GtkLayout *layout;
+    GtkWidget *grid;
     struct Page *page;
 
     uint32_t numInputs, numOutputs;
@@ -119,6 +129,11 @@ struct Block {
 
     // Array of inputs
     struct InputPort *inputs;
+
+    // rotation in units of 90 degrees, so
+    // rotation goes from 0, 1 = 90 deg, 2 = 180 deg
+    // 3 = 270, then back to 0 using mod 4.
+    uint32_t rotation;
 
     struct Connector get, set, input, output;
 
@@ -135,6 +150,9 @@ struct Connection {
 
 
 struct Page {
+
+    GTree *selectedBlocks;
+
     // This struct is created for each GtkLayout widget that is the widget
     // that we draw our blocks and connections on.  We get one of these
     // per notebook tab and layout widget.
@@ -160,4 +178,7 @@ struct Page {
 
     size_t numConnections;
     struct Connection *connections;
+
+    // List of selected blocks.
+    struct Block *selected;
 };
