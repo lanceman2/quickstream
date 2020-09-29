@@ -117,6 +117,9 @@ struct Page;
 struct Block {
 
 
+    // For the Page list of blocks as a stack.
+    struct Block *next;
+
     GtkWidget *container;
     GtkLayout *layout;
     GtkWidget *grid;
@@ -151,6 +154,9 @@ struct Connection {
 
 struct Page {
 
+    // List of all blocks as a stack.
+    struct Block *blocks;
+
     GTree *selectedBlocks;
 
     // This struct is created for each GtkLayout widget that is the widget
@@ -164,13 +170,12 @@ struct Page {
     // We calculate this at mouse press.
     gint x0, y0;
     
-
     // Set if this is for drawing a particular connection from.
     // Unset otherwise.
     struct Connector *from;
 
     // Connection lines that are drawn are saved in these surfaces.
-    cairo_surface_t *newLine;
+    cairo_surface_t *newDrawSurface;
     cairo_surface_t *oldLines;
     //
     // width and height of the above surfaces.
@@ -178,7 +183,4 @@ struct Page {
 
     size_t numConnections;
     struct Connection *connections;
-
-    // List of selected blocks.
-    struct Block *selected;
 };

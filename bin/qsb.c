@@ -18,7 +18,7 @@
 
 
 #define BLOCK_CREATE_BUTTON   (3)
-#define CLEAR_SELECT_BUTTON   (1) // In layout
+#define SELECT_BUTTON         (1) // In layout
 #define BLOCK_CONNECT_BUTTON  (1)
 #define BLOCK_MOVE_BUTTON     (1)
 
@@ -271,7 +271,7 @@ static inline void GetConnectionPoint(const struct Connector *c,
 
 #define CONNECT_IMAGE_LEN   (32)
 
-#define CONNECT_LEN  ((double) CONNECT_IMAGE_LEN * 3.5)
+#define CONNECT_LEN  ((double) CONNECT_IMAGE_LEN * 3.2)
 
 
 // Gets 4 points that are used to draw connections using cubic Bézier
@@ -386,7 +386,7 @@ static void AddConnection(struct Connector *c0, struct Connector *c1) {
 }
 
 
-// Draw onto the cairo surface page->newLine the line as the mouse is
+// Draw onto the cairo surface page->newDrawSurface the line as the mouse is
 // pressed and the pointer moves.  The line is from the connector widget
 // that is referred to with page->from (x0,y0) and to the pointer position
 // (x1,y1).
@@ -397,7 +397,7 @@ void DrawDragLine(struct Page *page) {
     errno = 0;
 
     DASSERT(page);
-    DASSERT(page->newLine);
+    DASSERT(page->newDrawSurface);
     DASSERT(page->from);
     DASSERT(page->from->block);
 
@@ -408,8 +408,8 @@ void DrawDragLine(struct Page *page) {
     x1 = page->pointer_x + alloc.x;
     y1 = page->pointer_y + alloc.y;
 
-    // draw onto page->newLine
-    cairo_t *cr = cairo_create(page->newLine);
+    // draw onto page->newDrawSurface
+    cairo_t *cr = cairo_create(page->newDrawSurface);
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
     // clear the surface
     cairo_set_source_rgba(cr, 0, 0, 0, 0.0);
@@ -438,6 +438,7 @@ void DrawDragLine(struct Page *page) {
 }
 
 static bool blockMoved = false;
+static bool gotSelectBox = false;
 
 
 /* Redraw the screen from the surface. Note that the ::draw
@@ -452,12 +453,12 @@ static gboolean drawLayout(GtkWidget *widget, cairo_t *cr,
 
     bool needOldLineRedraw = false;
 
-    cairo_surface_t *n = GetSurface(page, widget, page->newLine);
+    cairo_surface_t *n = GetSurface(page, widget, page->newDrawSurface);
 
     if(n) {
         // we resized or created new; so now these surfaces have nothing
         // on them.
-        page->newLine = n;
+        page->newDrawSurface = n;
         page->oldLines = GetSurface(page, widget, 0);
         // Draw any old lines to the oldLines surface.
         needOldLineRedraw = true;
@@ -479,7 +480,10 @@ static gboolean drawLayout(GtkWidget *widget, cairo_t *cr,
         // widget gets that event it will a draw the line and log the
         // connection into the more permanent record.
         DrawDragLine(page);
-        cairo_set_source_surface(cr, page->newLine, 0, 0);
+        cairo_set_source_surface(cr, page->newDrawSurface, 0, 0);
+        cairo_paint(cr);
+    } else if(gotSelectBox) {
+        cairo_set_source_surface(cr, page->newDrawSurface, 0, 0);
         cairo_paint(cr);
     }
 
@@ -578,6 +582,9 @@ static void CSS() {
     g_object_unref (provider);
 }
 
+
+// Push a block to the top of the page layout.
+//
 static void PopForward(GtkLayout *layout, struct Block *b) {
 
     // 1. get one more reference to the widget; otherwise
@@ -590,6 +597,45 @@ static void PopForward(GtkLayout *layout, struct Block *b) {
     // 3. re-add the widget which will take ownership of the
     //    one reference.
     gtk_layout_put(layout, b->container, b->x, b->y);
+}
+
+
+static gboolean MoveBlockCB(struct Block *b,
+        struct Block *val, gint *dxy) {
+
+    b->x += dxy[0];
+    b->y += dxy[1];
+    gtk_layout_move(b->layout, b->container, b->x, b->y);
+    return FALSE; // FALSE == keep going
+}
+
+
+static void MoveSelectedBlocks(struct Page *page, gint dx, gint dy) {
+
+    gint dxy[2] = { dx, dy };
+    g_tree_foreach(page->selectedBlocks, (GTraverseFunc) MoveBlockCB, dxy);
+}
+
+
+static gboolean SelectBlockInRect(struct Block *b, gint *rect) {
+
+    gint w = gtk_widget_get_allocated_width(b->container);
+    gint h = gtk_widget_get_allocated_height(b->container);
+
+    if( (b->x <= rect[0] + rect[2]) && ((b->x + w) >= rect[0]) &&
+        (b->y <= rect[1] + rect[3]) && ((b->y + h) >= rect[1]))
+        SelectBlock(b);
+
+ERROR();
+    return FALSE; // FALSE == keep going
+}
+
+
+static bool BlockSelected(struct Block *b) {
+
+    if(g_tree_lookup(b->page->selectedBlocks, b))
+        return true;
+    return false;
 }
 
 
@@ -610,12 +656,15 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
             if(e->button != BLOCK_MOVE_BUTTON)
                 break;
 
-            if(!(e->state & GDK_SHIFT_MASK))
-                // Holding down shift key will not unselect any
-                // previously selected blocks.
-                UnselectAllBlocks(b->page);
+            if(!BlockSelected(b)) {
 
-            SelectBlock(b);
+                if(!(e->state & GDK_SHIFT_MASK))
+                    // Holding down shift key will not unselect any
+                    // previously selected blocks.
+                    UnselectAllBlocks(b->page);
+
+                SelectBlock(b);
+            }
 
             SetCursor(GTK_WIDGET(b->layout), moveCursor);
             xOffset = e->x_root;
@@ -639,14 +688,14 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
             if(!gotPress) break;
 
             blockMoved = true;
-
  
-            b->x += ((gint) e->x_root) - xOffset;
-            b->y += ((gint) e->y_root) - yOffset;
+            MoveSelectedBlocks(b->page,
+                    ((gint) e->x_root) - xOffset,
+                    ((gint) e->y_root) - yOffset);
 
             xOffset = e->x_root;
             yOffset = e->y_root;
-            gtk_layout_move(b->layout, b->container, b->x, b->y);
+
             break;
 
         case GDK_BUTTON_RELEASE:
@@ -769,10 +818,10 @@ fprintf(stderr, "FUCKING RELEASE\n");
     DASSERT(c->block);
     struct Page *page = c->block->page;
     DASSERT(page);
-    DASSERT(page->newLine);
+    DASSERT(page->newDrawSurface);
 
     // Clear the new line surface
-    cairo_t *cr = cairo_create(page->newLine);
+    cairo_t *cr = cairo_create(page->newDrawSurface);
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_rgba(cr, 0, 0, 0, 0.0);
     cairo_paint(cr);
@@ -994,7 +1043,9 @@ static struct Block *CreateBlock(struct Page *page,
     block->input.block = block;
     block->output.type = CT_OUTPUT;
     block->output.block = block;
-
+    // Add to the Page stack of blocks.
+    block->next = page->blocks;
+    page->blocks = block;
 
     GtkWidget *grid = gtk_grid_new();
     block->grid = grid;
@@ -1086,16 +1137,19 @@ static gboolean WorkAreaCB(GtkLayout *layout,
 
         case GDK_BUTTON_PRESS:
         {
-
-            if(e->button == CLEAR_SELECT_BUTTON)
+            if(e->button == SELECT_BUTTON) {
+                xOffset = e->x;
+                yOffset = e->y;
                 UnselectAllBlocks(page);
+                gotSelectBox = true;
+            }
 
             if(e->button != BLOCK_CREATE_BUTTON) break;
 
             // Create a new block and then move it.
             char *name = strdup("block Name larger block Name ya");
             movingBlock = CreateBlock(page, layout, name, e->x, e->y);
-
+            UnselectAllBlocks(page);
             SelectBlock(movingBlock);
 
             xOffset = e->x_root;
@@ -1108,6 +1162,28 @@ static gboolean WorkAreaCB(GtkLayout *layout,
         }
 
         case GDK_MOTION_NOTIFY:
+
+            if(gotSelectBox) {
+
+                cairo_t *cr = cairo_create(page->newDrawSurface);
+                cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+                // clear the surface
+                cairo_set_source_rgba(cr, 0, 0, 0, 0.0);
+                cairo_paint(cr);
+
+                cairo_set_source_rgba(cr, 0.0, 1.0, 1.0, 0.4);
+                cairo_rectangle (cr, xOffset, yOffset,
+                        e->x - xOffset, e->y - yOffset);
+                cairo_fill(cr);
+                cairo_destroy(cr);
+    
+                gint w = gtk_widget_get_allocated_width(GTK_WIDGET(layout));
+                gint h = gtk_widget_get_allocated_height(GTK_WIDGET(layout));
+                /* Now invalidate the affected region of the drawing area. */
+                gtk_widget_queue_draw_area(GTK_WIDGET(layout), 0, 0, w, h);
+
+                break;
+            }
 
 
             if(waitingForConnectEnter)
@@ -1132,6 +1208,44 @@ static gboolean WorkAreaCB(GtkLayout *layout,
             break;
 
         case GDK_BUTTON_RELEASE:
+
+            if(gotSelectBox) {
+                gotSelectBox = false;
+
+                gint rect[4] = {
+                    xOffset, yOffset, // x, y
+                    e->x - xOffset, e->y - yOffset // width, height
+                };
+
+                // Make sure that the width of the rectangle (rect) is
+                // positive.
+                if(rect[2] < 0) {
+                    rect[2] = xOffset - e->x;
+                    rect[0] = e->x;
+                }
+
+                // Make sure that the height of the rectangle (rect) is
+                // positive.
+                if(rect[3] < 0) {
+                    rect[3] = yOffset - e->y;
+                    rect[1] = e->y;
+                }
+
+                for(struct Block *bl = page->blocks; bl; bl = bl->next)
+                        SelectBlockInRect(bl, rect);
+
+                cairo_t *cr = cairo_create(page->newDrawSurface);
+                cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+                // clear the surface
+                cairo_set_source_rgba(cr, 0, 0, 0, 0.0);
+                cairo_paint(cr);
+
+                gint w = gtk_widget_get_allocated_width(GTK_WIDGET(layout));
+                gint h = gtk_widget_get_allocated_height(GTK_WIDGET(layout));
+                /* Now invalidate the affected region of the drawing area. */
+                gtk_widget_queue_draw_area(GTK_WIDGET(layout), 0, 0, w, h);
+            }
+
 
             SetCursor(GTK_WIDGET(layout), 0);
 
