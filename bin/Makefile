@@ -36,7 +36,7 @@ quickstreamBuilder_SOURCES :=\
  qsb_workArea_res.c
 
 quickstreamBuilder_CPPFLAGS := $(GTK_CFLAGS) $(XML2_CFLAGS)
-quickstreamBuilder_LDFLAGS := $(GTK_LDFLAGS) $(XML2_LDFLAGS)
+quickstreamBuilder_LDFLAGS := $(GTK_LDFLAGS) $(XML2_LDFLAGS) -lm
 
 
 endif

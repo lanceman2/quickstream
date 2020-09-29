@@ -108,6 +108,7 @@ struct Connector {
     // The GTK widget that will represent this connection area that is a
     // descendent (child or child's child) of the block widget.
     GtkWidget *widget;
+    
     enum ConnectionType type;
 };
 

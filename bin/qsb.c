@@ -265,7 +265,7 @@ static inline void GetConnectionPoint(const struct Connector *c,
 
 
 /* All the connector image sizes are 32x32 pixels.  We use the 32 as part
- * of the distance to the cubic Bézier spline control point, that we use
+ * of the distance to the cubic Bezier spline control point, that we use
  * to draw the lines with using cairo_curve_to().
  */
 
@@ -284,48 +284,55 @@ static inline void GetConnectionPoint(const struct Connector *c,
 // https://stackoverflow.com/questions/15374806
 //
 static inline void GetConnectionPoints(const struct Connector *c,
-        double *x0, double *y0, double *x1, double *y1) {
+        double x0, double y0, double *x1, double *y1,
+        double len) {
 
     DASSERT(c);
-    struct Block *block = c->block;
-    DASSERT(block);
-    DASSERT(block->container);
-
-    GetConnectionPoint(c, x0, y0);
 
     // TODO: deal with rotated blocks.
 
     switch(c->type) {
         case CT_INPUT:
-            *x1 = *x0 - CONNECT_LEN;
-            *y1 = *y0;
+            *x1 = x0 - len;
+            *y1 = y0;
             break;
         case CT_OUTPUT:
-            *x1 = *x0 + CONNECT_LEN;
-            *y1 = *y0;
+            *x1 = x0 + len;
+            *y1 = y0;
             break;
         case CT_GET:
-            *x1 = *x0; 
-            *y1 = *y0 + CONNECT_LEN;
+            *x1 = x0; 
+            *y1 = y0 + len;
             break;
         case CT_SET:
-            *x1 = *x0;
-            *y1 = *y0 - CONNECT_LEN;
+            *x1 = x0;
+            *y1 = y0 - len;
     }
 }
-
 
 
 static void DrawConnection(struct Connector *c0, struct Connector *c1,
         cairo_surface_t *s) {
 
     double x0, y0, x1, y1, x2, y2, x3, y3;
-    GetConnectionPoints(c0, &x0, &y0, &x1, &y1);
-    GetConnectionPoints(c1, &x3, &y3, &x2, &y2);
+
+    GetConnectionPoint(c0, &x0, &y0);
+    GetConnectionPoint(c1, &x3, &y3);
+
+    // We use Bezier control points that are half of the length of the
+    // connection.  Otherwise in the case of short connection lengths
+    // we can get loops and kinks in the connecting line.
+    double l = (x0 - x3)*(x0 - x3) + (y0 - y3)*(y0 - y3);
+    l = sqrt(l)/2.0;
+    // Or if that is too large we use a limiting length.
+    if(l > CONNECT_LEN) l = CONNECT_LEN;
+
+    GetConnectionPoints(c0, x0, y0, &x1, &y1, l);
+    GetConnectionPoints(c1, x3, y3, &x2, &y2, l);
     double r, g, b, a;
     GetConnectionColor(c0, &r, &g, &b, &a);
 
-    // TODO: if this is called in a loop we may need to keep the cr
+    // TODO: if this is called in a loop we may want to keep the cr
     // alive between lines.
     //
     cairo_t *cr = cairo_create(s);
@@ -767,7 +774,12 @@ ConnectPressCB(GtkWidget *w, GdkEventButton *e, struct Connector *c) {
 
     DSPEW("type=%s", gtk_widget_get_name(w));
 
-    DASSERT(e->type == GDK_BUTTON_PRESS);
+    // There seems to be a bug such that sometime the event type is not
+    // GDK_BUTTON_PRESS.
+    //DASSERT(e->type == GDK_BUTTON_PRESS);
+    
+    if(e->type != GDK_BUTTON_PRESS) return FALSE;
+
     DASSERT(c);
     DASSERT(c->block);
     waitingForConnectEnter = false;
