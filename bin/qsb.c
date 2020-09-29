@@ -17,7 +17,8 @@
 #include "qsb.h"
 
 
-#define BLOCK_CREATE_BUTTON   (3)
+#define BLOCK_CREATE_BUTTON   (3) // In layout
+#define BLOCK_POPUP_BUTTOM    (3)
 #define SELECT_BUTTON         (1) // In layout
 #define BLOCK_CONNECT_BUTTON  (1)
 #define BLOCK_MOVE_BUTTON     (1)
@@ -456,7 +457,6 @@ static gboolean drawLayout(GtkWidget *widget, cairo_t *cr,
         struct Page *page)
 {
     DASSERT(page);
-    DSPEW();
 
     bool needOldLineRedraw = false;
 
@@ -612,7 +612,7 @@ static gboolean MoveBlockCB(struct Block *b,
 
     b->x += dxy[0];
     b->y += dxy[1];
-    gtk_layout_move(b->layout, b->container, b->x, b->y);
+    gtk_layout_move(b->page->layout, b->container, b->x, b->y);
     return FALSE; // FALSE == keep going
 }
 
@@ -646,6 +646,121 @@ static bool BlockSelected(struct Block *b) {
 }
 
 
+static GtkMenu *popupMenu = 0;
+static struct Block *popupBlock = 0;
+
+
+static
+void QueueConnectionsDraw(GtkLayout *layout) {
+
+    DASSERT(layout);
+
+    gint w = gtk_widget_get_allocated_width(GTK_WIDGET(layout));
+    gint h = gtk_widget_get_allocated_height(GTK_WIDGET(layout));
+    /* Now invalidate the affected region of the drawing area. */
+    gtk_widget_queue_draw_area(GTK_WIDGET(layout), 0, 0, w, h);
+}
+
+
+
+static inline void BlockDestroy(struct Block *b) {
+
+    DASSERT(b);
+    struct Page *page = b->page;
+    DASSERT(page);
+    GtkLayout *layout = page->layout;
+    DASSERT(layout);
+
+    UnselectBlock(b);
+
+    // TODO: Maybe use different data structure than an array to keep the
+    // connections in.  This may not be too bad; it is order O(n).  But
+    // it is a little complex, and hard to test with the GUI.
+
+    // Remove all connections that point to this block.
+    size_t oldNum = page->numConnections;
+    size_t newNum = 0;
+    for(size_t i=0; i<oldNum;++i) {
+        while(i<oldNum &&
+                (page->connections[i].from->block == b ||
+                page->connections[i].to->block == b))
+            // while not a good one go to next i:
+            ++i;
+        if(i < oldNum) {
+            // i is a good one.
+            //
+            // We shift the good array element back to the
+            // element of the current found good ones.
+            //
+            // If the structure of Connection changes
+            // this way of copying will still work.
+            memcpy(page->connections + newNum,
+                    page->connections + i,
+                    sizeof(*page-> connections));
+            // Got one, count it.
+            ++newNum;
+        }
+    }
+    //
+    if(newNum) {
+        if(newNum != oldNum) {
+#ifdef DEBUG
+            // zero-out the part that will be freed which is on the end of
+            // the array.
+            memset(&page->connections[newNum], 0, (oldNum-newNum)
+                    *sizeof(*page->connections));
+#endif
+            page->connections = realloc(page->connections,
+                    newNum*sizeof(*page->connections));
+            ASSERT(page->connections,
+                    "realloc(%p, %zu) failed", page->connections,
+                    newNum*sizeof(*page->connections));
+            page->numConnections = newNum;
+        }
+    } else if(oldNum) {
+#ifdef DEBUG
+        memset(page->connections, 0, oldNum*sizeof(*page->connections));
+#endif
+        free(page->connections);
+        page->connections = 0;
+        page->numConnections = 0;
+    }
+
+    gtk_widget_destroy(GTK_WIDGET(b->container));
+  
+    // Remove from the Page stack of blocks.
+    struct Block *lb = page->blocks;
+    struct Block *prev = 0;
+    while(lb && lb != b) {
+        prev = lb;
+        lb = lb->next;
+    }
+    DASSERT(lb);
+    if(prev)
+        prev->next = b->next;
+    else
+        page->blocks = b->next;
+
+#ifdef DEBUG
+    memset(b, 0, sizeof(*b));
+#endif
+    free(b);
+
+    RedrawOldLines(page);
+
+    QueueConnectionsDraw(layout);
+
+    // TODO: remove inputs and outputs.
+}
+
+
+static void RemovePopupBlock(GtkWidget *widget,
+        GdkEvent *e, gpointer data) {
+    BlockDestroy(popupBlock);
+    popupBlock = 0;
+}
+
+
 static gboolean
 BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
 
@@ -654,12 +769,23 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
     static gint xOffset = 0, yOffset = 0;
 
     DASSERT(b);
-    DASSERT(b->page);
+    struct Page *page = b->page;
+    DASSERT(page);
+
 
     switch(e->type) {
     
         case GDK_BUTTON_PRESS:
         {
+            if(e->button == BLOCK_POPUP_BUTTOM) {
+
+                popupBlock = b;
+                UnselectAllBlocks(page);
+                SelectBlock(b);
+                gtk_menu_popup_at_pointer(popupMenu, (GdkEvent *) e);
+                break;
+            }
+
             if(e->button != BLOCK_MOVE_BUTTON)
                 break;
 
@@ -668,15 +794,15 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
                 if(!(e->state & GDK_SHIFT_MASK))
                     // Holding down shift key will not unselect any
                     // previously selected blocks.
-                    UnselectAllBlocks(b->page);
+                    UnselectAllBlocks(page);
 
                 SelectBlock(b);
             }
 
-            SetCursor(GTK_WIDGET(b->layout), moveCursor);
+            SetCursor(GTK_WIDGET(page->layout), moveCursor);
             xOffset = e->x_root;
             yOffset = e->y_root;
-            PopForward(b->layout, b);
+            PopForward(page->layout, b);
             gotPress = true;
             gtk_grab_add(widget);
             break;
@@ -690,13 +816,13 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
             // position values, which are positions relative to root
             // (whatever the hell that is).
             if(waitingForConnectEnter)
-                ClearNewConnectionDraw(b->page);
+                ClearNewConnectionDraw(page);
 
             if(!gotPress) break;
 
             blockMoved = true;
  
-            MoveSelectedBlocks(b->page,
+            MoveSelectedBlocks(page,
                     ((gint) e->x_root) - xOffset,
                     ((gint) e->y_root) - yOffset);
 
@@ -707,7 +833,7 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
 
         case GDK_BUTTON_RELEASE:
         {
-            SetCursor(GTK_WIDGET(b->layout), 0);
+            SetCursor(GTK_WIDGET(page->layout), 0);
 
             if(e->button != BLOCK_MOVE_BUTTON) break;
 
@@ -753,20 +879,6 @@ BlockLeaveCB(GtkWidget *w, GdkEvent *e, struct Block *b) {
 
 
 
-static
-void QueueConnectionsDraw(struct Block *b) {
-
-    DASSERT(b);
-    GtkWidget *layout = GTK_WIDGET(b->layout);
-    DASSERT(layout);
-
-    gint w = gtk_widget_get_allocated_width(layout);
-    gint h = gtk_widget_get_allocated_height(layout);
-    /* Now invalidate the affected region of the drawing area. */
-    gtk_widget_queue_draw_area(layout, 0, 0, w, h);
-}
-
-
 static gboolean
 ConnectPressCB(GtkWidget *w, GdkEventButton *e, struct Connector *c) {
 
@@ -792,7 +904,7 @@ ConnectPressCB(GtkWidget *w, GdkEventButton *e, struct Connector *c) {
 
     c->block->page->from = c;
 
-    QueueConnectionsDraw(c->block);
+    QueueConnectionsDraw(c->block->page->layout);
 
     return TRUE; // TRUE = do not go to next widget
 }
@@ -811,7 +923,7 @@ ConnectMotionCB(GtkWidget *w, GdkEventButton *e, struct Connector *c) {
         c->block->page->pointer_x = e->x + c->block->x;
         c->block->page->pointer_y = e->y + c->block->y;
 
-        QueueConnectionsDraw(c->block);
+        QueueConnectionsDraw(c->block->page->layout);
     }
 
     return TRUE; // TRUE = do not go to next widget
@@ -838,7 +950,7 @@ fprintf(stderr, "FUCKING RELEASE\n");
     cairo_set_source_rgba(cr, 0, 0, 0, 0.0);
     cairo_paint(cr);
     cairo_destroy(cr);
-    QueueConnectionsDraw(c->block);
+    QueueConnectionsDraw(page->layout);
 
     if(!page->from) {
         return TRUE;
@@ -880,7 +992,7 @@ ConnectEnterCB(GtkWidget *w, GdkEvent *e, struct Connector *to) {
     // Reset for next connection
     page->from = 0;
     waitingForConnectEnter = false;
-    QueueConnectionsDraw(to->block);
+    QueueConnectionsDraw(page->layout);
 
     return TRUE; // TRUE = do not go to next widget
 }
@@ -1034,7 +1146,10 @@ static void DestroyBlock(struct Block *block) {
 }
 #endif
 
-static struct Block *CreateBlock(struct Page *page,
+
+
+
+static struct Block *BlockCreate(struct Page *page,
         GtkLayout *layout,
         const char *name,
         double x, double y) {
@@ -1064,7 +1179,6 @@ static struct Block *CreateBlock(struct Page *page,
     GtkWidget *ebox = gtk_event_box_new();
 
     block->container = ebox;
-    block->layout = layout;
     block->x = x;
     block->y = y;
 
@@ -1160,7 +1274,7 @@ static gboolean WorkAreaCB(GtkLayout *layout,
 
             // Create a new block and then move it.
             char *name = strdup("block Name larger block Name ya");
-            movingBlock = CreateBlock(page, layout, name, e->x, e->y);
+            movingBlock = BlockCreate(page, layout, name, e->x, e->y);
             UnselectAllBlocks(page);
             SelectBlock(movingBlock);
 
@@ -1251,11 +1365,9 @@ static gboolean WorkAreaCB(GtkLayout *layout,
                 // clear the surface
                 cairo_set_source_rgba(cr, 0, 0, 0, 0.0);
                 cairo_paint(cr);
+                cairo_destroy(cr);
 
-                gint w = gtk_widget_get_allocated_width(GTK_WIDGET(layout));
-                gint h = gtk_widget_get_allocated_height(GTK_WIDGET(layout));
-                /* Now invalidate the affected region of the drawing area. */
-                gtk_widget_queue_draw_area(GTK_WIDGET(layout), 0, 0, w, h);
+                QueueConnectionsDraw(layout);
             }
 
 
@@ -1294,18 +1406,6 @@ static inline GdkCursor *GetCursor_(GdkCursorType type) {
 static int tabCreateCount = 0;
 
 
-static gboolean TestPress(GtkLayout *layout,
-        GdkEventButton *e, struct Page *page) {
-
-    DSPEW();
-
-    return FALSE;
-}
-
-
-
-
-
 
 static GtkNotebook *noteBook = 0;
 
@@ -1315,10 +1415,9 @@ static inline void MakeWorkArea(struct Page *page) {
     GtkBuilder *b = gtk_builder_new_from_resource(
             "/quickstreamBuilder/qsb_workArea_res.ui");
 
+    page->layout = GTK_LAYOUT(gtk_builder_get_object(b, "workArea"));
+
     Connect(b, "workArea", "draw", drawLayout, page);
-
-    Connect(b, "workArea", "button-press-event", TestPress, page);
-
     Connect(b, "workArea", "button-release-event", WorkAreaCB, page);
     Connect(b, "workArea", "button-press-event", WorkAreaCB, page);
     Connect(b, "workArea", "motion-notify-event", WorkAreaCB, page);
@@ -1391,6 +1490,11 @@ setup_widget_connections(void) {
     GtkBuilder *b = gtk_builder_new_from_resource(
             "/quickstreamBuilder/qsb_res.ui");
 
+    
+    GtkBuilder *popupBuilder = gtk_builder_new_from_resource(
+            "/quickstreamBuilder/qsb_popup_res.ui");
+    popupMenu = GTK_MENU(gtk_builder_get_object(popupBuilder, "popupMenu"));
+    Connect(popupBuilder, "remove", "activate", RemovePopupBlock, 0);
 
     ///////////////////////////////////////////////////////////////////
     //    Here is where cursors are configured

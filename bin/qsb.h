@@ -32,17 +32,6 @@ enum ConnectionType {
 };
 
 
-// A data structure that is used while a connection is being
-// drawn, and the connection is not finished yet.
-struct ConnectionDraw {
-
-    struct Block *from;
-    struct Block *to;
-
-    enum ConnectionType fromType;
-};
-
-
 // Data structures for a directed graph of outputs to inputs.
 //
 struct OutputPort {
@@ -95,7 +84,7 @@ struct InputPort {
 //
 struct Connector {
 
-    /* Connector is something that represents a block and the
+    /* Connector is something that represents a block and
      * it's connections to input, output, get, or set that can
      * be passed as a pointer to GTK event callbacks. */
     //
@@ -122,7 +111,6 @@ struct Block {
     struct Block *next;
 
     GtkWidget *container;
-    GtkLayout *layout;
     GtkWidget *grid;
     struct Page *page;
 
@@ -157,6 +145,9 @@ struct Page {
 
     // List of all blocks as a stack.
     struct Block *blocks;
+
+    // The main work/drawing area widget.
+    GtkLayout *layout;
 
     GTree *selectedBlocks;
 
