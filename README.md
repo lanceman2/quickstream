@@ -646,6 +646,7 @@ https://raw.githubusercontent.com/lanceman2/quickstream.doc/master/jobFlow.png)
      called) then they will be adding blocking calls to their running flow
      graphs work() functions, it will still work, but performance may
      suffer.
+  4. Blocks can trigger themselves work from their other callbacks.
 
 #### other
 

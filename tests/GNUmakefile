@@ -52,7 +52,9 @@ CLEANERFILES := tests/tests
 
 # We do not want 'test' to depend on build.  That would be intrusive and
 # could create an infinite looping make in some cases, but we can at least
-# check that libquickstream.so is built.
+# check that libquickstream.so is built.  This warning will not preempt
+# the failed compile attempts before this, but it's better than no
+# warning.
 test:
 	@if [ ! -e ../lib/libquickstream.so ] ; then\
 	    l="\n\n-------------------------------------------------------------------------\n\n";

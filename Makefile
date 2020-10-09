@@ -7,6 +7,7 @@
 # file name 'Makefile' and sometimes 'GNUmakefile' for using quickbuild.
 
 SUBDIRS :=\
+ include\quickstream\
  lib\
  bin
 
