@@ -59,7 +59,8 @@ cat << EOF
 
 
   Run: "rm -f *.tmp" in $PWD
-  to remove generated files from this test.
+  to remove generated files from this test; or just run
+  "make clean".
 
 EOF
 

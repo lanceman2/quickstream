@@ -16,4 +16,14 @@ $(error "First run './bootstrap'")
 endif
 
 
+ifeq ($(strip $(subst cleaner, clean, $(MAKECMDGOALS))),clean)
+SUBDIRS +=\
+ tests
+endif
+
+
+test:
+	cd tests && $(MAKE) test
+
+
 include quickbuild.make
