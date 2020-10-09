@@ -2,7 +2,8 @@
 INSTALL_DIR = $(PREFIX)/lib
 
 libquickstream.so_SOURCES :=\
- debug.c
+ debug.c\
+ Dictionary.c
 
 
 libquickstream.so_LDFLAGS := -lpthread -ldl -lrt

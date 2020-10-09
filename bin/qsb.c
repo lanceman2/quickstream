@@ -1,3 +1,13 @@
+// How to poll() with GTK events:
+//
+//   g_main_context_set_poll_func()
+//
+// file:///usr/share/gtk-doc/html/glib/glib-The-Main-Event-Loop.html#g-main-context-set-poll-func
+//
+// This function could possibly be used to integrate the GLib event loop
+// with an external event loop.
+
+
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -6,8 +16,11 @@
 #include <stdbool.h>
 #include <math.h>
 
+#include <X11/Xlib.h>
+
 #include <gtk/gtk.h>
 #include <gdk/gdkevents.h>
+#include <gdk/gdkx.h>
 
 #include <libxml2/libxml/parser.h>
 #include <libxml2/libxml/tree.h>
@@ -180,6 +193,31 @@ static inline void GetConnectionColor(struct Connector *c,
             *a = 0.5;
     }
 }
+
+
+static inline struct Connector *FindConnectTo(
+        struct Connector *from, struct Block *toBlock) {
+
+    DASSERT(from);
+    DASSERT(from->block != toBlock);
+
+    switch(from->type) {
+        case CT_INPUT:
+            return &toBlock->output;
+        case CT_OUTPUT:
+            return &toBlock->input;
+        case CT_GET:
+            return &toBlock->set;
+        case CT_SET:
+            return &toBlock->get;
+#ifdef DEBUG
+        default:
+            DASSERT(0, "missing case");
+            return false;
+#endif
+    }
+}
+
 
 
 static bool CanConnect(struct Connector *from,
@@ -762,6 +800,44 @@ static void RemovePopupBlock(GtkWidget *widget,
 
 
 static gboolean
+BlockEnterCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
+
+    DASSERT(b);
+    struct Page *page = b->page;
+    DASSERT(page);
+
+    WARN();
+
+    if(!b->page->from || !waitingForConnectEnter ||
+            b->page->from->block == b)
+        return TRUE;
+
+
+    // We finish the process of making a connection to between 2 blocks.
+
+    // 1. find the connector that we go to.
+    struct Connector *to = FindConnectTo(page->from, b);
+    if(!to)
+        // We could not find the connector to go to, but maybe the next
+        // widget can determine where to connect to.
+        return FALSE; // FALSE = send event to next child widget
+
+    // We got a connect release just before this.  We now setup
+    // a connection.
+    //
+    // TODO: add more here to record the connection.
+    DrawConnection(page->from, to, page->oldLines);
+    AddConnection(page->from, to);
+
+    // Reset for next connection
+    page->from = 0;
+    waitingForConnectEnter = false;
+    QueueConnectionsDraw(page->layout);
+
+    return TRUE; // TRUE = do not go to next widget
+}
+
+static gboolean
 BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
 
     errno = 0;
@@ -783,7 +859,7 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
                 UnselectAllBlocks(page);
                 SelectBlock(b);
                 gtk_menu_popup_at_pointer(popupMenu, (GdkEvent *) e);
-                break;
+                return TRUE; // Event stops here.
             }
 
             if(e->button != BLOCK_MOVE_BUTTON)
@@ -805,7 +881,7 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
             PopForward(page->layout, b);
             gotPress = true;
             gtk_grab_add(widget);
-            break;
+            return TRUE; // Event stops here.
         }
 
         case GDK_MOTION_NOTIFY:
@@ -829,7 +905,7 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
             xOffset = e->x_root;
             yOffset = e->y_root;
 
-            break;
+            return TRUE; // Event stops here.
 
         case GDK_BUTTON_RELEASE:
         {
@@ -843,40 +919,19 @@ BlockButtonCB(GtkWidget *widget, GdkEventButton *e, struct Block *b) {
 
             gotPress = false;
 
-            break;
+            return TRUE; // Event stops here.
         }
 
         default:
             break;
     }
 
-    return TRUE; // FALSE = go to next widget
+    return FALSE; // FALSE = go to next widget
 }
 
-#if 0
-static gboolean
-BlockEnterCB(GtkWidget *w, GdkEvent *e, struct Block *b) {
-
-    errno = 0;
-
-    //DSPEW();
-    if(movingBlock) return FALSE;
-
-    return TRUE; // TRUE = do not go to next widget
-}
-
-static gboolean
-BlockLeaveCB(GtkWidget *w, GdkEvent *e, struct Block *b) {
-
-    errno = 0;
-
-    //DSPEW();
-    if(movingBlock) return FALSE;
-
-    return TRUE; // TRUE = do not go to next widget
-}
-#endif
-
+static GdkDisplay *display = 0;
+static GdkSeat *seat = 0;
+//static GdkDevice *pointerDevice = 0;
 
 
 static gboolean
@@ -884,13 +939,18 @@ ConnectPressCB(GtkWidget *w, GdkEventButton *e, struct Connector *c) {
 
     errno = 0;
 
-    DSPEW("type=%s", gtk_widget_get_name(w));
+    DSPEW("type=%s", gtk_widget_get_name(w) );
 
     // There seems to be a bug such that sometime the event type is not
     // GDK_BUTTON_PRESS.
     //DASSERT(e->type == GDK_BUTTON_PRESS);
     
     if(e->type != GDK_BUTTON_PRESS) return FALSE;
+
+    if(e->button != BLOCK_CONNECT_BUTTON) return FALSE;
+
+    // HERE LANCE
+    if(0) gdk_seat_ungrab(seat);
 
     DASSERT(c);
     DASSERT(c->block);
@@ -964,6 +1024,8 @@ fprintf(stderr, "FUCKING RELEASE\n");
 
 static gboolean
 ConnectEnterCB(GtkWidget *w, GdkEvent *e, struct Connector *to) {
+
+WARN();
 
     errno = 0;
     DASSERT(GDK_ENTER_NOTIFY == e->type);
@@ -1210,12 +1272,9 @@ static struct Block *BlockCreate(struct Page *page,
         G_CALLBACK(BlockButtonCB), block);
     g_signal_connect(ebox, "motion-notify-event",
         G_CALLBACK(BlockButtonCB), block);
-#if 0
-     g_signal_connect(ebox, "leave-notify-event",
-        G_CALLBACK(BlockLeaveCB), block);
     g_signal_connect(ebox, "enter-notify-event",
         G_CALLBACK(BlockEnterCB), block);
-#endif
+
     //gtk_widget_set_name(ebox, "get");
     gtk_widget_show(ebox);
     gtk_container_add(GTK_CONTAINER(ebox), grid);
@@ -1474,7 +1533,10 @@ static gboolean NewTab(GtkWidget *w, gpointer data) {
 
 static inline void
 setup_widget_connections(void) {
-    
+
+    display = gdk_display_get_default();
+    seat = gdk_display_get_default_seat(display);
+    //pointerDevice = gdk_seat_get_pointer(seat);
 
     // From the XML files: qsb_res.xml and qsb_res.ui, a gObject compiler,
     // named glib-compile-resources, builds qsb_res.c.  qsb_res.c is
@@ -1548,6 +1610,41 @@ catcher(int sig) {
     ASSERT(0);
 }
 
+#if 0
+
+static inline void EventLoop(void) {
+
+    GdkDisplay *display = gdk_display_get_default();
+
+    ASSERT(GDK_IS_X11_DISPLAY(display));
+
+    Display *xdpy = GDK_DISPLAY_XDISPLAY(display);
+    // X11 Display connection number, file descriptor.
+    int fd = ConnectionNumber(xdpy);
+
+    bool running = true;
+
+#ifndef GDK_WINDOWING_X11
+#  error "FAIL"
+#endif
+
+    while(running) {
+
+        fd_set rfds;
+        int retval;
+        FD_ZERO(&rfds);
+        FD_SET(fd, &rfds);
+        retval = select(1+fd, &rfds, 0, 0, 0);
+WARN("SELECT POP");
+        ASSERT(retval != -1);
+
+        while(gtk_events_pending())
+            gtk_main_iteration();
+    }
+}
+
+
+#endif
 
 int main(int argc, char *argv[]) {
 
@@ -1560,7 +1657,8 @@ int main(int argc, char *argv[]) {
 
     setup_widget_connections();
 
-    gtk_main();
+    gtk_main(); 
+    //EventLoop();
 
     DSPEW("xmlReadFile=%p", xmlReadFile);
     return 0;

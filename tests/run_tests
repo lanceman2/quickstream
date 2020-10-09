@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# Runs all files that glob pattern match NNN*
+# for example: 452_helloWorld
+#          or: 456
+
+
+set -euo pipefail
+shopt -s nullglob
+
+cd $(dirname ${BASH_SOURCE[0]})
+
+make
+
+
+files=([0-9][0-9][0-9]*)
+num=0
+for run in "${files[@]}" ; do
+    if [ -x $run ] ; then
+        tests[$num]=$run
+        let num=$num+1
+    fi
+done
+
+
+i=1
+pass=0
+fail=0
+passPrograms=
+failPrograms=
+echo "  ================================================"
+echo "                RUNNING $num TESTS"
+echo "  ================================================"
+for run in "${tests[@]}" ; do
+    echo "   [ $i / $num ] === running: $run"
+    if ./$run ; then
+        let pass=$pass+1
+        echo "$run === PASSED"
+        passPrograms="$passPrograms ./$run"
+    else
+        let fail=$fail+1
+        echo "$run === FAILED"
+        failPrograms="$failPrograms ./$run"
+    fi
+
+    let i=$i+1
+done
+cat << EOF
+
+   [ $pass / $num ] PASSED: $passPrograms
+   [ $fail / $num ] FAILED: $failPrograms
+
+
+  ===============================================================
+                     TOTAL TEST RESULTS
+  ===============================================================
+             [ $pass / $num ] PASSED
+             [ $fail / $num ] FAILED
+
+
+  Run: "rm -f *.tmp" in $PWD
+  to remove generated files from this test.
+
+EOF
+
+[ $fail = 0 ] || exit 1

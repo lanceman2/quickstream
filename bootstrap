@@ -35,7 +35,8 @@ set -ex
 # Go to the directory there this script is.
 cd $(dirname ${BASH_SOURCE[0]})
 
-
+# File config.make is not check in and it may have user
+# configuration information in it.
 [ -e config.make ] || cp config.make.example config.make
 
 
@@ -94,6 +95,8 @@ else
     sha512sum quickbuild.make.org
 fi
 
+# We can make this file much smaller by removing comments, then the
+# tarball release of quickstream will be smaller.
 sed quickbuild.make.org -e 's/^\s*\#.*$//g' -e '/^$/d' >> quickbuild.make.tmp
 
 rm quickbuild.make.org
