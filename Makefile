@@ -1,5 +1,5 @@
 # This file is for building and installing quickstream with quickbuild,
-# not GNU autotools.  You can build and install quickstream with GNU
+# not GNU autotools.  You can also build and install quickstream with GNU
 # autotools.
 #
 # The make files with name 'makefile' are generated from 'makefile.am'
@@ -7,9 +7,11 @@
 # file name 'Makefile' and sometimes 'GNUmakefile' for using quickbuild.
 
 SUBDIRS :=\
- include\quickstream\
+ include/quickstream\
  lib\
- bin
+ bin\
+ lib/quickstream/blocks/filters\
+ lib/quickstream/blocks/controllers
 
 
 ifneq ($(wildcard quickbuild.make),quickbuild.make)

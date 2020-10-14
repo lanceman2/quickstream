@@ -1,0 +1,13 @@
+Files in lib/quickstream/blocks/
+
+All files in lib/quickstream/blocks/ are related to quickstream block
+plugins.  quickstream block plugins are manifest themselves are DSO
+(dynamic shared object) files and sometimes other related metadata
+files.
+
+
+   - filters/: filters are plugin blocks that have input and/or output
+
+   - controllers/: controllers are plugin blocks that do not have input or
+        output
+

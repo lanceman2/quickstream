@@ -1,0 +1,15 @@
+Files in lib/quickstream
+
+  - blocks: quickstream block DSO (dynamic shared object) plugins
+        quickstream users can write block plugin modules
+
+  - run: internal quickstream DSO plugins that are not intended
+        to provide public quickstream interfaces, like blocks do.  For
+        example we use the linker/loader to dynamically load scripting
+        language (like Python or LUA) interpreters.  In this way we do not
+        require programs to link with scripting language interpretor
+        libraries until they are needed and quickstream will not
+        necessarily be dependent on them.
+        Also any other runtime files that may be separate from
+        libquickstream.
+

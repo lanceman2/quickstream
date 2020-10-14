@@ -57,20 +57,25 @@ plugins that are made of many block module plugins.
 
 quickstream comes with two application builder programs:
 
-  - *quickstream* which lets to build flow stream programs using the
-            command-line.
+  - **quickstream** a program which lets to build flow stream programs
+    using the command-line.
 
   - *quickstreamBuilder* a GUI (graphical user interface) program that
-            lets you build and run flow stream programs.  It may resemble
-            the GNU Radio Companion to some extent.
+    lets you build and run flow stream programs.  It may resemble the GNU
+    Radio Companion to some extent.
 
 quickstream APIs (application programming interfaces) are separated into the
-the two classes of quickstream users:
+the three classes of quickstream use:
 
-  - *quickstream/app.h* for users to compile quickstream programs
+  - **quickstream/app.h** for running flow graphs
 
-  - *quickstream/block.h* for users to compile quickstream module blocks
+  - **quickstream/graph.h** for connecting blocks together to make larger
+    blocks
 
+  - **quickstream/block.h** for building plugin module blocks
+
+The block module writer with not likely use *app.h*, and the app writer with
+likely not use *block.h*.
 
 The quickstream starting point is this web page at
 https://github.com/lanceman2/quickstream.git, should it move we wish to
@@ -308,7 +313,7 @@ method adds configuration options.
 ## quickstream is Generic
 
 Use it to process video, audio, radio signals, or any data flow that
-requires fast repetitive data transfer between filter modules.
+requires fast repetitive data transfer between block modules.
 
 
 ## quickstream is Fast
@@ -321,36 +326,37 @@ Only benchmarks can show this to be true.
 ## No connection types
 
 The quickstream use case is generic, in the way it does not care what kind
-of data is being transferred between filter stages, in the same way UNIX
+of data is being transferred between block stages, in the same way UNIX
 pipes don't care what kind of data flows through them.  The types of data
 that flows is up to you.  The typing of data flowing between particular
-filters is delegated to a higher protocol layer above quickstream.
+blocks is delegated to a higher protocol layer above quickstream.
 quickstream provides generic management for the connecting and running of
-filter streams.  quickstream does not consider ports and channels between
-filters to be typed.
+filter block streams.  quickstream does not consider ports and channels between
+blocks to be typed.
 
 
-## Restricting filters modules leads to user control and runtime optimization
+## Restricting block modules leads to user control and runtime optimization
 
-quickstream restricts filter interfaces so that it may provide an
+quickstream restricts block interfaces so that it may provide an
 abstraction layer so that it may vary how it distributes threads and
-filter modules at runtime, unlike all other high performance streaming
+block modules at runtime, unlike all other high performance streaming
 toolkits.  The worker threads in quickstream are not assigned to a given
-filter module and migrate to filters modules that are in need of workers.
+block module and migrate to block modules that are in need of workers.
 In this way threads do a lot less waiting for work, whereby eliminating
 the need for threads that do a lot of sleeping, whereby eliminating lots
 of system calls, and also eliminating inter thread contention, at runtime.
 Put another way, quickstream will run less threads and keep the threads
-busier by letting them migrate among the filter modules.
+busier by letting them migrate among the block modules.
 
 
 ## Pass-through buffers
 
-quickstream provides the buffering between module filters in the flow.
-The filters may copy the input buffer and then send different data to it's
-outputs, or if the output buffers are or the same size as the input
+quickstream provides the buffering between block modules in the flow.  The
+filter blocks may copy the input buffer and then send different data to
+it's outputs, or if the output buffers are or the same size as the input
 buffers, it may modify an input buffer and send it through to an output
-without copying any data whereby eliminating an expensive copy operation.
+without copying any data whereby eliminating an expensive copy
+operation.
 
 
 ## Description
@@ -362,7 +368,7 @@ such, it may be used as a basis to build a frame-work to write programs
 to process audio, video, software defined radio (SDR), or any kind of
 digit flow pipe-line.
 
-Interfaces in quickstream are minimalistic.  To make a filter you do not
+Interfaces in quickstream are minimalistic.  To make a block you do not
 necessarily need to consider data flow connection types.  Connection types
 are left in the quickstream user domain.  In the same way that UNIX
 pipe-lines don't care what type of data is flowing in the pipe,
@@ -373,9 +379,9 @@ not need to waste so much time figuring out what functions and/or classes
 to use to do a particular task, the choose should be obvious (at this
 level).
 
-The intent is to construct a flow stream between filters.  The filters do
-not necessarily concern themselves with their neighboring filters; the
-filters just read input from input ports and write output to output ports,
+The intent is to construct a flow stream between blocks.  The blocks do
+not necessarily concern themselves with their neighboring blocks; the
+blocks just read input from input ports and write output to output ports,
 not necessarily knowing what is writing to them or what is reading from
 them; at least that is the mode of operation at this protocol (quickstream
 API) level.  The user may add more structure to that if they need to.
@@ -397,13 +403,12 @@ flowing/running.
 
 To a very limited extend we follow de facto standard terms from [GNU
 radio](https://www.gnuradio.org/).  We avoided using GNU radio terminology
-which we found to be confusing.  The scope of use for quickstream is
-broader than GNU radio and so some GNU radio terminology was deemed not
-generic enough.
+which we found to be confusing.
 
-### Stream
 
-The directed graph that data flows in.   Nodes in the graph are called filters.
+### Graph
+
+The directed graph that data flows in.   Nodes in the graph are called blocks.
 
 
 #### Stream states
@@ -424,11 +429,11 @@ expanded to this:
 ![image of stream expanded state](
 https://raw.githubusercontent.com/lanceman2/quickstream.doc/master/stateExpaned.png)
 
-A quickstream filter writer will need to understand the expanded state
-diagram.  Because there can be more than one filter there must be
+A quickstream block writer will need to understand the expanded state
+diagram.  Because there can be more than one block there must be
 intermediate transition states between a *paused* and flowing state, so
-that the filters may learn about their connectivity before flowing, and
-so that the filter may shutdown if that is needed.
+that the blocks may learn about their connectivity before flowing, and
+so that the block may shutdown if that is needed.
 
 There is only one thread running except in the flow and flush
 state.  The flush state is no different than the flow state
@@ -439,30 +444,30 @@ except that sources are no longer being feed.
   program running non-interactively.  This state, maybe, is needed for
   interactive programs.
 - **configure** While in this mode the stream can be configured.  All the
-  filter modules are loaded, filter modules *construct* functions are
-  called, and stream filter connections are figured out.  Filter modules
+  block modules are loaded, block modules *construct* functions are
+  called, and stream block connections are figured out.  Block modules
   can also have their *destroy* functions called and they can be unloaded.
   Reasoning: *construct* functions may be required to be called so that
-  constraints that only known by the filter are shown to the user, so that
+  constraints that only known by the block are shown to the user, so that
   the user can construct the stream.  The alternative would be to have
-  particular filter connection constrains exposed separately from outside
-  the module dynamic share object (DSO), which would make filter module
+  particular block connection constrains exposed separately from outside
+  the module dynamic share object (DSO), which would make block module
   management a much larger thing, like most other stream toolkits.  We
   keep it simple at the quickstream programming level.
-- **start**: the filters start functions are called. Filters will see how
+- **start**: the blocks' start functions are called.  Blocks will see how
   many input and output channels they will have just before they start
   running.  There is only one thread running.  No data is flowing in the
   stream when it is in the start state.
-- **flow**: the filters feed each other and the number of threads running
+- **flow**: the blocks feed each other and the number of threads running
   depends on the thread partitioning scheme that is being used.  A long
   running program that keeps busy will spend most of its time in the
   *flow* state.
 - **flush**: stream sources are no longer being feed, and all other
-  non-source filters are running until all input the data drys up.
-- **stop**: the filters stop functions are being called. There is only one
+  non-source blocks are running until all input the data drys up.
+- **stop**: the blocks stop functions are being called. There is only one
   thread running.  No data is flowing in the stream when it is in the
   stop state.
-- **destroy** in reverse load order, all remaining filter modules
+- **destroy** in reverse load order, all remaining block modules
   *destroy* functions are called, if they exist, and then they are
   unloaded.
 - **return**: no process is running.
@@ -491,8 +496,8 @@ quickstream.
 
 ### Work
 
-We adopted the term work function from GNU radio, through we only have one
-work function prototype.
+We adopted the term work function from GNU radio, through quickstream only
+has one work function prototype.
 
 
 ### Controller
@@ -508,7 +513,7 @@ call.
 ### Filter
 
 or filter block.  A filter is a plugin block module that reads input
-and/or writes outputs.  A filter is not the same as in GNU radio.
+and/or writes outputs.
 
 
 ### Source
@@ -550,24 +555,6 @@ reading ports in the level above.  Pass-through buffering is a feature not
 present in GNU radio (version 3.8).
 
 
-
-## Interfaces
-
-quickstream has two APIs (application programming interfaces) and some
-utility programs.  Both APIs in use the libquickstream library.  The main
-parts are:
-
-- a filter API **filter.h**: which is used to build a quickstream filter
-  dynamic shared object filter modules may provide predeclared functions.
-- a stream program API **app.h**: which is used to build programs that run
-  a quickstream with said filters modules.
-- the program **quickstream**: which uses *app.h* and libquickstream
-  library to run a quickstream flow graph with said filters.
-
-quickstream can load the same filter module more than once.  Each loaded
-filter module will run in a different shared object library space.
-
-
 ## OS (operating system) Ports
 
 Debian 9 and Ubuntu 18.04, 20.04
@@ -581,7 +568,6 @@ the same ideas.  We study them and learn.
 
 - **GNUradio** https://www.gnuradio.org/
 - **gstreamer** https://gstreamer.freedesktop.org/
-- **RedHawk** https://geontech.com/redhawk-sdr/
 - **csdr** https://github.com/simonyiszk/csdr We like straight forward way
   csdr uses UNIX pipe-line stream to make its flow stream.
 
@@ -765,4 +751,4 @@ https://raw.githubusercontent.com/lanceman2/quickstream.doc/master/jobFlow.png)
 - Proof all docs including this file.
 - Make the base build build in less than 1 minute (last check is about 10
   seconds).
-
+- change QUICKSTREAM_VERSION in the source in include/quickstream/app.h
