@@ -47,7 +47,6 @@ struct QsGetter {
 };
 
 
-
 struct QsSetter {
 
     // We inherit a parameter.
