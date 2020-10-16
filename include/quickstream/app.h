@@ -41,6 +41,8 @@
 
 
 struct QsApp;
+struct QsThreadPool;
+struct QsBlock;
 
 
 extern
@@ -49,6 +51,51 @@ struct QsApp *qsAppCreate(void);
 
 extern
 void qsAppDestroy(struct QsApp *app);
+
+
+// maxThreads = 0 means use main thread to run qsAppFlow()
+extern
+struct QsThreadPool *qsAppAddThreadPool(uint32_t maxThreads);
+
+
+extern
+struct QsThreadPool *qsThreadPoolAddBlock(struct QsThreadPool *tp,
+        struct QsBlock *block);
+
+extern
+void qsThreadPoolDestroy(struct QsThreadPool *tp);
+
+
+extern
+int qsAppStart(struct QsApp *app);
+
+
+extern
+int asAppPrintDot(struct QsApp *app, uint32_t flags);
+
+
+// If not running with just main thread this will return and then you can
+// call qsAppWait(), otherwise this will not return until the sources dry
+// up; so maybe never return without a signal and stuff.
+extern
+int qsAppFlow(struct QsApp *app);
+
+
+// stop feeding the sources, wait for full flush, interrupt file
+// descriptor polling, cond_signal all worker threads, wait for all
+// threads to return, and then return with just main thread running.
+extern
+int qsAppStop(struct QsApp *app);
+
+
+// run flow until it finishes
+extern
+int qsAppWait(struct QsApp *app);
+
+
+
+// TODO: Worry about qsAppKill() later.
+
 
 
 #endif // #ifndef __qsapp_h__

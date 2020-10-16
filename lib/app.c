@@ -1,6 +1,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "../include/quickstream/app.h" // public interfaces
 

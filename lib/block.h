@@ -15,6 +15,58 @@ struct QsBlock {
     // The app that created/loaded this block and owns this block.
     struct QsApp *app;
 
+    // block name that is unique to this block for all block in app.
+    const char *name;
+
+    void *dlhandle; // from dlopen()
+
+    // Some callbacks like getConfig(), construct() and destroy() we
+    // do not same a pointer to, and dlsym() just before we call them.
+    //
+    // TODO: we may not be improving performance by saving pointers to
+    // these functions, except for work() which is called in a tight loop.
+    //
+    // Pointers to optional callbacks from the DSO they are 0 if they are
+    // not present.
+    //
+    int (*preStart)(struct QsBlock *b,
+        uint32_t numInputs, uint32_t numOutputs);
+    int (*postStart)(struct QsBlock *b,
+        uint32_t numInputs, uint32_t numOutputs);
+
+    int (*preStop)(struct QsBlock *b,
+        uint32_t numInputs, uint32_t numOutputs);
+    int (*postStop)(struct QsBlock *b,
+        uint32_t numInputs, uint32_t numOutputs);
+
+    int (* start)(uint32_t numInputs, uint32_t numOutputs);
+    int (* stop)(uint32_t numInputs, uint32_t numOutputs);
+    int (* work)(void *buffer[], const size_t len[],
+            uint32_t numInputs, uint32_t numOutputs);
+    // flush() gets called in place of work() when the stream is flushing; that is
+    // it is called until len[] is all zeroed and there is no filters
+    // feeding this block (filter).
+    //
+    // But if flush() is not present, then work() is called in it's place
+    // in the same way that flush() would be called.
+    int (* flush)(void *buffer[], const size_t len[],
+            uint32_t numInputs, uint32_t numOutputs);
+
+
+    // next in Job queue that is waiting for a worker thread in the
+    // ThreadPool.
+    //
+    struct QsBlock *next;
+
+};
+
+
+
+struct QsSimpleBlock {
+
+    // Inherit block.
+    struct QsBlock block;
+
     // lists of parameters owned by this block
     struct QsDictionary *getters;
     struct QsDictionary *setters;
@@ -42,29 +94,18 @@ struct QsBlock {
 };
 
 
-struct QsSimpleBlock {
-
-    // This is the "real" block that has the work() callback an so on.
-
-    // Inherit block.
-    struct QsBlock block;
-};
-
 
 struct QsSuperBlock {
 
-    // The super block loads other blocks and sets up parameter and 
-    // input/output connections.
-
-    // Inherit block.  This block is kind-of like a proxy for setting up
-    // parameter and input/output connections to the "real" blocks that do
-    // the work, in addition to connections that go to this block.
+    // Inherit block.
     struct QsBlock block;
 
-    // Blocks that this super block is proxying connections for this list
-    // of blocks:
+    // The super block loads other blocks and sets up parameter and 
+    // input/output connections between them.
+
+    // Blocks that this super block is proxying connections for this array
+    // of pointers to blocks
+    uint32_t numBlocks;
     struct QsDictionary *blocks;
-
 };
-
 

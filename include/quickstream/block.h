@@ -27,8 +27,7 @@ enum QsParameterType {
 
 
 /** bit flag used to mark the use of regular expressions to find
- * parameter with qsParameterGet(), qsParameterForEach(), and
- * qsParameterDestroyForFilter().
+ * parameter with qsParameter functions
  */
 #define QS_PNAME_REGEX     (01)
 /** bit flag to mark keeping parameter get callback across restarts. */
@@ -46,12 +45,9 @@ enum QsParameterType {
  
  \param block the block
 
- \return a pointer to the app that loaded \p block.
+ \return a pointer to the app that loaded and owns block \p block.
 
  */
-
-
-
 extern
 struct QsBlock *qsBlockGetApp(struct QsBlock *block);
 
@@ -241,48 +237,6 @@ qsParameterGetterCreate(struct QsBlock *block, const char *pname,
 extern
 uint32_t qsParameterGetterPush(struct QsParameter *getter, const void *value);
 
-
-/** Iterate through the getter parameters via a callback function
- 
- One of arguments \p app or \p block must be non-zero.
-
- \param app is ignored unless \p stream is 0.  If \p app is non-zero and
- \p stream is zero iterated through all selected parameters in all streams
- in  this \p app.
-
- \param block if not 0, restrict the range of the parameters to iterate
- through to just parameters in this block.
-
- \param pName if not 0, restrict the range of the parameters to iterate
- through to just parameters with this name.
-
- \param type if not 0, restrict the range of the parameters to iterate
- through to just parameters with this type.
-
- \param callback is the callback function that is called with each
- parameter and with all of the arguments set.  If \p callback() returns
- non-zero than the iteration will stop, and that will be the last time \p
- callback() is called for this call to \p qsParameterForEach().
-
- \param userData is user data that is passed to the callback every time it
- is called.
-
- \param flags if flags includes the bit QS_PNAME_REGEX \p pName will be
- interpreted as a POSIX Regular Expression and all parameters with a name
- matches the regular expression will have the get callback added to it.
- Use 0 otherwise.
-
- \return the number of parameters that have been iterated through; or the
- same as, the number of times \p callback() is called.
-
- */
-size_t qsParameterGetterForEach(struct QsApp *app, struct QsBlock *block,
-        const char *pName,
-        enum QsParameterType type,
-        int (*callback)(
-            struct QsBlock *block, const char *pName,
-            enum QsParameterType type, void *userData),
-        void *userData, uint32_t flags);
 
 /** Iterate through the getter parameters via a callback function
  

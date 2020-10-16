@@ -29,7 +29,7 @@ struct QsParameter;
 
  \param to pointer to the setter parameter to be set with values from
   the getter parameter.
- 
+
  \return 0 on success, 1 if the \p to setter parameter is already
  connected to a getter parameter, or -1 on other failed cases.
  When compiled with DEBUG the other failed cases will call assert.
@@ -37,7 +37,7 @@ struct QsParameter;
  */
 extern
 int qsParameterConnect(struct QsParameter *from,
-        struct QsParameter *to, uint32_t flags);
+        struct QsParameter *to);
 
 
 /** connect the output of one block to the input of another block
@@ -77,7 +77,7 @@ int qsBlockConnect(struct QsBlock *from, struct QsBlock *to,
 
  */
 extern
-struct QsBlock *qsBlockLoad(struct QsApp *app);
+struct QsBlock *qsAppLoadBlock(struct QsApp *app);
 
 
 
