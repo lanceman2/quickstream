@@ -67,11 +67,7 @@ void qsThreadPoolDestroy(struct QsThreadPool *tp);
 
 
 extern
-int qsAppStart(struct QsApp *app);
-
-
-extern
-int asAppPrintDot(struct QsApp *app, uint32_t flags);
+int qsAppReady(struct QsApp *app);
 
 
 // If not running with just main thread this will return and then you can
@@ -91,6 +87,21 @@ int qsAppStop(struct QsApp *app);
 // run flow until it finishes
 extern
 int qsAppWait(struct QsApp *app);
+
+
+extern
+int asAppPrintDot(struct QsApp *app, uint32_t flags);
+
+
+extern
+int qsBlockPrintHelp(const char *filename, FILE *file);
+
+
+extern
+uint32_t qsAppForEachBlock(struct QsApp *app,
+        int (*callback)(struct QsBlock *block, void *userData));
+
+
 
 
 

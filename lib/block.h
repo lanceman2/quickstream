@@ -20,6 +20,9 @@ struct QsBlock {
 
     void *dlhandle; // from dlopen()
 
+    // The threadPool that can run this blocks work()
+    struct QsThreadPool *threadPool;
+
     // Some callbacks like getConfig(), construct() and destroy() we
     // do not same a pointer to, and dlsym() just before we call them.
     //
@@ -43,21 +46,14 @@ struct QsBlock {
     int (* stop)(uint32_t numInputs, uint32_t numOutputs);
     int (* work)(void *buffer[], const size_t len[],
             uint32_t numInputs, uint32_t numOutputs);
-    // flush() gets called in place of work() when the stream is flushing; that is
-    // it is called until len[] is all zeroed and there is no filters
-    // feeding this block (filter).
+    // flush() gets called in place of work() when the stream is flushing;
+    // that is it is called until len[] is all zeroed and there is no
+    // filters feeding this block (filter).
     //
     // But if flush() is not present, then work() is called in it's place
     // in the same way that flush() would be called.
     int (* flush)(void *buffer[], const size_t len[],
             uint32_t numInputs, uint32_t numOutputs);
-
-
-    // next in Job queue that is waiting for a worker thread in the
-    // ThreadPool.
-    //
-    struct QsBlock *next;
-
 };
 
 
@@ -87,6 +83,11 @@ struct QsSimpleBlock {
     // pointers to the setter parameter callbacks that are queued.
     // This block owns these setter parameters.
     struct QsSetter *first, *last;
+
+    // next in Job queue that is waiting for a worker thread in the
+    // ThreadPool.
+    //
+    struct QsBlock *next;
 
     // QS_IS_SUPERBLOCK  (001)
     //

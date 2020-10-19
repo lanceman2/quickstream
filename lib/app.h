@@ -36,9 +36,10 @@ struct QsThreadPool {
     // The blocks may be:
     //
     //   1. queued: waiting in the worker thread queue
-    //   2. working: being worked on by a running thread
+    //   2. working: calling work() on by a running thread
     //   3. waiting: in an un-runnable work state due to
-    //        3a) waiting on stream buffer input/output
+    //        3a) waiting on stream buffer or parameter input/output
+    //          calling pthread_cond_wait().
     //        3b) blocking read or write file descriptor poll
     //
     // This job queue is for case 1 above.  The other cases 2 and 3 have
@@ -53,16 +54,44 @@ struct QsThreadPool {
 };
 
 
+enum QsAppFlowState {
+
+    // This state is just to make sure the App state always goes from
+    // paused -> ready -> flowing -> paused -> ready -> flowing -> ...
+    //
+    // Yes we could look at the data in the QsApp, but that may not be
+    // consistent if there is a failure in one of the steps.
+
+    // blocks are still being created and connected
+    // The stream has been stopped or was never flowing.
+    AppPaused = 0,
+    // start() callbacks have been called and stream buffers allocated
+    // and superBlocks have been flattened
+    AppReady,
+    // flowing or flushing
+    AppFlowing
+};
+
 
 struct QsApp {
 
     // List of blocks.
     struct QsDictionary *blocks;
 
+    // Blocks that have at least one output and no inputs are sources.
+    //
+    // The sources is set when the stream is ready or flowing.
+    //
+    uint32_t numSources;
+    struct QsBlock *sources;
+
+
+    // Just the main thread should access this flag.
+    enum QsAppFlowState flowState;
+
 
     // We can define and set different flow() functions that run the flow
-    // graph different ways.  This function gets set in (TODO)
-    // qsAppReady()???
+    // graph different ways.  This function gets set in qsAppFlow().
     //
     uint32_t (*flow)(struct QsApp *app);
 
