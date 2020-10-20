@@ -47,17 +47,19 @@
         Things).
 
  Comparing rates of stream data and parameter data: stream data is
- transferred at about one thousand times faster than paramter data.
- Of course that is a very gross statement but it is easy to see that
- an standard audio stream could be transported at about 8 bytes at 40 kHz
+ transferred at about one thousand times faster than parameter data.  Of
+ course that is a very gross statement but it is easy to see in common
+ example: audio stream could be transported at about 8 bytes at 40 kHz
  giving 8*40*1000 bytes/second = 320,000 bytes/second and a volume
  adjustment parameter will change, at high end, 4 bytes in a tenth of a
  second, giving a parameter data rate of 40 bytes/second.  The ratio of
- the stream to parameter rates being 320,000/40 = 8,000.  So stream data in
- this case is 8,000 times faster than parameter control data.  We expect the
- stream rates would be a lot higher and that parameter change rates will
- be much lower.  So ya, parameters change slowly compared to stream data,
- if not than you are using quickstream for the wrong thing.
+ the stream to parameter rates being 320,000/40 = 8,000.  So stream data
+ in this case is 8,000 times faster than parameter control data.  We
+ expect the stream rates would be a lot higher and that parameter change
+ rates will be much lower.  In many uses the parameter transfer rate will
+ be zero for long periods of time.  So ya, parameters change slowly
+ compared to stream data, if not than you are using quickstream for the
+ wrong thing.
 
 
  Blocks in quickstream do not have any non-standard quickstream
@@ -85,7 +87,8 @@
 
     1. **QsApp** factory for all blocks and connections that can build and run
         the flow graph that it builds
-    2. **QsBlock** basic processing module
+    2. **QsBlock** basic processing module that we connect to build flow
+        graphs
     3. **QsParameter** named discrete-like controlling connections
 
 
@@ -98,6 +101,11 @@ struct QsApp;
 struct QsBlock;
 struct QsParameter;
 
+
+/** bit flag used to mark the use of regular expressions to find
+ * parameter with qsParameter functions
+ */
+#define QS_PNAME_REGEX     (01)
 
 
 /** connect two different block's parameters together
@@ -163,6 +171,95 @@ int qsBlockConnect(struct QsBlock *from, struct QsBlock *to,
  */
 extern
 struct QsBlock *qsAppLoadBlock(struct QsApp *app);
+
+
+
+/** Iterate through the getter parameters via a callback function
+ 
+ \param app is ignored unless \p block is 0.  If \p app is non-zero and \p
+ block is zero, all blocks are iterated through in all selected getter
+ parameters in this \p app.
+
+ \param block if block is not 0, restrict the range of the getter
+ parameters to iterate through to just getter parameters owned by this
+ block.
+
+ One of arguments \p app or \p block must be non-zero.
+
+ \param pName if not 0, restrict the range of the parameters to iterate
+ through to just parameters with this name.
+
+ \param type if not 0, restrict the range of the parameters to iterate
+ through to just parameters with this type.
+
+ \param callback is the callback function that is called with each
+ parameter and with all of the arguments set.  If \p callback() returns
+ non-zero than the iteration will stop, and that will be the last time \p
+ callback() is called for this call to \p qsParameterGetterForEach().
+
+ \param userData is user data that is passed to the callback every time it
+ is called.
+
+ \param flags if flags includes the bit QS_PNAME_REGEX \p pName will be
+ interpreted as a POSIX Regular Expression and all parameters with a name
+ matches the regular expression will have the get callback added to it.
+ Use 0 otherwise.
+
+ \return the number of parameters that have been iterated through; or the
+ same as, the number of times \p callback() is called.
+
+ */
+size_t qsParameterGetterForEach(struct QsApp *app, struct QsBlock *block,
+        const char *pName,
+        enum QsParameterType type,
+        int (*callback)(
+            struct QsBlock *block, const char *pName,
+            enum QsParameterType type, void *userData),
+        void *userData, uint32_t flags);
+
+
+/** Iterate through the setter parameters via a callback function
+ 
+ \param app is ignored unless \p block is 0.  If \p app is non-zero and \p
+ block is zero, all blocks are iterated through in all selected setter
+ parameters in this \p app.
+
+ \param block if block is not 0, restrict the range of the getter
+ parameters to iterate through to just setter parameters owned by this
+ block.
+
+ One of arguments \p app or \p block must be non-zero.
+
+ \param pName if not 0, restrict the range of the parameters to iterate
+ through to just parameters with this name.
+
+ \param type if not 0, restrict the range of the parameters to iterate
+ through to just parameters with this type.
+
+ \param callback is the callback function that is called with each
+ parameter and with all of the arguments set.  If \p callback() returns
+ non-zero than the iteration will stop, and that will be the last time \p
+ callback() is called for this call to \p qsParameterSetterForEach().
+
+ \param userData is user data that is passed to the callback every time it
+ is called.
+
+ \param flags if flags includes the bit QS_PNAME_REGEX \p pName will be
+ interpreted as a POSIX Regular Expression and all parameters with a name
+ matches the regular expression will have the get callback added to it.
+ Use 0 otherwise.
+
+ \return the number of parameters that have been iterated through; or the
+ same as, the number of times \p callback() is called.
+
+ */
+size_t qsParameterSetterForEach(struct QsApp *app,
+        struct QsBlock *block, const char *pName,
+        enum QsParameterType type,
+        int (*callback)(
+            struct QsBlock *block, const char *pName,
+            enum QsParameterType type, void *userData),
+        void *userData, uint32_t flags);
 
 
 #endif // #ifndef __qsbuilder_h__

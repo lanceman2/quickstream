@@ -238,93 +238,6 @@ extern
 uint32_t qsParameterGetterPush(struct QsParameter *getter, const void *value);
 
 
-/** Iterate through the getter parameters via a callback function
- 
- \param app is ignored unless \p block is 0.  If \p app is non-zero and \p
- block is zero, all blocks are iterated through in all selected getter
- parameters in this \p app.
-
- \param block if block is not 0, restrict the range of the getter
- parameters to iterate through to just getter parameters owned by this
- block.
-
- One of arguments \p app or \p block must be non-zero.
-
- \param pName if not 0, restrict the range of the parameters to iterate
- through to just parameters with this name.
-
- \param type if not 0, restrict the range of the parameters to iterate
- through to just parameters with this type.
-
- \param callback is the callback function that is called with each
- parameter and with all of the arguments set.  If \p callback() returns
- non-zero than the iteration will stop, and that will be the last time \p
- callback() is called for this call to \p qsParameterForEach().
-
- \param userData is user data that is passed to the callback every time it
- is called.
-
- \param flags if flags includes the bit QS_PNAME_REGEX \p pName will be
- interpreted as a POSIX Regular Expression and all parameters with a name
- matches the regular expression will have the get callback added to it.
- Use 0 otherwise.
-
- \return the number of parameters that have been iterated through; or the
- same as, the number of times \p callback() is called.
-
- */
-size_t qsParameterGetterForEach(struct QsApp *app, struct QsBlock *block,
-        const char *pName,
-        enum QsParameterType type,
-        int (*callback)(
-            struct QsBlock *block, const char *pName,
-            enum QsParameterType type, void *userData),
-        void *userData, uint32_t flags);
-
-
-/** Iterate through the setter parameters via a callback function
- 
- \param app is ignored unless \p block is 0.  If \p app is non-zero and \p
- block is zero, all blocks are iterated through in all selected setter
- parameters in this \p app.
-
- \param block if block is not 0, restrict the range of the getter
- parameters to iterate through to just setter parameters owned by this
- block.
-
- One of arguments \p app or \p block must be non-zero.
-
- \param pName if not 0, restrict the range of the parameters to iterate
- through to just parameters with this name.
-
- \param type if not 0, restrict the range of the parameters to iterate
- through to just parameters with this type.
-
- \param callback is the callback function that is called with each
- parameter and with all of the arguments set.  If \p callback() returns
- non-zero than the iteration will stop, and that will be the last time \p
- callback() is called for this call to \p qsParameterForEach().
-
- \param userData is user data that is passed to the callback every time it
- is called.
-
- \param flags if flags includes the bit QS_PNAME_REGEX \p pName will be
- interpreted as a POSIX Regular Expression and all parameters with a name
- matches the regular expression will have the get callback added to it.
- Use 0 otherwise.
-
- \return the number of parameters that have been iterated through; or the
- same as, the number of times \p callback() is called.
-
- */
-size_t qsParameterSetterForEach(struct QsApp *app,
-        struct QsBlock *block, const char *pName,
-        enum QsParameterType type,
-        int (*callback)(
-            struct QsBlock *block, const char *pName,
-            enum QsParameterType type, void *userData),
-        void *userData, uint32_t flags);
-
 
 /*
 
@@ -387,7 +300,7 @@ size_t qsParameterSetterForEach(struct QsApp *app,
   can't recover from.
 
  */
-int getConfig(struct QsBlock *thisBlock);
+int configure(struct QsBlock *thisBlock);
 
 
 
