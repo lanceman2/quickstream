@@ -6,8 +6,12 @@
 #include "../include/quickstream/block.h"
 
 
-#define QS_IS_GETTER  (0100)
+enum QsParameterKind {
 
+    QsGetter,
+    QsSetter,
+    QsConstant
+};
 
 struct QsParameter {
 
@@ -23,6 +27,9 @@ struct QsParameter {
     // size in bytes of the parameter data that is copied for each 
     size_t size;
 
+    // data type
+    enum QsParameterType type;
+
     // Bit-wise or-ed flag
     //
     // QS_KEEP_AT_RESTART (02)
@@ -30,8 +37,26 @@ struct QsParameter {
     // QS_Q_BEFORE_WORK   (010)
     // QS_Q_AFTER_WORK    (020)
     //
-    // QS_IS_GETTER      (0100) otherwise it's a setter
     uint32_t flags;
+
+
+    // Kind of parameter
+    enum QsParameterKind kind;
+};
+
+
+struct QsConstant {
+
+    // We inherit a parameter
+    struct QsParameter parameter;
+
+    void *value;
+
+    // Array of setter or constant parameters in other blocks that this
+    // constant parameter connects to.  This is constant at flow-time.
+    // Note: these connections can form a loop.
+    uint32_t numConnections;
+    struct QsParameter **connections;
 };
 
 
@@ -41,7 +66,7 @@ struct QsGetter {
     struct QsParameter parameter;
 
     // Array of setter parameters in other blocks that this getter
-    // connects to.  This is constant at flow-time.
+    // parameter connects to.  This is constant at flow-time.
     uint32_t numSetters;
     struct QsSetter **setters;
 };
@@ -54,8 +79,8 @@ struct QsSetter {
 
     // TODO: Is this needed:
     //
-    // Zero or one getter may connect to this setter.
-    //struct QsGetter *getter;
+    // Zero or one getter or constant may connect to this setter.
+    //struct QsParameter *feeder;
 
 
     // This is a flow-time constant.  Passed to the setCallback().
@@ -74,4 +99,7 @@ struct QsSetter {
 
     void (*setCallback)(struct QsSetter *p,
             const void *value, size_t size, void *userData);
+
+    // Set if the feeder parameter is constant.
+    bool isConstant;
 };

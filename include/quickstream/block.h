@@ -4,7 +4,7 @@
 
 
 /** \page block quickstream interfaces for blocks
- *
+
  */
  
 #include <inttypes.h>
@@ -12,7 +12,6 @@
 
 // QsParameter is the parameter queue
 struct QsParameter;
-struct QsOptions;
 struct QsBlock;
 
 
@@ -26,10 +25,6 @@ enum QsParameterType {
 
 
 
-/** bit flag used to mark the use of regular expressions to find
- * parameter with qsParameter functions
- */
-#define QS_PNAME_REGEX     (01)
 /** bit flag to mark keeping parameter get callback across restarts. */
 #define QS_KEEP_AT_RESTART (02)
 /** free get callback user data */
@@ -39,117 +34,6 @@ enum QsParameterType {
 /** queue up callback after work() */
 #define QS_Q_AFTER_WORK    (020)
 
-
-
-/** get the app that the block was loaded with
- 
- \param block the block
-
- \return a pointer to the app that loaded and owns block \p block.
-
- */
-extern
-struct QsBlock *qsBlockGetApp(struct QsBlock *block);
-
-
-
-/** get a block pointer from the block name
-
- \param app the app that the block was loaded with.
-
- \param bname is the name of the block.
-
- \return a pointer to the block with the name.
- */
-extern
-struct QsBlock *qsBlockGetBlockByName(struct QsApp *app, const char *bname);
-
-
-/** get a block name from the block pointer
-
- \param block is a pointer to the block.  If block is 0
- the current running block is used.
-
- \return a pointer to the block name string.
- The returned memory is managed by the block object.
- Do not write to it.
- */
-extern
-const char *qsBlockGetName(struct QsBlock *block);
-
-
-/** get the number of input ports and output ports for a block
-
- This function is only valid after the stream has started and before the
- stream has stopped.
-
- \param block is a pointer to the block.
-
- \param numIn if non-zero is filled with the number of input ports that
- the block has.
-
- \param numOut if non-zero is filled with the number of output ports
- that the block has.
-
- \return 0 on success and -1 if the block was not found.
- */
-extern
-int qsBlockGetNumPorts(struct QsBlock *block,
-        uint32_t *numIn, uint32_t *numOut);
-
-
-/** Get a pointer to a shared parameter object
-
- \param block the block which owns the parameter we are seeking.
- See qsBlockGetName().  If \p block is 0 the current running block
- will be used.
-
- \param pname is the name of the parameter, which is unique for a given
- block.
-
- \param isGetter is true than we are looking for a getter parameter,
- else we are looking for a setter parameter.  A getter parameter and a
- setter parameter may have the same name.
-
- \return a pointer to the parameter object, or 0 if not found.
-
- */
-extern
-struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
-        const char *pname, bool isGetter);
-
-
-/** Get the value entry size of a parameter object
-
- \param p is a pointer to the parameter object.
-
- \return the value entry size of a parameter object.
-
- */
-extern
-size_t qsParameterGetSize(struct QsParameter *p);
-
-
-/** Get the name of a parameter object
-
- \param p is a pointer to the parameter object.
-
- \return the value entry size of a parameter object.
-
- */
-extern
-const char *qsParameterGetName(struct QsParameter *p);
-
-
-/** Get the type of a parameter object
-
- \param p is a pointer to the parameter object.
-
- \return the type of a parameter object.
- 
- */
-extern
-enum QsParameterType qsParameterGetType(struct QsParameter *p);
 
 
 /** create an input parameter, or setter parameter
@@ -203,13 +87,29 @@ qsParameterSetterCreate(struct QsBlock *block, const char *pname,
         void *userData, uint32_t flags);
 
 
-/** create an output parameter, or getter parameter
+
+
+/** create an changing output parameter, or getter parameter
 
  */
 extern
 struct QsParameter *
 qsParameterGetterCreate(struct QsBlock *block, const char *pname,
         enum QsParameterType type, size_t psize);
+
+
+/** create an constant output parameter
+
+ Constant parameters are pushed to the any number of connected setter
+ parameters just before each stream graph start.  Constant parameters may
+ also be connected any number of other constant parameters.
+
+ */
+extern
+struct QsParameter *
+qsParameterConstantCreate(struct QsBlock *block, const char *pname,
+        enum QsParameterType type, size_t psize);
+
 
 
 
@@ -248,13 +148,9 @@ uint32_t qsParameterGetterPush(struct QsParameter *getter, const void *value);
     - **builder** we are getting description of the block and its'
         capabilities: all its' getter and setter parameters, its' optional
         fixed parameters with their default values, and it's limits on
-        connecting input ports and output ports.  The block only provides
-        a QsOptions structure through a getConfig() function.  The
-        QsOptions structure will contain all the information needed by the
-        builder program.
-
-        QsOptions structure provides the block documentation and/or URLs
-        to block documentation.
+        connecting input ports and output ports.  The block's internal
+        structure provides this information to the builder through the
+        API.
 
         A quickstream builder program may come in many forms, for example
         a GUI (graphical user interface) program or a command-line
@@ -262,11 +158,11 @@ uint32_t qsParameterGetterPush(struct QsParameter *getter, const void *value);
         same program the runs the flow in the stream graph.
 
         The block plugin module may provide a file named
-        BLOCKNAME_getConfig.so which is a DSO (dynamic shared object)
-        that contains the getConfig() function, where BLOCKNAME is the
+        BLOCK_config.so which is a DSO (dynamic shared object)
+        that contains the configure() function, where BLOCK is the
         plugin file name that contains the modules flow-time functions.
         The benefit of separating the plugin module into two DSO files is
-        that the getConfig file may not need to link to any libraries
+        that the config file may not need to link to any libraries
         that may be needed for the module to run at run/flow-time.
 
         For super blocks that create blocks,  bla bla bla.
@@ -275,45 +171,167 @@ uint32_t qsParameterGetterPush(struct QsParameter *getter, const void *value);
         this mode getConfig() is called before construct().   If there is
         a getConfig DSO file, then the getConfig() function in it must
         be the same as the getConfig() in the run/flow-time plugin DSO
-        file.  The optional file, named BLOCKNAME_getConfig.so, if it
+        file.  The optional file, named BLOCK_config.so, if it
         exists, is ignored in this **run** mode.
 */
 
 
 /** The block plugin configuration module callback function
 
-  The block plugin configuration module callback, \p getConfig(), is the
-  only required block plugin callback function.  \p getConfig() can only
-  call *builder* functions, or so called block builder functions.
-  It should not access hardware devices, or initialize anything, for that
-  would slow down the quickstream *builder* process.
+ The block plugin configuration module callback, \p configure(), is the
+ only required block plugin callback function.  \p configure() can only
+ call *builder* functions, or so called block builder functions.  It
+ should not access hardware devices, or initialize anything, for that
+ would make the quickstream *builder* process use more resources than
+ necessary.
 
-  \param thisBlock is a pointer to the block object that the module is loaded
-  for.  The passing of this argument is a little redundant given that the
-  setting the block argument for more most quickstream API (application
-  programming inferface) functions accept 0 as the current block.  But is does
-  remind the block writer that there exists a block object and they do not
-  need to create it.
+ The configure() function may setup options in it's block.
 
-  \return 0 on success, greater than 0 in the case where the DSO (dynamic shared
-  object) file should be unloaded, and less than 0 if there is a error that we
-  can't recover from.
+ \return 0 on success, greater than 0 in the case where the DSO (dynamic
+ shared object) file should be unloaded, and less than 0 if there is a
+ error that we can't recover from.
+
+ \memberof CBlockAPI
 
  */
-int configure(struct QsBlock *thisBlock);
+int configure(void);
 
 
 
-int preConstruct(struct QsBlock *block);
+/** optional construct() function
 
-int construct(struct QsOptions *options);
 
-int postConstruct(struct QsBlock *block);
+ /return 0 on success, and 1 to unload the block, and less than 0 on
+ error.
+
+ */
+int construct(void);
+
+/** optional destructor function
+
+ This function, if present, is called only once just before the block
+ is unloaded.
+
+ \memberof CBlockAPI
+ */
+void destroy(void);
+
+
+/** optional block start function
+ 
+ This function, if present, is called each time the stream starts
+ running, just before any block in the graph has it's \ref work()
+ function called.  We call this time the start of a flow cycle.  After
+ this is called \ref work() will be called in a regular fashion for
+ the duration of the flow cycle.
+ 
+ This function lets that block determine what the number of inputs and
+ outputs before it has it's \ref input() function called.  For "smarter"
+ blocks this can spawn a series of initialization interactions between
+ the "smarter" blocks in the stream graph.
+
+ The following functions may only be called in the block's start()
+ function: qsCreateOutputBuffer(), qsCreatePassThroughBuffer(),
+ qsSetInputThreshold(), qsSetInputReadPromise(), and
+ qsBlockGetName().
+ *
+ \param numInPorts is the number of input buffers in the inBuffers input
+ array.  numInPorts will be the same value for the duration of the
+ current flow cycle.
+
+ \param numOutPorts is the number of output buffers that this block is
+ writing to.  numOutPorts will be the same value for the duration of the
+ current flow cycle.
+
+ \return 0 on success, or non-zero on failure.
+ 
+ \memberof CBlockAPI
+ */
+int start(uint32_t numInPorts, uint32_t numOutPorts);
+
+
+/** Optional filter stop function
+ *
+ * This function, if present, is called each time the stream stops
+ * running, just after any filter in the stream has it's \ref input()
+ * function called for the last time in a flow/run cycle.
+ *
+ * \param numInPorts is the number of input buffers was in inBuffers input
+ * array.  numInPorts will be the same value as 173it was when the
+ * corresponding start() and input() was called.
+ *
+ * \param numOutPorts is the number of output buffers that this filter is
+ * writing to.  numOutPorts will be the same value as it was when the
+ * corresponding start() and input() was called.
+ *
+ * \return 0 on success, or non-zero on failure.
+ *
+ * \memberof CBlockAPI
+ */
+int stop(uint32_t numInPorts, uint32_t numOutPorts);
+
+/** optional filter start function
+ *
+ * This function, if present, is called each time the stream starts
+ * running, just before any filter in the stream has it's \ref input()
+ * function called.  We call this time the start of a flow cycle.  After
+ * this is called \ref input() will be called in a regular fashion for
+ * the duration of the flow cycle.
+ *
+ * This function lets that filter determine what the number of inputs and
+ * outputs before it has it's \ref input() function called.  For "smarter"
+ * filters this can spawn a series of initialization interactions between
+ * the "smarter" filters in the stream.
+ *
+ * The following functions may only be called in the filters start()
+ * function: qsCreateOutputBuffer(), qsCreatePassThroughBuffer(),
+ * qsSetInputThreshold(), qsSetInputReadPromise(), and
+ * qsGetFilterName().
+ *
+ * \param numInPorts is the number of input buffers in the inBuffers input
+ * array.  numInPorts will be the same value for the duration of the
+ * current flow cycle.
+ *
+ * \param numOutPorts is the number of output buffers that this filter is
+ * writing to.  numOutPorts will be the same value for the duration of the
+ * current flow cycle.
+ *
+ * \return 0 on success, or non-zero on failure.
+ *
+ * \memberof CFilterAPI
+ */
+int start(uint32_t numInPorts, uint32_t numOutPorts);
+
+
+/** Optional filter stop function
+ *
+ * This function, if present, is called each time the stream stops
+ * running, just after any filter in the stream has it's \ref input()
+ * function called for the last time in a flow/run cycle.
+ *
+ * \param numInPorts is the number of input buffers was in inBuffers input
+ * array.  numInPorts will be the same value as 173it was when the
+ * corresponding start() and input() was called.
+ *
+ * \param numOutPorts is the number of output buffers that this filter is
+ * writing to.  numOutPorts will be the same value as it was when the
+ * corresponding start() and input() was called.
+ *
+ * \return 0 on success, or non-zero on failure.
+ *
+ * \memberof CFilterAPI
+ */
+int stop(uint32_t numInPorts, uint32_t numOutPorts);
 
 
 
 int work(void *in[], const size_t lenIn[],
-         uint32_t numIn, uint32_t numOut);
+        uint32_t numIn, uint32_t numOut);
+
+int flush(void *buffer[], const size_t len[],
+        uint32_t numInputs, uint32_t numOutputs);
+
+
 
 
 #endif // #ifndef __qsblock_h__

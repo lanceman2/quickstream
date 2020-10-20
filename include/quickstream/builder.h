@@ -108,20 +108,143 @@ struct QsParameter;
 #define QS_PNAME_REGEX     (01)
 
 
+/** get the number of input ports and output ports for a block
+
+ This function is only valid after the stream has started and before the
+ stream has stopped.
+
+ \param block is a pointer to the block.
+
+ \param numIn if non-zero is filled with the number of input ports that
+ the block has.
+
+ \param numOut if non-zero is filled with the number of output ports
+ that the block has.
+
+ \return 0 on success and -1 if the block was not found.
+ */
+extern
+int qsBlockGetNumPorts(struct QsBlock *block,
+        uint32_t *numIn, uint32_t *numOut);
+
+
+
+/** get the app that the block was loaded with
+ 
+ \param block the block
+
+ \return a pointer to the app that loaded and owns block \p block.
+
+ */
+extern
+struct QsBlock *qsBlockGetApp(struct QsBlock *block);
+
+
+
+/** get a block pointer from the block name
+
+ \param app the app that the block was loaded with.
+
+ \param bname is the name of the block.
+
+ \return a pointer to the block with the name.
+ */
+extern
+struct QsBlock *qsBlockGetBlockByName(struct QsApp *app, const char *bname);
+
+
+/** get a block name from the block pointer
+
+ \param block is a pointer to the block.  If block is 0
+ the current running block is used.
+
+ \return a pointer to the block name string.
+ The returned memory is managed by the block object.
+ Do not write to it.
+ */
+extern
+const char *qsBlockGetName(struct QsBlock *block);
+
+
+/** Get a pointer to a shared parameter object
+
+ \param block the block which owns the parameter we are seeking.
+ See qsBlockGetName().  If \p block is 0 the current running block
+ will be used.
+
+ \param pname is the name of the parameter, which is unique for a given
+ block.
+
+ \param isGetter is true than we are looking for a getter parameter,
+ else we are looking for a setter parameter.  A getter parameter and a
+ setter parameter may have the same name.
+
+ \return a pointer to the parameter object, or 0 if not found.
+
+ */
+extern
+struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
+        const char *pname, bool isGetter);
+
+
+/** Get the value entry size of a parameter object
+
+ \param p is a pointer to the parameter object.
+
+ \return the value entry size of a parameter object.
+
+ */
+extern
+size_t qsParameterGetSize(struct QsParameter *p);
+
+
+/** Get the name of a parameter object
+
+ \param p is a pointer to the parameter object.
+
+ \return the value entry size of a parameter object.
+
+ */
+extern
+const char *qsParameterGetName(struct QsParameter *p);
+
+
+/** Get the type of a parameter object
+
+ \param p is a pointer to the parameter object.
+
+ \return the type of a parameter object.
+ 
+ */
+extern
+enum QsParameterType qsParameterGetType(struct QsParameter *p);
+
+
+
 /** connect two different block's parameters together
 
  Connect parameters from two different blocks.  The value goes from the
  \p from a setter parameter's block to the \p to a getter parameter's
  block.
 
- Sets up a data exchange from a getter parameter to a setter parameter.
+ Sets up a data exchange from a getter parameter to a setter parameter,
+ a constant parameter to a setter parameter, or a constant parameter to
+ another constant parameter.  Once a constant parameter is in the connected
+ graph of parameters the value of all parameters in the group will be
+ constant at flow-time.
+
  Each time the getter parameter changes the value is queued up and
- copied to the setter parameter
+ copied to the setter parameter.
 
- \param from pointer to the getter parameter to get values from.
+ \param from pointer to the getter parameter to get values from or
+ a constant parameter.  \p from may not be a pointer to a setter
+ parameter.
 
- \param to pointer to the setter parameter to be set with values from
-  the getter parameter.
+ \param to pointer to a setter parameter to be set with values from
+ the other \p from parameter.  This may also be constant parameter
+ if \p from is a pointer to another constant parameter.
+
+ We may not connect a getter parameter to a constant parameter.
 
  \return 0 on success, 1 if the \p to setter parameter is already
  connected to a getter parameter, or -1 on other failed cases.
