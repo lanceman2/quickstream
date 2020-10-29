@@ -1,9 +1,18 @@
 
 struct QsDictionary;
 struct QsApp;
-struct QsGetter;
-struct QsSetter;
 struct QsBlock;
+struct QsParameter;
+struct QsSetter;
+
+// For real stream I/O connections
+struct QsInput;
+struct QsOutput;
+
+// For Super Block stream I/O connections
+struct QsIn;
+struct QsOut;
+
 
 
 #define QS_IS_SUPERBLOCK  (001)
@@ -44,16 +53,11 @@ struct QsBlock {
 
     int (* start)(uint32_t numInputs, uint32_t numOutputs);
     int (* stop)(uint32_t numInputs, uint32_t numOutputs);
-    int (* work)(void *buffer[], const size_t len[],
-            uint32_t numInputs, uint32_t numOutputs);
-    // flush() gets called in place of work() when the stream is flushing;
-    // that is it is called until len[] is all zeroed and there is no
-    // filters feeding this block (filter).
+
+
+    // QS_IS_SUPERBLOCK  (001) or is QsSimpleBlock
     //
-    // But if flush() is not present, then work() is called in it's place
-    // in the same way that flush() would be called.
-    int (* flush)(void *buffer[], const size_t len[],
-            uint32_t numInputs, uint32_t numOutputs);
+    uint32_t flags;
 };
 
 
@@ -66,6 +70,24 @@ struct QsSimpleBlock {
     // lists of parameters owned by this block
     struct QsDictionary *getters;
     struct QsDictionary *setters;
+
+    // Super blocks can't have a work() or flush().  The super blocks
+    // are not used while the stream is flowing.  The super blocks are
+    // just flow-graph build-time construct.
+    //
+    int (* work)(void *buffer[], const size_t len[],
+            uint32_t numInputs, uint32_t numOutputs);
+    //
+    // flush() gets called in place of work() when the stream is flushing;
+    // that is it is called until len[] is all zeroed and there is no
+    // filters feeding this block (filter).
+    //
+    // But if flush() is not present, then work() is called in it's place
+    // in the same way that flush() would be called.
+    int (* flush)(void *buffer[], const size_t len[],
+            uint32_t numInputs, uint32_t numOutputs);
+
+
 
     // We queue up setCallbacks that need to be called in the owner block
     // thread before and/or after the work() call.  This will queue up
@@ -88,25 +110,79 @@ struct QsSimpleBlock {
     // ThreadPool.
     //
     struct QsBlock *next;
-
-    // QS_IS_SUPERBLOCK  (001)
-    //
-    uint32_t flags;
 };
 
 
 
 struct QsSuperBlock {
 
+    // The super block loads other blocks and sets up parameter and 
+    // input/output connections between them from both inside this block
+    // and outside this block.
+    //
+    // Inner blocks contained in this block may also be super blocks.
+
     // Inherit block.
     struct QsBlock block;
 
-    // The super block loads other blocks and sets up parameter and 
-    // input/output connections between them.
+    // Exposed parameters.  Only exposed parameters can be connected to
+    // outside the super block.  The super block builders must explicitly
+    // exposes parameters.  The super block does not make parameters of
+    // it's own.  It's just a shell, an intermediary to parameters
+    // inside blocks inside itself.
+    //
+    // A mapping from this super block into the inner simple block
+    // parameters.
+    //
+    // This super block is named from above by the builder that loaded
+    // this super block.
+    //
+    // A hierarchy of names is needed to keep from having parameters owned
+    // by inner blocks from having names that overlap with other
+    // parameters from other inner blocks.
+    //
+    // The parameters may be constant, getter, or setter in any inner
+    // block.
+    //
+    struct QsDictionary *parameters; // exposed
 
     // Blocks that this super block is proxying connections for this array
     // of pointers to blocks
     uint32_t numBlocks;
-    struct QsDictionary *blocks;
+    struct QsBlocks **blocks;
+
+
+    // This is not GNUradio.  Quickstream lets the blocks decide at
+    // bootstrap or flow start wither or not there are the correct number
+    // of input/output stream flow connections.  The port number is just
+    // an index into an array.
+
+    // Array of inputs.  The array index is the port number.
+    uint32_t numIns;
+    struct QsIn *ins;
+
+    // Array of outputs.  The array index is the port number.
+    uint32_t numOuts;
+    struct QsIn *outs;
 };
 
+
+struct QsIn {
+
+    // Each input port can only have one connection from an output port.
+
+    // The block feeding this input.
+    struct QsBlock *block;
+    uint32_t portNum; // array index
+};
+
+
+struct QsOut {
+
+    // Each stream output may connect to any number of input ports.
+
+    uint32_t numPorts;
+
+    struct QsBlock **blocks;
+    uint32_t *inputPorts; // array input index
+};

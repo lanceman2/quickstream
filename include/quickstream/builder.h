@@ -256,6 +256,18 @@ int qsParameterConnect(struct QsParameter *from,
         struct QsParameter *to);
 
 
+
+/** Super block exposing a parameter of an inner block
+
+ */
+extern
+int qsParameterExpose(struct QsBlock *superBlock, const char *pname,
+        struct QsParameter *parameter);
+
+
+
+
+
 /** connect the output of one block to the input of another block
  
   \param from connect from block \p from

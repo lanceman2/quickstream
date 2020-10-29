@@ -143,7 +143,7 @@ uint32_t qsParameterGetterPush(struct QsParameter *getter, const void *value);
 
  TODO: add this to the docs:
 
- There are two modes in which quickstream modules are loaded/created:
+ There are two modes in which quickstream runtime runs:
 
     - **builder** we are getting description of the block and its'
         capabilities: all its' getter and setter parameters, its' optional
@@ -158,14 +158,21 @@ uint32_t qsParameterGetterPush(struct QsParameter *getter, const void *value);
         same program the runs the flow in the stream graph.
 
         The block plugin module may provide a file named
-        BLOCK_config.so which is a DSO (dynamic shared object)
-        that contains the configure() function, where BLOCK is the
-        plugin file name that contains the modules flow-time functions.
-        The benefit of separating the plugin module into two DSO files is
-        that the config file may not need to link to any libraries
-        that may be needed for the module to run at run/flow-time.
+        BLOCK_bootstrap.so which is a DSO (dynamic shared object) that
+        contains the bootstrap() function, where BLOCK is the plugin file
+        name that contains the modules flow-time functions.  We use the
+        word bootstrap as it refers to a process of constructing without
+        external input.  https://en.wikipedia.org/wiki/Bootstrapping The
+        benefit of separating the plugin module into two DSO files is
+        that the bootstrap file may not need to link to any libraries that
+        may be needed for the module to run at run/flow-time.  To be
+        clear, we mean that bootstrap does not configure, and defines the
+        structure of the block in terms of just the q service uickbuild
+        *block* API and optional quickstream *build* API which can load
+        other blocks into super-blocks.
 
-        For super blocks that create blocks,  bla bla bla.
+        For super blocks that create blocks the bootstrap() function may
+        load other module blocks, and call their bootstrap() functions.
 
     - **run** we link and load more code and can run the flow graph.  In
         this mode getConfig() is called before construct().   If there is
@@ -176,16 +183,16 @@ uint32_t qsParameterGetterPush(struct QsParameter *getter, const void *value);
 */
 
 
-/** The block plugin configuration module callback function
+/** The block plugin bootstrap module callback function
 
- The block plugin configuration module callback, \p configure(), is the
- only required block plugin callback function.  \p configure() can only
- call *builder* functions, or so called block builder functions.  It
- should not access hardware devices, or initialize anything, for that
+ The block plugin module bootstrap callback, \p bootstrap(), is the only
+ required block plugin callback function.  \p bootstrap() can only call
+ *builder* and *block* functions, or so called block bootstrap functions.
+ It should not access hardware devices, or initialize anything, for that
  would make the quickstream *builder* process use more resources than
  necessary.
 
- The configure() function may setup options in it's block.
+ The bootstrap() function may setup options in it's block.
 
  \return 0 on success, greater than 0 in the case where the DSO (dynamic
  shared object) file should be unloaded, and less than 0 if there is a
@@ -194,7 +201,7 @@ uint32_t qsParameterGetterPush(struct QsParameter *getter, const void *value);
  \memberof CBlockAPI
 
  */
-int configure(void);
+int bootstrap(void);
 
 
 
