@@ -78,6 +78,8 @@ struct QsApp {
     // List of blocks.
     struct QsDictionary *blocks;
 
+
+
     // Blocks that have at least one output and no inputs are sources.
     //
     // The sources is set when the stream is ready or flowing.
@@ -109,4 +111,29 @@ struct QsApp {
     //
     uint32_t numThreadPools;
     struct QsThreadPool *threadPools;
+
+    // The main (master) thread waits on this conditional while the worker
+    // threads run the stream flow.
+    pthread_cond_t masterCond;
+    bool masterWaiting;
+
+    // This list of filter block connections is not used while the stream
+    // is running (flowing).  It's queried at stream start, and the
+    // QsSimpleBlock data structs are setup at startup.  The QsSimpleBlock
+    // data structures are used when the stream is running.
+    //
+    // qsBlockConnect() is not called at flow time.
+    //
+    // tallied filter block connections from qsBlockConnect():
+    struct QsConnection {
+
+        struct QsBlock *from; // from filter block
+        struct QsBlock *to;   // to filter block
+
+        uint32_t fromPortNum; // output port number for from filter block
+        uint32_t toPortNum;   // input port number for to filter block
+
+    } *connections; // malloc()ed array of connections
+
+    uint32_t numConnections;// length of connections array
 };

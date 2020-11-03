@@ -37,7 +37,7 @@
 
 #define QUICKSTREAM_VERSION  (STR(QS_MAJOR) ":" STR(QS_MINOR) ":" STR(QS_EDIT))
 
-
+#define QUICKSTREAM_URL   "https://github.com/lanceman2/quickstream"
 
 
 struct QsApp;
@@ -62,6 +62,11 @@ extern
 struct QsThreadPool *qsThreadPoolAddBlock(struct QsThreadPool *tp,
         struct QsBlock *block);
 
+
+extern
+struct QsThreadPool *qsThreadPoolremove(struct QsThreadPool *tp);
+
+
 extern
 void qsThreadPoolDestroy(struct QsThreadPool *tp);
 
@@ -84,9 +89,15 @@ extern
 int qsAppStop(struct QsApp *app);
 
 
-// run flow until it finishes
+// run flow until it finishes.  Or wait for work() to return after
+// qsAppHalt().
 extern
 int qsAppWait(struct QsApp *app);
+
+
+// Stop calling all work() functions, even if there is data in the stream.
+extern
+int qsAppHalt(struct QsApp *app);
 
 
 extern

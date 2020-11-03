@@ -6,7 +6,8 @@ libquickstream.so_SOURCES :=\
  Dictionary.c\
  block.c\
  parameter.c\
- app.c
+ app.c\
+ makeRingBuffer.c
 
 
 libquickstream.so_LDFLAGS := -lpthread -ldl -lrt

@@ -9,6 +9,7 @@
 SUBDIRS :=\
  include/quickstream\
  lib\
+ lib/quickstream/misc\
  bin\
  lib/quickstream/blocks/filters\
  lib/quickstream/blocks/controllers

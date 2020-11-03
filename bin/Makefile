@@ -10,7 +10,7 @@ XML2_LDFLAGS := $(shell pkg-config --libs libxml-2.0)
 G_COMPILE_RES := glib-compile-resources
 
 
-quickstream_SOURCES := quickstream.c
+quickstream_SOURCES := quickstream.c getOpt.c quickstream_usage.c
 quickstream_LDFLAGS := -L../lib -lquickstream -Wl,-rpath=\$$ORIGIN/../lib
 
 scribble_SOURCES := scribble.c

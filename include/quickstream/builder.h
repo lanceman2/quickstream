@@ -256,7 +256,6 @@ int qsParameterConnect(struct QsParameter *from,
         struct QsParameter *to);
 
 
-
 /** Super block exposing a parameter of an inner block
 
  */
@@ -265,7 +264,20 @@ int qsParameterExpose(struct QsBlock *superBlock, const char *pname,
         struct QsParameter *parameter);
 
 
+/** Super block exposing an input port of an inner block
 
+ */
+extern
+int qsBlockExposeInput(struct QsBlock *superBlock, uint32_t exposeInPort,
+        struct QsBlock *block, uint32_t inPort);
+
+
+/** Super block exposing an output port of an inner block
+
+ */
+extern
+int qsBlockExposeOutput(struct QsBlock *superBlock, uint32_t exposeOutPort,
+        struct QsBlock *block, uint32_t outPort);
 
 
 /** connect the output of one block to the input of another block
@@ -307,6 +319,10 @@ int qsBlockConnect(struct QsBlock *from, struct QsBlock *to,
 extern
 struct QsBlock *qsAppLoadBlock(struct QsApp *app);
 
+
+
+extern
+struct QsBlock *qsAppUnloadBlock(struct QsBlock *block);
 
 
 /** Iterate through the getter parameters via a callback function
