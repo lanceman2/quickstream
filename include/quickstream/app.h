@@ -45,30 +45,105 @@ struct QsThreadPool;
 struct QsBlock;
 
 
+/** Set the highest libquickstream spew level
+
+ \param level 0 for none, 1 for error, 2 for warning, 3 for notice, 4 for info,
+ and 5 for debug.
+*/
+extern
+void qsSetSpewLevel(int level);
+
+
+/** Get the compiled in highest spew level
+
+ The spew level may be set with qsSetSpewLevel(), but not higher than
+ what this returns.  If you need a higher spew level than this returns
+ than you'll need to recompile libquickstream.
+
+ /return 0 for none, 1 for error, 2 for warning, 3 for notice, 4 for info,
+ and 5 for debug.
+ */
+extern
+int qsGetLibSpewLevel(void);
+
+
+/** Create an app
+ 
+  A quickstream app is the highest level construct in the quickstream API
+  (application programming interface).  App manages building stream graphs
+  and running stream graphs.
+
+  \return an opaque pointer to an app object.
+ */
 extern
 struct QsApp *qsAppCreate(void);
 
+/** Destroy an app
 
+ 
+
+
+ /param app a pointer to an app object that was returned from qsAppCreate().
+
+ */
 extern
 void qsAppDestroy(struct QsApp *app);
 
 
-// maxThreads = 0 means use main thread to run qsAppFlow()
+/** Add a thread pool to run the flow stream
+
+ Thread pools (pools of threads) are used to run the flow stream graph.  We
+ allow there to be more than one thread pool so that thread core affinity may
+ be set with threads that are in thread pools with just one thread.
+
+ qsAppThreadPool() may not be called while the stream is flowing.
+
+ /param app is the quickstream app object that this new thread pool will
+ run blocks with.
+
+ When the app is destroyed the thread pool will be destroyed with it.
+
+ /param maxThread is the maximum number of thread that will be allowed to run.
+ The number of threads that can run in the pool is determined by demand.
+ The threads can be thought of as flowing between blocks in the flow graph.
+ If \p maxThread is 0 the main thread to run the flow stream when qsAppFlow()
+ is called.
+
+ \return a pointer to an opaque thread pool object.
+ */
 extern
-struct QsThreadPool *qsAppAddThreadPool(uint32_t maxThreads);
+struct QsThreadPool *qsAppThreadPool(struct QsApp *app, uint32_t maxThreads);
 
 
+/** Add a block to a thread pool
+ 
+ For each block added to a thread pool, the thread pool threads will run the
+ block's work() function as the stream flows.  The threads in the pool are
+ shared between all the blocks that are added.
+
+ /param tp a pointer to a thread pool object that was returned from a call
+ to qsAppThreadPool().
+
+ /param block who's work() function is called by a thread in this pool, as
+ the stream flows.
+ */
+
 extern
-struct QsThreadPool *qsThreadPoolAddBlock(struct QsThreadPool *tp,
+void qsThreadPoolAddBlock(struct QsThreadPool *tp,
         struct QsBlock *block);
 
+/** Remove a thread pool
+
+ Remove a thread pool from the app that this thread pool was created for.
+ The thread pool will be removed from the app that is was created with it.
+
+ \param tp a pointer to a thread pool object that was returned from a call
+ to qsAppThreadPool().
+
+*/
 
 extern
-struct QsThreadPool *qsThreadPoolremove(struct QsThreadPool *tp);
-
-
-extern
-void qsThreadPoolDestroy(struct QsThreadPool *tp);
+void qsThreadPoolRemove(struct QsThreadPool *tp);
 
 
 extern
