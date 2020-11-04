@@ -146,6 +146,15 @@ extern
 void qsThreadPoolRemove(struct QsThreadPool *tp);
 
 
+/** Ready the flow graph
+ 
+ Allocate the stream buffers and call the block start() functions, but
+ does not run the flow.
+
+ /param app a pointer to an app.
+
+ /return 0 on success
+ */
 extern
 int qsAppReady(struct QsApp *app);
 
@@ -153,6 +162,17 @@ int qsAppReady(struct QsApp *app);
 // If not running with just main thread this will return and then you can
 // call qsAppWait(), otherwise this will not return until the sources dry
 // up; so maybe never return without a signal and stuff.
+
+/** Begin the stream flow
+
+ Begin the stream flow by calling the work() functions of all source blocks
+ that are triggered.
+
+ /param app a pointer to the app object that is associated with the stream
+ graph.
+  
+ /return 0 on success
+ */
 extern
 int qsAppFlow(struct QsApp *app);
 
