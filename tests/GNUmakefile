@@ -13,6 +13,7 @@ endif
 BUILD_NO_INSTALL :=\
  tests/tests\
  021_debug\
+ 031_malloc_leak\
  180_Dictionary_test\
  165_DictionaryRemove_test\
  184_DictionaryRemove_test\
@@ -34,7 +35,7 @@ BUILD_NO_INSTALL :=\
 184_DictionaryRemove_test_SOURCES := 184_DictionaryRemove_test.c ../lib/Dictionary.c ../lib/debug.c
 190_DictionaryRemove_test_SOURCES := 190_DictionaryRemove_test.c ../lib/Dictionary.c ../lib/debug.c
 194_DictionaryDict_test_SOURCES := 194_DictionaryDict_test.c ../lib/Dictionary.c ../lib/debug.c
-
+031_malloc_leak_SOURCES := 031_malloc_leak.c
 
 
 ifeq ($(wildcard ../makefile)),)

@@ -1,0 +1,10 @@
+Tests for the quickstream software package
+
+At the start of the project the API is unstable, so at the start we tend
+to use the one program "quickstream" to run and test different parts of
+the API.  Had we wrote C code here to test different parts of the API,
+than we'd have more programs/code to change if the API changes.  The
+program "quickstream" can be used to test many parts of the API, though
+the test winds up aggregating more code, having less code to change if the
+API changes is a better trade-off.
+

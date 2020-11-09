@@ -198,7 +198,8 @@ static struct QsOption
 /*----------------------------------------------------------------------*/
     { "--dot", 'g', 0,                      false,
 
-        "print a graphviz dot file of the current graph to stdout."
+        "print a graphviz dot file of the current existing graphs to "
+        "stdout."
     },
 /*----------------------------------------------------------------------*/
     { "--help", 'h', 0,                     false/*arg_optional*/,
@@ -231,12 +232,17 @@ static struct QsOption
 
         "ready the streams.  This calls all the block's start()"
         " functions that exist and gets the stream ready to flow,"
-        " except for spawning worker flow threads."
+        " except for spawning worker flow threads.\n"
+        "\n"
+        "This option lets the use test the stream graph, and also "
+        "builds more information about the stream graph for printing "
+        "with the --display and --display-wait options."
     },
 /*----------------------------------------------------------------------*/
     { "--run", 'r', 0,                  false,
 
-        "run the all streams.  This readies the streams and runs them."
+        "run the all streams.  This readies the streams, if they have not"
+        " been yet, and runs them."
     },
 /*----------------------------------------------------------------------*/
     { "--sleep", 'S', "SEC",            false,
@@ -249,8 +255,13 @@ static struct QsOption
     { "--stream", 's', 0,               false,
 
         "create another stream.  Each time this option is given"
-        " another stream app is created, and all subsequent blocks are"
-        " loaded into this last stream app that is created."
+        " another stream app, QsApp, is created.  All subsequent blocks"
+        " are loaded into this last stream app that is created.  The "
+        "--ready, --run, --dot, --display, and --display-wait command "
+        "options are applied to all the streams.  The up-coming --block, "
+        "--connect, --plug, and --threads command options are applied to "
+        "the last created stream app.  If no --stream option was given a "
+        "stream app will be created automatically when it is needed."
     },
 /*----------------------------------------------------------------------*/
     { "--threads", 't', "NUM",          false,

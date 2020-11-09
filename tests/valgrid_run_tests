@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -e
+cd $(dirname ${BASH_SOURCE[0]})
+
+if ! which valgrind ; then
+    echo "valgrind was not found in your PATH"
+    exit 1
+fi
+
+export VALGRIND_RUN="valgrind\
+ --tool=memcheck\
+ --leak-check=full\
+ --trace-children=yes\
+ --show-leak-kinds=all\
+ --errors-for-leak-kinds=all\
+ --error-exitcode=1"
+
+
+
+exec ./run_tests $*

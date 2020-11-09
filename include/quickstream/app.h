@@ -60,7 +60,7 @@ void qsSetSpewLevel(int level);
  what this returns.  If you need a higher spew level than this returns
  than you'll need to recompile libquickstream.
 
- /return 0 for none, 1 for error, 2 for warning, 3 for notice, 4 for info,
+ \return 0 for none, 1 for error, 2 for warning, 3 for notice, 4 for info,
  and 5 for debug.
  */
 extern
@@ -83,7 +83,7 @@ struct QsApp *qsAppCreate(void);
  
 
 
- /param app a pointer to an app object that was returned from qsAppCreate().
+ \param app a pointer to an app object that was returned from qsAppCreate().
 
  */
 extern
@@ -98,12 +98,12 @@ void qsAppDestroy(struct QsApp *app);
 
  qsAppThreadPool() may not be called while the stream is flowing.
 
- /param app is the quickstream app object that this new thread pool will
+ \param app is the quickstream app object that this new thread pool will
  run blocks with.
 
  When the app is destroyed the thread pool will be destroyed with it.
 
- /param maxThread is the maximum number of thread that will be allowed to run.
+ \param maxThread is the maximum number of thread that will be allowed to run.
  The number of threads that can run in the pool is determined by demand.
  The threads can be thought of as flowing between blocks in the flow graph.
  If \p maxThread is 0 the main thread to run the flow stream when qsAppFlow()
@@ -121,10 +121,10 @@ struct QsThreadPool *qsAppThreadPool(struct QsApp *app, uint32_t maxThreads);
  block's work() function as the stream flows.  The threads in the pool are
  shared between all the blocks that are added.
 
- /param tp a pointer to a thread pool object that was returned from a call
+ \param tp a pointer to a thread pool object that was returned from a call
  to qsAppThreadPool().
 
- /param block who's work() function is called by a thread in this pool, as
+ \param block who's work() function is called by a thread in this pool, as
  the stream flows.
  */
 
@@ -151,52 +151,102 @@ void qsThreadPoolRemove(struct QsThreadPool *tp);
  Allocate the stream buffers and call the block start() functions, but
  does not run the flow.
 
- /param app a pointer to an app.
+ \param app a pointer to an app.
 
- /return 0 on success
+ \return 0 on success
  */
 extern
 int qsAppReady(struct QsApp *app);
 
 
-// If not running with just main thread this will return and then you can
-// call qsAppWait(), otherwise this will not return until the sources dry
-// up; so maybe never return without a signal and stuff.
+/** Wait for the flows to finish
+ 
+ This call will block until the stream flow is finished.
+
+ If there are no worker threads, qsAppWait() will just return 0 and do
+ nothing.
+
+ \param app a pointer to the app object that is associated with the stream
+ graph that we are waiting to finish flowing.
+
+ \return 0 if the call waited at all, 1 if the call did not wait, and less
+ than zero on error.
+ */
+extern
+int qsAppWait(struct QsApp *app);
+
 
 /** Begin the stream flow
 
  Begin the stream flow by calling the work() functions of all source blocks
  that are triggered.
 
- /param app a pointer to the app object that is associated with the stream
+ If not running with just main thread this will return and then you can
+ call qsAppWait(), otherwise this will not return until the sources dry
+ up; so maybe never return without a signal.
+
+ \param app a pointer to the app object that is associated with the stream
  graph.
-  
- /return 0 on success
+
+ \return 0 on success
  */
 extern
 int qsAppFlow(struct QsApp *app);
 
 
-// stop feeding the sources, wait for full flush, interrupt file
-// descriptor polling, cond_signal all worker threads, wait for all
-// threads to return, and then return with just main thread running.
+/** Call all the block's stop() functions
+
+ Call all the block's stop() functions in the reverse order in which the
+ blocks were loaded.
+
+ The stream must not be a flowing state. qsAppWait() and qsAppHalt() can
+ be used to wait for the stream to come to a non-flowing state for a flowing
+ state.
+
+ \param app a pointer to the app object that is associated with the stream
+ graph that we are waiting to finish flowing.
+
+ \return 0 on success, and greater than zero if any of the block stop()
+ functions returned greater than zero and none returned less than 0, and
+ less than zero if any of the block's stop() functions returned less than
+ zero.
+ */
 extern
 int qsAppStop(struct QsApp *app);
 
 
-// run flow until it finishes.  Or wait for work() to return after
-// qsAppHalt().
-extern
-int qsAppWait(struct QsApp *app);
+/** Halt the flow
 
+ Stop calling all work() functions, even if there is data in the stream.
 
-// Stop calling all work() functions, even if there is data in the stream.
+ \param app a pointer to the app object that is associated with the stream
+ graph that we want to halt the flow in.
+
+ \return 0 on success and greater than 0 on a non-fatal error, and less
+ than zero on a fatal error.
+ */
 extern
 int qsAppHalt(struct QsApp *app);
 
 
+/** Print a vizgraph dot file for the graph
+ 
+ Print a vizgraph dot file for the graph to a libc stream file.
+
+ \param app a pointer to the app object that is associated with the stream
+ graph that we print.  If app is 0 than all quickstream apps in the current
+ process will be printed.
+
+ \param file the libc stream file to print the dot graph to.  If file is 0 then
+ the standard output stream will be printed to.
+
+ \param flags print option bit flags.
+
+ \return 0 on success and greater than zero if there is no quickstream app, and
+ less than zero on other error.
+ */
 extern
-int asAppPrintDot(struct QsApp *app, uint32_t flags);
+int asAppPrintDot(struct QsApp *app, FILE *file, uint32_t flags);
 
 
 extern

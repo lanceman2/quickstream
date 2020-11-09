@@ -73,11 +73,20 @@ enum QsAppFlowState {
 };
 
 
+// We keep a list of 
+struct QsBootstrapCallbacks;
+
+
 struct QsApp {
 
-    // List of blocks.
+    // List of blocks.  Indexed by name.
     struct QsDictionary *blocks;
 
+
+    // We keep a list of bootstrap callbacks which get called once
+    // for each block that exists in this app.  This lets blocks
+    // make some changes to other blocks at block bootstrap time.
+    struct QsBootstrapCallbacks *bootstrapCallbacks;
 
 
     // Blocks that have at least one output and no inputs are sources.

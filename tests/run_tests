@@ -8,6 +8,7 @@
 set -euo pipefail
 shopt -s nullglob
 
+
 cd $(dirname ${BASH_SOURCE[0]})
 
 make
@@ -15,14 +16,22 @@ make
 
 files=([0-9][0-9][0-9]*)
 num=0
-for run in "${files[@]}" ; do
-    if [ -x $run ] ; then
+if [ -z "$*" ] ; then
+    for run in "${files[@]}" ; do
+        if [ -x $run ] ; then
+            tests[$num]=$run
+            let num=$num+1
+        fi
+    done
+else
+    # There was a list of arguments that are programs to run:
+    for run in ${*} ; do
         tests[$num]=$run
         let num=$num+1
-    fi
-done
+    done
+fi
 
-
+VALGRIND_RUN=${VALGRIND_RUN:=""}
 i=1
 pass=0
 fail=0
@@ -33,7 +42,7 @@ echo "                RUNNING $num TESTS"
 echo "  ================================================"
 for run in "${tests[@]}" ; do
     echo "   [ $i / $num ] === running: $run"
-    if ./$run ; then
+    if ${VALGRIND_RUN} ./$run ; then
         let pass=$pass+1
         echo "$run === PASSED"
         passPrograms="$passPrograms ./$run"
@@ -45,14 +54,21 @@ for run in "${tests[@]}" ; do
 
     let i=$i+1
 done
+
+withValgrind="WITHOUT VALGRIND"
+if [ -n "$VALGRIND_RUN" ] ; then
+    withValgrind="WITH VALGRIND"
+fi
+
 cat << EOF
+
 
    [ $pass / $num ] PASSED: $passPrograms
    [ $fail / $num ] FAILED: $failPrograms
 
 
   ===============================================================
-                     TOTAL TEST RESULTS
+              TOTAL TEST RESULTS ($withValgrind)
   ===============================================================
              [ $pass / $num ] PASSED
              [ $fail / $num ] FAILED

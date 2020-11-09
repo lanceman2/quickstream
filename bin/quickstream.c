@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
+#include <stdlib.h>
 #include "../lib/debug.h"
 #include "../include/quickstream/app.h"
 #include "getOpt.h"
@@ -25,7 +26,11 @@ int main(int argc, const char * const *argv) {
     int i = 1;
     const char *arg = 0;
 
+    // Current app:
     struct QsApp *app = 0;
+    // 
+    uint32_t numApps = 0;
+    struct QsApp **apps = 0;
 
     qsSetSpewLevel(DEFAULT_SPEW_LEVEL);
 
@@ -35,6 +40,13 @@ int main(int argc, const char * const *argv) {
 
         switch(c) {
 
+            // We put the exiting cases before the non-exiting cases in
+            // this switch.  Some errors cause an exit in what would be
+            // non-exiting cases.
+
+            /////////////////////////////////////////////////////////////
+            //               EXITING CASES                             //
+            /////////////////////////////////////////////////////////////
             case -1:
             case '*':
                 fprintf(stderr, "Bad option: %s\n\n", arg);
@@ -50,6 +62,22 @@ int main(int argc, const char * const *argv) {
                 printf("%s\n", QUICKSTREAM_VERSION);
                 return 0;
 
+            /////////////////////////////////////////////////////////////
+            //           NON-EXITING CASES                             //
+            /////////////////////////////////////////////////////////////
+            case 's':
+
+                app = qsAppCreate();
+                ASSERT(app);
+                apps = realloc(apps, (++numApps)*sizeof(*apps));
+                ASSERT(apps, "realloc(%p,%zu) failed", apps,
+                        numApps*sizeof(*apps));
+                apps[numApps-1] = app;
+
+                break;
+            case 'S':
+
+                break;
             case 'v':
                 if(!arg) {
                     fprintf(stderr, "--verbose with no level\n");
@@ -96,9 +124,16 @@ int main(int argc, const char * const *argv) {
         }
     }
 
-    app = qsAppCreate();
-
-    qsAppDestroy(app);
+    if(apps) {
+        // a is a dummy QsApp pointer iterator.
+        struct QsApp **a = apps + (numApps - 1);
+        while(a >= apps) {
+            qsAppDestroy(*a);
+            --a;
+        }
+        // Free the array of pointers.
+        free(apps);
+    }
 
     return 0;
 }
