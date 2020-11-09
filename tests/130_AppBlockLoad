@@ -1,0 +1,7 @@
+#/bin/bash
+
+
+../bin/quickstream --block tests/dummy
+
+exec ../bin/quickstream --stream --stream --stream
+

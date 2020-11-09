@@ -314,15 +314,14 @@ int qsBlockConnect(struct QsBlock *from, struct QsBlock *to,
   \param app the app that this block will belong to.
 
   \return a pointer to the block or 0 on error.
-
  */
 extern
-struct QsBlock *qsAppLoadBlock(struct QsApp *app);
+struct QsBlock *qsAppBlockLoad(struct QsApp *app);
 
 
 
 extern
-struct QsBlock *qsAppUnloadBlock(struct QsBlock *block);
+struct QsBlock *qsAppBlockUnload(struct QsBlock *block);
 
 
 /** Iterate through the getter parameters via a callback function
