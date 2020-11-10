@@ -508,19 +508,22 @@ int main(int argc, char **argv) {
         if(argc != 2 || n != 2 ||
                 argv[1][0] != '-' || 
                 (argv[1][1] != 'c' && argv[1][1] != 'h' &&
+                 argv[1][1] != 'H' &&
                  argv[1][1] != 'i' && argv[1][1] != 'o' &&
                  argv[1][1] != 'O' && argv[1][1] != 'w')
                 || argv[1][2] != '\0'
         ) {
-            printf("   Usage: %s [ -c | -h | -t ]\n"
+            printf("    Usage: %s [ -c | -h | -H | -i | -o | -O | -w ]\n"
                 "\n"
-                "  Generate HTML, text, and C code that is related\n"
+                "    Generate HTML, text, and C code that is related\n"
                 "  to the program quickstream.\n"
-                "  This program helps us keep documention and code\n"
+                "\n"
+                "    This program helps us keep documention and code\n"
                 "  consistent, by putting the command-line options\n"
                 "  documentation and code in one file.\n"
-                "  Returns 0 on success and 1 on error.  This\n"
-                "  program always prints to stdout when successful.\n"
+                "  Returns 0 on success and 1 on error unless stated\n"
+                "  otherwise.  This program always prints to stdout\n"
+                "  when successful.\n"
                 "\n"
                 " -----------------------------------------\n"
                 "              OPTIONS\n"
@@ -529,6 +532,8 @@ int main(int argc, char **argv) {
                 "    -c  print the C code of the argument options\n"
                 "\n"
                 "    -h  print --help text for quickstream\n"
+                "\n"
+                "    -H  print --help test for quickstream and exit 1\n"
                 "\n"
                 "    -i  print intro in HTML\n"
                 "\n"
@@ -609,6 +614,7 @@ int main(int argc, char **argv) {
             return 0;
 
         case 'h':
+        case 'H':
             s2 = getCols(STDOUT_FILENO) - 1;
             if(s2 > 200) s2 = 200;
             if(s2 < 40) s2 = 40;
@@ -631,7 +637,11 @@ int main(int argc, char **argv) {
                 printf("\n");
                 ++opt;
             }
-            return 0;
+            if(argv[1][1] == 'h')
+                return 0; // no error
+
+            // argv[1][1] == 'H'
+            return 1; // error
 
         case 'i':
             printHtml(usage, 4, 76);

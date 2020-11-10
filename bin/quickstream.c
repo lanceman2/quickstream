@@ -8,7 +8,8 @@
 #include "../lib/quickstream/misc/qsOptions.h"
 
 // From quickstream_usage.c
-extern int usage(int fd);
+// usage() does not return, it will exit.
+extern void usage(int fd, const char *opt);
 
 
 static void gdb_catcher(int signum) {
@@ -50,38 +51,36 @@ int main(int argc, const char * const *argv) {
             case -1:
             case '*':
                 fprintf(stderr, "Bad option: %s\n\n", arg);
-                return usage(STDERR_FILENO);
-
+                // this will exit with error.
+                usage(STDERR_FILENO, "-H");
             case '?':
             case 'h':
                 // The --help option get stdout and all the error
                 // cases get stderr.
-                return usage(STDOUT_FILENO);
-
-            case 'V':
+                usage(STDOUT_FILENO, 0);
+            case 'V': //--version
                 printf("%s\n", QUICKSTREAM_VERSION);
                 return 0;
 
             /////////////////////////////////////////////////////////////
             //           NON-EXITING CASES                             //
             /////////////////////////////////////////////////////////////
-            case 's':
-
+            case 's': // --stream
                 app = qsAppCreate();
                 ASSERT(app);
                 apps = realloc(apps, (++numApps)*sizeof(*apps));
                 ASSERT(apps, "realloc(%p,%zu) failed", apps,
                         numApps*sizeof(*apps));
                 apps[numApps-1] = app;
-
                 break;
-            case 'S':
+            case 'S': // sleep SECONDS
 
                 break;
             case 'v':
                 if(!arg) {
                     fprintf(stderr, "--verbose with no level\n");
-                    return usage(STDERR_FILENO);
+                    // this will exit with error.
+                    usage(STDERR_FILENO, "-H");
                 }
                 {
                     int level;
@@ -121,6 +120,12 @@ int main(int argc, const char * const *argv) {
                     ++i;
                     break;
                 }
+
+                default:
+                // This should not happen.
+                fprintf(stderr, "unknown option character: %c\n", c);
+                // this will exit with error.
+                usage(STDERR_FILENO, "-H");
         }
     }
 

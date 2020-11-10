@@ -3,10 +3,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "../lib/debug.h"
 
-int usage(int fd) {
+void usage(int fd, const char *opt) {
+
+    if(opt == 0) opt = "-h";
 
     // This usage() is a little odd.  It launches another program to
     // display the program Usage.  Why?  We put the --help, man pages,
@@ -48,7 +52,7 @@ int usage(int fd) {
     while(l && buf[l] != '/') --l;
     if(l == 0) {
         printf("quickstreamHelp was not found\n");
-        return 1;
+        exit(1);
     }
 
     // now buf[l] == '/'
@@ -61,9 +65,24 @@ int usage(int fd) {
         // Make the quickstreamHelp write to stderr.
         dup2(fd, STDOUT_FILENO);
 
-    execl(buf, buf, "-h", NULL);
+    pid_t pid = fork();
 
-    fprintf(stderr, "execl(\"%s\",,) failed\n", buf);
+    if(pid == -1) {
+        fprintf(stderr, "fork() failed\n");
+        exit(1);
+    }
 
-    return 1; // non-zero error code, fail.
+    if(pid == 0) {
+        // child
+        execl(buf, buf, opt, NULL);
+        fprintf(stderr, "execl(\"%s\",,) failed\n", buf);
+        exit(1); // non-zero error code, fail.
+    }
+    // I am the parent
+    int statval = 1;
+    wait(&statval);
+    if(WIFEXITED(statval))
+        exit(WEXITSTATUS(statval));
+    fprintf(stderr, "Child did not terminate with exit\n");
+    exit(1);
 }

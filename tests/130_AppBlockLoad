@@ -1,5 +1,6 @@
 #/bin/bash
 
+set -e
 
 ../bin/quickstream --block tests/dummy
 
