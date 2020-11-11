@@ -8,9 +8,9 @@
 
 #include "../lib/debug.h"
 
-void usage(int fd, const char *opt) {
 
-    if(opt == 0) opt = "-h";
+// this does not return.
+void usage(int fd) {
 
     // This usage() is a little odd.  It launches another program to
     // display the program Usage.  Why?  We put the --help, man pages,
@@ -74,7 +74,7 @@ void usage(int fd, const char *opt) {
 
     if(pid == 0) {
         // child
-        execl(buf, buf, opt, NULL);
+        execl(buf, buf, "-h", NULL);
         fprintf(stderr, "execl(\"%s\",,) failed\n", buf);
         exit(1); // non-zero error code, fail.
     }

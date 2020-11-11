@@ -1,12 +1,13 @@
 #/bin/bash
 
+set -e
+
 # Seeing if it can run and with no memory leaks.
 #
 # Checks qsAppCreate() and qsAppDestroy() many times.
 
 
-../bin/quickstream --stream
-../bin/quickstream --stream --stream
+../bin/quickstream --stream # once
+../bin/quickstream --stream --stream # twice
 
-exec ../bin/quickstream --stream --stream --stream
-
+exec ../bin/quickstream --stream --stream --stream # three

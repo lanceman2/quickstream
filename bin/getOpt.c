@@ -45,12 +45,14 @@ int getOpt(int argc, const char * const *argv, int *i,
                     }
                 }
             }
+            return '*'; // Not an option.
         }
         // Fall through case:
         //
         //  example:  -aclm
         //             ^
     }
+
 
     // arg points like for example:  -aclm
     //                                ^

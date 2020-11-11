@@ -9,7 +9,7 @@
 
 // From quickstream_usage.c
 // usage() does not return, it will exit.
-extern void usage(int fd, const char *opt);
+extern void usage(int fd);
 
 
 static void gdb_catcher(int signum) {
@@ -52,12 +52,12 @@ int main(int argc, const char * const *argv) {
             case '*':
                 fprintf(stderr, "Bad option: %s\n\n", arg);
                 // this will exit with error.
-                usage(STDERR_FILENO, "-H");
+                return 1;
             case '?':
             case 'h':
                 // The --help option get stdout and all the error
                 // cases get stderr.
-                usage(STDOUT_FILENO, 0);
+                usage(STDOUT_FILENO);
             case 'V': //--version
                 printf("%s\n", QUICKSTREAM_VERSION);
                 return 0;
@@ -79,8 +79,7 @@ int main(int argc, const char * const *argv) {
             case 'v':
                 if(!arg) {
                     fprintf(stderr, "--verbose with no level\n");
-                    // this will exit with error.
-                    usage(STDERR_FILENO, "-H");
+                    return 1;
                 }
                 {
                     int level;
@@ -122,10 +121,14 @@ int main(int argc, const char * const *argv) {
                 }
 
                 default:
-                // This should not happen.
+                // This should not happen, unless the options are not
+                // coded correctly.  We are missing a case for this
+                // char.
+                ERROR("BAD CODE: Missing case for option character: "
+                        "%c opt=%s arg=%s\n", c, argv[i-1], arg);
                 fprintf(stderr, "unknown option character: %c\n", c);
                 // this will exit with error.
-                usage(STDERR_FILENO, "-H");
+                return 1;
         }
     }
 
