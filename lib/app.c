@@ -7,7 +7,8 @@
 
 #include "debug.h"
 #include "Dictionary.h"
-#include "app.h" // private interfaces
+#include "app.h"
+#include "builder.h"
 
 
 struct QsApp *qsAppCreate(void) {
@@ -15,6 +16,8 @@ struct QsApp *qsAppCreate(void) {
     struct QsApp *app = calloc(1, sizeof(*app));
     ASSERT(app, "calloc(1,%zu) failed", sizeof(*app));
     app->blocks = qsDictionaryCreate();
+
+    app->mainThread = pthread_self();
 
     return app;
 }

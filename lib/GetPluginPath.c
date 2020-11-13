@@ -3,20 +3,17 @@
 #include <unistd.h>
 
 #include "debug.h"
+#include "builder.h"
 
-#define DIR_CHAR ('/')
 
 //
 // Returned malloc() memory must be free()ed.
 // or 0 if it's not found.
 //
-// example: category = "filters/"
-//
 // This returns a value if we can access it with the composed path.
 //
 //
-static char *GetPluginPathFromEnv(const char *envs,
-        const char *category,
+static inline char *GetPluginPathFromEnv(const char *envs,
         const char *name, const char *suffix)
 {
     char *env = 0;
@@ -71,11 +68,11 @@ static char *GetPluginPathFromEnv(const char *envs,
 
     }
 
-    // len = strlen("$env" + '/' + category + name + ".so")
+    // len = strlen("$env" + '/' + name + ".so")
     // More than long enough.
     size_t suffixLen = strlen(suffix);
 
-    const ssize_t len = envLen + strlen(category) +
+    const ssize_t len = envLen +
             strlen(name) + suffixLen + 3 /* for '//' and '\0' */;
 
     // In case it's stupid long...
@@ -90,7 +87,7 @@ static char *GetPluginPathFromEnv(const char *envs,
 
     // So now envPaths[] is an array of strings that is Null terminated.
     for(char **path = envPaths; *path; ++path) {
-        snprintf(buf, len, "%s/%s%s%s", *path, category, name, suffix);
+        snprintf(buf, len, "%s/%s%s", *path, name, suffix);
 
         if(access(buf, R_OK) == 0) {
             // No memory leaks here:
@@ -115,11 +112,9 @@ static char *GetPluginPathFromEnv(const char *envs,
 // /proc/<PID>, which PID is the processes id number, like 2342.  Note,
 // this is linux specific code using the linux /proc/ file system.
 //
-// example: category = "filters/"
-//
 // The returned pointer must be free()ed.
 static inline
-char *_GetPluginPath(const char *prefix, const char *category,
+char *_GetPluginPath(const char *prefix,
         const char *name, const char *suffix)
 {
     DASSERT(name && strlen(name) >= 1);
@@ -143,39 +138,12 @@ char *_GetPluginPath(const char *prefix, const char *category,
         return path;
     }
 
-    DASSERT(category && strlen(category) >= 1);
+    char *buf = GetPluginPathFromEnv("QS_BLOCK_PATH", name, suffix);
+    if(buf) return buf;
 
-    char *buf;
-
-    if(strcmp(category, "filters/") == 0) {
-        if((buf = GetPluginPathFromEnv("QS_MODULE_PATH", category,
-                        name, suffix)))
-            return buf;
-        if((buf = GetPluginPathFromEnv("QS_FILTER_PATH", "",
-                        name, suffix)))
-            return buf;
-    } else if(strcmp(category, "controllers/") == 0) {
-        if((buf = GetPluginPathFromEnv("QS_MODULE_PATH", category,
-                        name, suffix)))
-            return buf;
-        if((buf = GetPluginPathFromEnv("QS_CONTROLLER_PATH", "",
-                        name, suffix)))
-            return buf;
-    } else if(strcmp(category, "run/") == 0) {
-        if((buf = GetPluginPathFromEnv("QS_MODULE_PATH", category,
-                        name, suffix)))
-            return buf;
-        if((buf = GetPluginPathFromEnv("QS_RUN_PATH", "",
-                        name, suffix)))
-            return buf;
-    } else
-        ASSERT(0, "category != \"filters/\" or \"controllers/\" Need "
-                "to add category \"%s\"", category);
-
-
-    // postLen = strlen("/lib/quickstream/plugins/" + category + name)
+    // postLen = strlen("/lib/quickstream/blocks/" + name)
     const ssize_t postLen =
-        strlen(prefix) + strlen(category) +
+        strlen(prefix) +
             /* for '/' and suffix (like ".so") and '\0' */
         strlen(name) + suffixLen + 2;
     DASSERT(postLen > 0 && postLen < 1024*1024);
@@ -223,11 +191,9 @@ char *_GetPluginPath(const char *prefix, const char *category,
     // If we counted chars correctly strcat() should be safe.
 
     DASSERT(strlen(buf) + strlen(prefix) +
-            strlen(category) +
             strlen(name) + 1 < (size_t) bufLen);
 
     strcat(buf, prefix);
-    strcat(buf, category);
     strcat(buf, name);
 
     // Reuse the bufLen variable.
@@ -242,12 +208,14 @@ char *_GetPluginPath(const char *prefix, const char *category,
 
 // This is the only exposed interface in this file.
 //
-char *GetPluginPath(const char *prefix, const char *category,
+char *GetPluginPath(const char *prefix,
         const char *name, const char *suffix) {
 
-    char *ret = _GetPluginPath(prefix, category, name, suffix);
+    char *ret = _GetPluginPath(prefix, name, suffix);
 
     DASSERT(ret);
+    // It's a full path.
+    DASSERT(ret[0] == DIR_CHAR);
 
     // ret should be a malloc() allocated string a full path to a file, or
     // a best guess of that, but at this point we are not sure the file

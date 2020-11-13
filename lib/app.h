@@ -82,6 +82,8 @@ struct QsApp {
     // List of blocks.  Indexed by name.
     struct QsDictionary *blocks;
 
+    // The thread that created this app structure:
+    pthread_t mainThread;
 
     // We keep a list of bootstrap callbacks which get called once
     // for each block that exists in this app.  This lets blocks

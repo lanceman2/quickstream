@@ -92,7 +92,7 @@ int main(int argc, const char * const *argv) {
                 }
                 {
                     const char *name = 0;
-                    if(i<argc && argv[i+1][0] != '-') {
+                    if((i+1)<argc && argv[i+1][0] != '-') {
                         ++i;
                         name = argv[i];
                     }
