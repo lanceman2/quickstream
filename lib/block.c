@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <alloca.h>
 #include <inttypes.h>
+#include <dlfcn.h>
 #include <pthread.h>
 
 #include "../include/quickstream/builder.h"
@@ -15,8 +16,19 @@
 #include "debug.h"
 
 
+#if 0
+static
+int FindHandle_cb(const char *blockName, struct QsBlock *b, void **dlhh) {
 
-struct QsBlock *qsAppBlockLoad(struct QsApp *app, const char *fileName,
+    if(b->dlhandle == *dlhh) {
+        *dlhh = 0;
+        return 1; // We are done.
+    }
+    return 0; // keep looking
+}
+#endif
+
+struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         const char *blockName_in) {
 
     // 0. Get block name
@@ -24,11 +36,11 @@ struct QsBlock *qsAppBlockLoad(struct QsApp *app, const char *fileName,
     // 2. check if already dlopen()ed and fix
     // 3. see if isSuperBlock is defined.
     // 4. Allocate the correct struct.
-    // 5. add block to app
+    // 5. add block to graph
     // 6. Call bootscrap()
 
-    DASSERT(app);
-    ASSERT(app->mainThread == pthread_self(), "Not app main thread");
+    DASSERT(graph);
+    ASSERT(graph->mainThread == pthread_self(), "Not graph main thread");
     DASSERT(fileName);
     DASSERT(fileName[0]);
 
@@ -39,11 +51,12 @@ struct QsBlock *qsAppBlockLoad(struct QsApp *app, const char *fileName,
 
         // Generate a unique block name.
         //
-        // len from:  fileName + '_2345' + '\0'
-        size_t len = strlen(fileName) + 6;
+        // alen from:  fileName + '_2345' + '\0'
+        size_t len = strlen(fileName);
+        size_t alen = len + 6;
         // Don't blow the stack.
-        ASSERT(len < 1024*10);
-        blockName = alloca(len);
+        ASSERT(alen < 1024*10);
+        blockName = alloca(alen);
         strcpy(blockName, fileName);
         // Take off '.so' on the end if there is one:
         // example blockName = "test/foo/filename.so"
@@ -55,7 +68,7 @@ struct QsBlock *qsAppBlockLoad(struct QsApp *app, const char *fileName,
 
         // Strip off leading '/':
         while(*blockName == DIR_CHAR) ++blockName;
- 
+
         {
             // Strip off the last "/blocks/" if there is one
 #define BLOCKS    DIR_STR "blocks" DIR_STR
@@ -87,7 +100,7 @@ struct QsBlock *qsAppBlockLoad(struct QsApp *app, const char *fileName,
         char *ending = blockName + strlen(blockName);
         DASSERT(strlen(blockName));
 
-        while(qsDictionaryFind(app->blocks, blockName)) {
+        while(qsDictionaryFind(graph->blocks, blockName)) {
            if(++count >= 1000) {
                 ERROR("Can't get Block name \"%s\" is in use already",
                         blockName);
@@ -98,7 +111,7 @@ struct QsBlock *qsAppBlockLoad(struct QsApp *app, const char *fileName,
 
         DSPEW("Found unique block name \"%s\"", blockName);
 
-    } else if(qsDictionaryFind(app->blocks, blockName)) {
+    } else if(qsDictionaryFind(graph->blocks, blockName)) {
         //
         // Because they requested a particular name and the name is
         // already taken, we can fail here.
@@ -110,54 +123,85 @@ struct QsBlock *qsAppBlockLoad(struct QsApp *app, const char *fileName,
     // We now have what will be a valid block name.
 
 
-    //char *path = GetPluginPath(QS_BLOCK_PREFIX, fileName, ".so");
+    char *path = GetPluginPath(QS_BLOCK_PREFIX, fileName, ".so");
 
-    //int fd = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+    void *dlhandle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
 
+    // See if this dlhandle has been created before in another block in
+    // this graph.
+
+    if(!dlhandle) {
+        WARN("dlopen(\"%s\",) failed: %s", path, dlerror());
+        free(path);
+        return 0;
+    }
+
+    // TODO: HERE check that this DSO is not loaded in any graphs.
+
+
+    struct QsBlock *b;
     
+    if(dlsym(dlhandle, "isSuperBlock")) {
+        // SUPER BLOCK
+        struct QsSuperBlock *suB = calloc(1, sizeof(*suB));
+        ASSERT(suB, "calloc(1, %zu) failed", sizeof(*suB));
+        b = &suB->block;
+        b->isSuperBlock = true;
+    } else {
+        // SIMPLE BLOCK
+        struct QsSimpleBlock *smB = calloc(1, sizeof(*smB));
+        ASSERT(smB, "calloc(1, %zu) failed", sizeof(*smB));
+        b = &smB->block;
+        //b->isSuperBlock is false via calloc()
+    }
 
+    b->dlhandle = dlhandle;
+    b->graph = graph;
+    b->name = strdup(blockName);
+    ASSERT(b->name, "strdup() failed");
+    struct QsDictionary *entry = 0;
+    int ret = qsDictionaryInsert(graph->blocks, blockName, b, &entry);
+    ASSERT(ret == 0, "qsDictionaryInsert(,\"%s\",,) failed", blockName);
+    DASSERT(entry);
+    qsDictionarySetFreeValueOnDestroy(entry,
+            (void (*)(void *)) qsBlockUnload);
 
+    DSPEW("Loaded %s block named \"%s\" from path=%s",
+            ((b->isSuperBlock)?"SUPER":"simple"),
+            b->name, path);
 
-
-
-
-
-
-
-
-    struct QsSimpleBlock *b = calloc(1, sizeof(*b));
-    ASSERT(b, "calloc(1, %zu) failed", sizeof(*b));
-
-
-    //free(path);
+    free(path);
 
     return (struct QsBlock *) b;
 }
 
 
-static int qsSimpleBlockUnload(struct QsSimpleBlock *b) {
+static void qsSimpleBlockUnload(struct QsSimpleBlock *b) {
 
 #ifdef DEBUG
     memset(b, 0, sizeof(*b));
 #endif
-    return 0;
 }
 
 
-static int qsSuperBlockUnload(struct QsSuperBlock *b) {
+static void qsSuperBlockUnload(struct QsSuperBlock *b) {
 
 #ifdef DEBUG
     memset(b, 0, sizeof(*b));
 #endif
-    return 0;
 }
 
 
 
-
-int qsBlockUnload(struct QsBlock *b) {
+void qsBlockUnload(struct QsBlock *b) {
 
     DASSERT(b);
+    
+    DSPEW("Freeing block named %s", b->name);
+
+    if(b->name) free((void *) b->name);
+
+    if(b->dlhandle) dlclose(b->dlhandle);
 
     if(b->isSuperBlock)
         qsSuperBlockUnload((struct QsSuperBlock *) b);
@@ -165,6 +209,5 @@ int qsBlockUnload(struct QsBlock *b) {
         qsSimpleBlockUnload((struct QsSimpleBlock *) b);
 
     free(b);
-    return 0; // success
 }
 

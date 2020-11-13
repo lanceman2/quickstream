@@ -1,6 +1,6 @@
 
 struct QsDictionary;
-struct QsApp;
+struct QsGraph;
 struct QsBlock;
 struct QsParameter;
 struct QsSetter;
@@ -18,10 +18,10 @@ struct QsOut;
 
 struct QsBlock {
 
-    // The app that created/loaded this block and owns this block.
-    struct QsApp *app;
+    // The graph that created/loaded this block and owns this block.
+    struct QsGraph *graph;
 
-    // block name that is unique to this block for all block in app.
+    // block name that is unique to this block for all block in graph.
     const char *name;
 
     void *dlhandle; // from dlopen()

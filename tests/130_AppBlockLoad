@@ -1,8 +1,0 @@
-#/bin/bash
-
-set -e
-
-../bin/quickstream --block tests/dummy
-
-exec ../bin/quickstream --stream --stream --stream
-

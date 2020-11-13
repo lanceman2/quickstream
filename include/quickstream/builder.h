@@ -76,16 +76,16 @@
 
  The quickstream builder interface functions provide ways to create and
  connect blocks together.  There is no builder class object.  There is an
- opaque app (QsApp) object that contains lists of blocks and block
+ opaque graph (QsGraph) object that contains lists of blocks and block
  connections.  This builder is just the "graph building" subset of
  functions that create and connect blocks together.  Having a builder
- object was found to just add complexity.  Since the app object had to
+ object was found to just add complexity.  Since the graph object had to
  have all of the blocks and connections in it anyway, the builder
- is built into the app object.
+ is built into the graph object.
 
  That left us with three basic objects (data structures):
 
-    1. **QsApp** factory for all blocks and connections that can build and run
+    1. **QsGraph** factory for all blocks and connections that can build and run
         the flow graph that it builds
     2. **QsBlock** basic processing module that we connect to build flow
         graphs
@@ -97,7 +97,7 @@
  */
  
 
-struct QsApp;
+struct QsGraph;
 struct QsBlock;
 struct QsParameter;
 
@@ -129,28 +129,28 @@ int qsBlockGetNumPorts(struct QsBlock *block,
 
 
 
-/** get the app that the block was loaded with
+/** get the graph that the block was loaded with
  
  \param block the block
 
- \return a pointer to the app that loaded and owns block \p block.
+ \return a pointer to the graph that loaded and owns block \p block.
 
  */
 extern
-struct QsBlock *qsBlockGetApp(struct QsBlock *block);
+struct QsBlock *qsBlockGetGraph(struct QsBlock *block);
 
 
 
 /** get a block pointer from the block name
 
- \param app the app that the block was loaded with.
+ \param graph the graph that the block was loaded with.
 
  \param bname is the name of the block.
 
  \return a pointer to the block with the name.
  */
 extern
-struct QsBlock *qsBlockGetBlockByName(struct QsApp *app, const char *bname);
+struct QsBlock *qsBlockGetBlockByName(struct QsGraph *graph, const char *bname);
 
 
 /** get a block name from the block pointer
@@ -311,7 +311,7 @@ int qsBlockConnect(struct QsBlock *from, struct QsBlock *to,
   Find and load the DSO file and call the getConfig() for that block.
   This creates a quickstream block.
 
-  \param app the app that this block will belong to.
+  \param graph the graph that this block will belong to.
   \param fileName that refers to the plugin module file.
   \param blockName a made-up unique name that was refer to this
   loaded plugin module.  loadName=0 maybe passed in to have the
@@ -320,26 +320,26 @@ int qsBlockConnect(struct QsBlock *from, struct QsBlock *to,
   \return a pointer to the block or 0 on error.
  */
 extern
-struct QsBlock *qsAppBlockLoad(struct QsApp *app, const char *fileName,
+struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         const char *blockName);
 
 
 
 extern
-int qsBlockUnload(struct QsBlock *block);
+void qsBlockUnload(struct QsBlock *block);
 
 
 /** Iterate through the getter parameters via a callback function
  
- \param app is ignored unless \p block is 0.  If \p app is non-zero and \p
+ \param graph is ignored unless \p block is 0.  If \p graph is non-zero and \p
  block is zero, all blocks are iterated through in all selected getter
- parameters in this \p app.
+ parameters in this \p graph.
 
  \param block if block is not 0, restrict the range of the getter
  parameters to iterate through to just getter parameters owned by this
  block.
 
- One of arguments \p app or \p block must be non-zero.
+ One of arguments \p graph or \p block must be non-zero.
 
  \param pName if not 0, restrict the range of the parameters to iterate
  through to just parameters with this name.
@@ -364,7 +364,7 @@ int qsBlockUnload(struct QsBlock *block);
  same as, the number of times \p callback() is called.
 
  */
-size_t qsParameterGetterForEach(struct QsApp *app, struct QsBlock *block,
+size_t qsParameterGetterForEach(struct QsGraph *graph, struct QsBlock *block,
         const char *pName,
         enum QsParameterType type,
         int (*callback)(
@@ -375,15 +375,15 @@ size_t qsParameterGetterForEach(struct QsApp *app, struct QsBlock *block,
 
 /** Iterate through the setter parameters via a callback function
  
- \param app is ignored unless \p block is 0.  If \p app is non-zero and \p
+ \param graph is ignored unless \p block is 0.  If \p graph is non-zero and \p
  block is zero, all blocks are iterated through in all selected setter
- parameters in this \p app.
+ parameters in this \p graph.
 
  \param block if block is not 0, restrict the range of the getter
  parameters to iterate through to just setter parameters owned by this
  block.
 
- One of arguments \p app or \p block must be non-zero.
+ One of arguments \p graph or \p block must be non-zero.
 
  \param pName if not 0, restrict the range of the parameters to iterate
  through to just parameters with this name.
@@ -408,7 +408,7 @@ size_t qsParameterGetterForEach(struct QsApp *app, struct QsBlock *block,
  same as, the number of times \p callback() is called.
 
  */
-size_t qsParameterSetterForEach(struct QsApp *app,
+size_t qsParameterSetterForEach(struct QsGraph *graph,
         struct QsBlock *block, const char *pName,
         enum QsParameterType type,
         int (*callback)(

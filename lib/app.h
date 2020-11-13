@@ -1,13 +1,13 @@
 
 
-struct QsApp;
+struct QsGraph;
 struct QsBlock;
 
 
 struct QsThreadPool {
 
-    // associated app for this threadPool
-    struct QsApp *app;
+    // associated graph for this threadPool
+    struct QsGraph *graph;
 
     // maxThreads does not change at flow/run time, so we need no mutex to
     // access it.
@@ -54,22 +54,22 @@ struct QsThreadPool {
 };
 
 
-enum QsAppFlowState {
+enum QsGraphFlowState {
 
-    // This state is just to make sure the App state always goes from
+    // This state is just to make sure the Graph state always goes from
     // paused -> ready -> flowing -> paused -> ready -> flowing -> ...
     //
-    // Yes we could look at the data in the QsApp, but that may not be
+    // Yes we could look at the data in the QsGraph, but that may not be
     // consistent if there is a failure in one of the steps.
 
     // blocks are still being created and connected
     // The stream has been stopped or was never flowing.
-    AppPaused = 0,
+    GraphPaused = 0,
     // start() callbacks have been called and stream buffers allocated
     // and superBlocks have been flattened
-    AppReady,
+    GraphReady,
     // flowing or flushing
-    AppFlowing
+    GraphFlowing
 };
 
 
@@ -77,16 +77,16 @@ enum QsAppFlowState {
 struct QsBootstrapCallbacks;
 
 
-struct QsApp {
+struct QsGraph {
 
     // List of blocks.  Indexed by name.
     struct QsDictionary *blocks;
 
-    // The thread that created this app structure:
+    // The thread that created this graph structure:
     pthread_t mainThread;
 
     // We keep a list of bootstrap callbacks which get called once
-    // for each block that exists in this app.  This lets blocks
+    // for each block that exists in this graph.  This lets blocks
     // make some changes to other blocks at block bootstrap time.
     struct QsBootstrapCallbacks *bootstrapCallbacks;
 
@@ -100,17 +100,17 @@ struct QsApp {
 
 
     // Just the main thread should access this flag.
-    enum QsAppFlowState flowState;
+    enum QsGraphFlowState flowState;
 
 
     // We can define and set different flow() functions that run the flow
-    // graph different ways.  This function gets set in qsAppFlow().
+    // graph different ways.  This function gets set in qsGraphFlow().
     //
-    uint32_t (*flow)(struct QsApp *app);
+    uint32_t (*flow)(struct QsGraph *graph);
 
 
     // We can have any number of thread pools with any amount of threads
-    // in each thread pool.  Every block in this app must be assigned to one
+    // in each thread pool.  Every block in this graph must be assigned to one
     // thread pool.
     //
     // A special case we needed was a heavy block needing a thread pool

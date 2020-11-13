@@ -15,19 +15,19 @@
 // The spew level.
 static int level = 1; // 0 == no spew, 1 == error, ...
 
-// Current app:
-static struct QsApp *app = 0;
+// Current graph:
+static struct QsGraph *graph = 0;
 // 
-static uint32_t numApps = 0;
-static struct QsApp **apps = 0;
+static uint32_t numGraphs = 0;
+static struct QsGraph **graphs = 0;
 
-static void CreateApp(void) {
+static void CreateGraph(void) {
 
-    app = qsAppCreate();
-    ASSERT(app);
-    apps = realloc(apps, (++numApps)*sizeof(*apps));
-    ASSERT(apps, "realloc(%p,%zu) failed", apps, numApps*sizeof(*apps));
-    apps[numApps-1] = app;
+    graph = qsGraphCreate();
+    ASSERT(graph);
+    graphs = realloc(graphs, (++numGraphs)*sizeof(*graphs));
+    ASSERT(graphs, "realloc(%p,%zu) failed", graphs, numGraphs*sizeof(*graphs));
+    graphs[numGraphs-1] = graph;
 }
 
 
@@ -96,9 +96,9 @@ int main(int argc, const char * const *argv) {
                         ++i;
                         name = argv[i];
                     }
-                    if(!app)
-                        CreateApp();
-                    struct QsBlock *b = qsAppBlockLoad(app, arg, name);
+                    if(!graph)
+                        CreateGraph();
+                    struct QsBlock *b = qsGraphBlockLoad(graph, arg, name);
                     if(!b) {
                         fprintf(stderr, "Loading block %s FAILED\n",
                                 arg);
@@ -109,10 +109,10 @@ int main(int argc, const char * const *argv) {
                 arg = 0;
                 ++i;
                 break;
-            case 's': // --stream
-                CreateApp();
+            case 'g': // --graph
+                CreateGraph();
                 break;
-            case 'S': // sleep SECONDS
+            case 's': // sleep SECONDS
 
                 if(!arg) {
                     fprintf(stderr, "--sleep with no SECONDS\n");
@@ -178,7 +178,7 @@ int main(int argc, const char * const *argv) {
                 }
 
                 default:
-                // This should not happen, unless the options are not
+                // This should not hgraphen, unless the options are not
                 // coded correctly.  We are missing a case for this
                 // char.
                 ERROR("BAD CODE: Missing case for option character: "
@@ -189,15 +189,15 @@ int main(int argc, const char * const *argv) {
         }
     }
 
-    if(apps) {
-        // a is a dummy QsApp pointer iterator.
-        struct QsApp **a = apps + (numApps - 1);
-        while(a >= apps) {
-            qsAppDestroy(*a);
+    if(graphs) {
+        // a is a dummy QsGraph pointer iterator.
+        struct QsGraph **a = graphs + (numGraphs - 1);
+        while(a >= graphs) {
+            qsGraphDestroy(*a);
             --a;
         }
         // Free the array of pointers.
-        free(apps);
+        free(graphs);
     }
 
     return 0;

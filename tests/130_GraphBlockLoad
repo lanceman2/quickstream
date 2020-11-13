@@ -1,0 +1,8 @@
+#/bin/bash
+
+set -e
+
+../bin/quickstream --block tests/dummy.so --block tests/dummy --block tests/dummy
+
+exec ../bin/quickstream --graph --graph --graph
+

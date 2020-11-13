@@ -4,10 +4,10 @@ set -e
 
 # Seeing if it can run and with no memory leaks.
 #
-# Checks qsAppCreate() and qsAppDestroy() many times.
+# Checks qsGraphCreate() and qsGraphDestroy() many times.
 
 
-../bin/quickstream --stream # once
-../bin/quickstream --stream --stream # twice
+../bin/quickstream --graph # once
+../bin/quickstream --graph --graph # twice
 
-exec ../bin/quickstream --stream --stream --stream # three
+exec ../bin/quickstream --graph --graph --graph # three

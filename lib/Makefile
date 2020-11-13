@@ -6,7 +6,7 @@ libquickstream.so_SOURCES :=\
  Dictionary.c\
  block.c\
  parameter.c\
- app.c\
+ graph.c\
  makeRingBuffer.c\
  GetPluginPath.c
 

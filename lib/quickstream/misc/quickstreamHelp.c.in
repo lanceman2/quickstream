@@ -196,7 +196,7 @@ static struct QsOption
         "before going on to the next argument option."
     },
 /*----------------------------------------------------------------------*/
-    { "--dot", 'g', 0,                      false,
+    { "--dot", 'o', 0,                      false,
 
         "print a graphviz dot file of the current existing graphs to "
         "stdout."
@@ -245,33 +245,33 @@ static struct QsOption
         " been yet, and runs them."
     },
 /*----------------------------------------------------------------------*/
-    { "--sleep", 'S', "SEC",            false,
+    { "--sleep", 's', "SEC",            false,
 
         "Sleep the main thread SEC seconds.  This can be handy "
         "for development to delay running the next commands from"
         " up and coming options."
     },
 /*----------------------------------------------------------------------*/
-    { "--stream", 's', 0,               false,
+    { "--graph", 'g', 0,               false,
 
-        "create another stream.  Each time this option is given"
-        " another stream app, QsApp, is created.  All subsequent blocks"
-        " are loaded into this last stream app that is created.  The "
+        "create another stream graph.  Each time this option is given"
+        " another stream graph, QsGraph, is created.  All subsequent blocks"
+        " are loaded into this last stream graph that is created.  The "
         "--ready, --run, --dot, --display, and --display-wait command "
-        "options are applied to all the streams.  The up-coming --block, "
+        "options are applied to all the stream graphs.  The up-coming --block, "
         "--connect, --plug, and --threads command options are applied to "
-        "the last created stream app.  If no --stream option was given a "
-        "stream app will be created automatically when it is needed."
+        "the last created stream graph.  If no --graph option was given a "
+        "stream graph will be created automatically when it is needed."
     },
 /*----------------------------------------------------------------------*/
     { "--threads", 't', "NUM",          false,
 
-        "create a new thread pool to run the current stream app.  "
+        "create a new thread pool to run the current stream graph.  "
         "The created thread pool will be used to run all blocks to "
-        "be loaded in later options for the current stream app.  "
+        "be loaded in later options for the current stream graph.  "
         "If this option is not given before blocks are loaded the "
         "program will default to running " STRING(DEFAULT_MAXTHREADS)
-        " for blocks loaded in a given stream app.\n"
+        " for blocks loaded in a given stream graph.\n"
         "\n"
         "On the Linux operating"
         " system the maximum number of threads a process may have can be"

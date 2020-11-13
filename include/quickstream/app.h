@@ -1,16 +1,16 @@
-#ifndef __qsapp_h__
-#define __qsapp_h__
+#ifndef __qsgraph_h__
+#define __qsgraph_h__
 
-/** \page app quickstream application objects
+/** \page graph quickstream stream graph objects
  
-  The libquickstream application application programming interface (API)
+  The libquickstream application programming interface (API)
  
-  The app object is the top level programming object of quickstream.
-  We need to make an app to run a quickstream program.  We use an
-  app object with a compiled C or C++ program that has main() in it.
-  App is just a word chosen to be the name of the object that is the
+  The graph object is the top level programming object of quickstream.
+  We need to make an graph to run a quickstream program.  We use an
+  graph object with a compiled C or C++ program that has main() in it.
+  Graph is just a word chosen to be the name of the object that is the
   highest level construct the quickstream API.  quickstream users that
-  are writing plugin block modules do not need to access app objects.
+  are writing plugin block modules may not need to access graph objects.
 
  */
 
@@ -24,7 +24,7 @@
 // using GNU autotools, somehow configure.ac must get this string from
 // here.  bootscrap can get it from here.
 //
-// We avoided having a app.h.in file.  We had that in the first iteration
+// We avoided having a graph.h.in file.  We had that in the first iteration
 // of quickstream and it was a pain.
 //
 #define QS_MAJOR  0
@@ -40,7 +40,7 @@
 #define QUICKSTREAM_URL   "https://github.com/lanceman2/quickstream"
 
 
-struct QsApp;
+struct QsGraph;
 struct QsThreadPool;
 struct QsBlock;
 
@@ -67,27 +67,25 @@ extern
 int qsGetLibSpewLevel(void);
 
 
-/** Create an app
+/** Create an stream graph
  
-  A quickstream app is the highest level construct in the quickstream API
-  (application programming interface).  App manages building stream graphs
+  A quickstream graph is the highest level construct in the quickstream API
+  (application programming interface).  Graph manages building stream graphs
   and running stream graphs.
 
-  \return an opaque pointer to an app object.
+  \return an opaque pointer to an graph object.
  */
 extern
-struct QsApp *qsAppCreate(void);
+struct QsGraph *qsGraphCreate(void);
 
-/** Destroy an app
+/** Destroy an stream graph
 
  
-
-
- \param app a pointer to an app object that was returned from qsAppCreate().
+ \param graph a pointer to an graph object that was returned from qsGraphCreate().
 
  */
 extern
-void qsAppDestroy(struct QsApp *app);
+void qsGraphDestroy(struct QsGraph *graph);
 
 
 /** Add a thread pool to run the flow stream
@@ -96,23 +94,23 @@ void qsAppDestroy(struct QsApp *app);
  allow there to be more than one thread pool so that thread core affinity may
  be set with threads that are in thread pools with just one thread.
 
- qsAppThreadPool() may not be called while the stream is flowing.
+ qsGraphThreadPool() may not be called while the stream is flowing.
 
- \param app is the quickstream app object that this new thread pool will
+ \param graph is the quickstream graph object that this new thread pool will
  run blocks with.
 
- When the app is destroyed the thread pool will be destroyed with it.
+ When the graph is destroyed the thread pool will be destroyed with it.
 
  \param maxThread is the maximum number of thread that will be allowed to run.
  The number of threads that can run in the pool is determined by demand.
  The threads can be thought of as flowing between blocks in the flow graph.
- If \p maxThread is 0 the main thread to run the flow stream when qsAppFlow()
+ If \p maxThread is 0 the main thread to run the flow stream when qsGraphFlow()
  is called.
 
  \return a pointer to an opaque thread pool object.
  */
 extern
-struct QsThreadPool *qsAppThreadPool(struct QsApp *app, uint32_t maxThreads);
+struct QsThreadPool *qsGraphThreadPool(struct QsGraph *graph, uint32_t maxThreads);
 
 
 /** Add a block to a thread pool
@@ -122,7 +120,7 @@ struct QsThreadPool *qsAppThreadPool(struct QsApp *app, uint32_t maxThreads);
  shared between all the blocks that are added.
 
  \param tp a pointer to a thread pool object that was returned from a call
- to qsAppThreadPool().
+ to qsGraphThreadPool().
 
  \param block who's work() function is called by a thread in this pool, as
  the stream flows.
@@ -134,11 +132,11 @@ void qsThreadPoolAddBlock(struct QsThreadPool *tp,
 
 /** Remove a thread pool
 
- Remove a thread pool from the app that this thread pool was created for.
- The thread pool will be removed from the app that is was created with it.
+ Remove a thread pool from the graph that this thread pool was created for.
+ The thread pool will be removed from the graph that is was created with it.
 
  \param tp a pointer to a thread pool object that was returned from a call
- to qsAppThreadPool().
+ to qsGraphThreadPool().
 
 */
 
@@ -146,34 +144,34 @@ extern
 void qsThreadPoolRemove(struct QsThreadPool *tp);
 
 
-/** Ready the flow graph
+/** Ready the graph
  
  Allocate the stream buffers and call the block start() functions, but
  does not run the flow.
 
- \param app a pointer to an app.
+ \param graph a pointer to an graph.
 
  \return 0 on success
  */
 extern
-int qsAppReady(struct QsApp *app);
+int qsGraphReady(struct QsGraph *graph);
 
 
 /** Wait for the flows to finish
  
  This call will block until the stream flow is finished.
 
- If there are no worker threads, qsAppWait() will just return 0 and do
+ If there are no worker threads, qsGraphWait() will just return 0 and do
  nothing.
 
- \param app a pointer to the app object that is associated with the stream
+ \param graph a pointer to the graph object that is associated with the stream
  graph that we are waiting to finish flowing.
 
  \return 0 if the call waited at all, 1 if the call did not wait, and less
  than zero on error.
  */
 extern
-int qsAppWait(struct QsApp *app);
+int qsGraphWait(struct QsGraph *graph);
 
 
 /** Begin the stream flow
@@ -182,16 +180,16 @@ int qsAppWait(struct QsApp *app);
  that are triggered.
 
  If not running with just main thread this will return and then you can
- call qsAppWait(), otherwise this will not return until the sources dry
+ call qsGraphWait(), otherwise this will not return until the sources dry
  up; so maybe never return without a signal.
 
- \param app a pointer to the app object that is associated with the stream
+ \param graph a pointer to the graph object that is associated with the stream
  graph.
 
  \return 0 on success
  */
 extern
-int qsAppFlow(struct QsApp *app);
+int qsGraphFlow(struct QsGraph *graph);
 
 
 /** Call all the block's stop() functions
@@ -199,11 +197,11 @@ int qsAppFlow(struct QsApp *app);
  Call all the block's stop() functions in the reverse order in which the
  blocks were loaded.
 
- The stream must not be a flowing state. qsAppWait() and qsAppHalt() can
+ The stream must not be a flowing state. qsGraphWait() and qsGraphHalt() can
  be used to wait for the stream to come to a non-flowing state for a flowing
  state.
 
- \param app a pointer to the app object that is associated with the stream
+ \param graph a pointer to the graph object that is associated with the stream
  graph that we are waiting to finish flowing.
 
  \return 0 on success, and greater than zero if any of the block stop()
@@ -212,29 +210,29 @@ int qsAppFlow(struct QsApp *app);
  zero.
  */
 extern
-int qsAppStop(struct QsApp *app);
+int qsGraphStop(struct QsGraph *graph);
 
 
 /** Halt the flow
 
  Stop calling all work() functions, even if there is data in the stream.
 
- \param app a pointer to the app object that is associated with the stream
+ \param graph a pointer to the graph object that is associated with the stream
  graph that we want to halt the flow in.
 
  \return 0 on success and greater than 0 on a non-fatal error, and less
  than zero on a fatal error.
  */
 extern
-int qsAppHalt(struct QsApp *app);
+int qsGraphHalt(struct QsGraph *graph);
 
 
 /** Print a vizgraph dot file for the graph
  
  Print a vizgraph dot file for the graph to a libc stream file.
 
- \param app a pointer to the app object that is associated with the stream
- graph that we print.  If app is 0 than all quickstream apps in the current
+ \param graph a pointer to the graph object that is associated with the stream
+ graph that we print.  If graph is 0 than all quickstream graphs in the current
  process will be printed.
 
  \param file the libc stream file to print the dot graph to.  If file is 0 then
@@ -242,11 +240,11 @@ int qsAppHalt(struct QsApp *app);
 
  \param flags print option bit flags.
 
- \return 0 on success and greater than zero if there is no quickstream app, and
+ \return 0 on success and greater than zero if there is no quickstream graph, and
  less than zero on other error.
  */
 extern
-int asAppPrintDot(struct QsApp *app, FILE *file, uint32_t flags);
+int asGraphPrintDot(struct QsGraph *graph, FILE *file, uint32_t flags);
 
 
 extern
@@ -254,15 +252,15 @@ int qsBlockPrintHelp(const char *filename, FILE *file);
 
 
 extern
-uint32_t qsAppForEachBlock(struct QsApp *app,
+uint32_t qsGraphForEachBlock(struct QsGraph *graph,
         int (*callback)(struct QsBlock *block, void *userData));
 
 
 
 
 
-// TODO: Worry about qsAppKill() later.
+// TODO: Worry about qsGraphKill() later.
 
 
 
-#endif // #ifndef __qsapp_h__
+#endif // #ifndef __qsgraph_h__
