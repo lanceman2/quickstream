@@ -1,5 +1,5 @@
-#include "../../../../../include/quickstream/block.h"
-#include "../../../../../lib/debug.h"
+#include "../../../../include/quickstream/block.h"
+#include "../../../../lib/debug.h"
 
 #include "Sequence.h"
 

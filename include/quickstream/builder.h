@@ -312,16 +312,21 @@ int qsBlockConnect(struct QsBlock *from, struct QsBlock *to,
   This creates a quickstream block.
 
   \param app the app that this block will belong to.
+  \param fileName that refers to the plugin module file.
+  \param blockName a made-up unique name that was refer to this
+  loaded plugin module.  loadName=0 maybe passed in to have the
+  unique name generated based on filename.
 
   \return a pointer to the block or 0 on error.
  */
 extern
-struct QsBlock *qsAppBlockLoad(struct QsApp *app);
+struct QsBlock *qsAppBlockLoad(struct QsApp *app, const char *fileName,
+        const char *blockName);
 
 
 
 extern
-struct QsBlock *qsAppBlockUnload(struct QsBlock *block);
+int qsBlockUnload(struct QsBlock *block);
 
 
 /** Iterate through the getter parameters via a callback function

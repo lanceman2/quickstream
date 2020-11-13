@@ -2,10 +2,34 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
+
 #include "../lib/debug.h"
+
 #include "../include/quickstream/app.h"
+#include "../include/quickstream/builder.h"
+
 #include "getOpt.h"
 #include "../lib/quickstream/misc/qsOptions.h"
+
+
+// The spew level.
+static int level = 1; // 0 == no spew, 1 == error, ...
+
+// Current app:
+static struct QsApp *app = 0;
+// 
+static uint32_t numApps = 0;
+static struct QsApp **apps = 0;
+
+static void CreateApp(void) {
+
+    app = qsAppCreate();
+    ASSERT(app);
+    apps = realloc(apps, (++numApps)*sizeof(*apps));
+    ASSERT(apps, "realloc(%p,%zu) failed", apps, numApps*sizeof(*apps));
+    apps[numApps-1] = app;
+}
+
 
 // From quickstream_usage.c
 // usage() does not return, it will exit.
@@ -27,11 +51,6 @@ int main(int argc, const char * const *argv) {
     int i = 1;
     const char *arg = 0;
 
-    // Current app:
-    struct QsApp *app = 0;
-    // 
-    uint32_t numApps = 0;
-    struct QsApp **apps = 0;
 
     qsSetSpewLevel(DEFAULT_SPEW_LEVEL);
 
@@ -65,16 +84,55 @@ int main(int argc, const char * const *argv) {
             /////////////////////////////////////////////////////////////
             //           NON-EXITING CASES                             //
             /////////////////////////////////////////////////////////////
+
+            case 'b': // --block FILENAME [BLOCK_NAME]
+                if(!arg) {
+                    fprintf(stderr, "--block with no FILENAME\n");
+                    return 1;
+                }
+                {
+                    const char *name = 0;
+                    if(i<argc && argv[i+1][0] != '-') {
+                        ++i;
+                        name = argv[i];
+                    }
+                    if(!app)
+                        CreateApp();
+                    struct QsBlock *b = qsAppBlockLoad(app, arg, name);
+                    if(!b) {
+                        fprintf(stderr, "Loading block %s FAILED\n",
+                                arg);
+                        return 1;
+                    }
+                }
+                // next
+                arg = 0;
+                ++i;
+                break;
             case 's': // --stream
-                app = qsAppCreate();
-                ASSERT(app);
-                apps = realloc(apps, (++numApps)*sizeof(*apps));
-                ASSERT(apps, "realloc(%p,%zu) failed", apps,
-                        numApps*sizeof(*apps));
-                apps[numApps-1] = app;
+                CreateApp();
                 break;
             case 'S': // sleep SECONDS
 
+                if(!arg) {
+                    fprintf(stderr, "--sleep with no SECONDS\n");
+                    return 1;
+                }
+                {
+                    errno = 0;
+                    char *endptr = 0;
+                    double val = strtod(arg, &endptr);
+                    if(endptr == arg || val <= 0.0) {
+                        fprintf(stderr, "Bad --sleep option\n\n");
+                        return 1;
+                    }
+                    if(level >= 4) // 4 = INFO
+                        fprintf(stderr,"Sleeping %lg seconds\n", val);
+                    usleep( (useconds_t) (val * 1000000.0));
+                }
+                // next
+                arg = 0;
+                ++i;
                 break;
             case 'v':
                 if(!arg) {
@@ -82,7 +140,6 @@ int main(int argc, const char * const *argv) {
                     return 1;
                 }
                 {
-                    int level;
                     // LEVEL maybe debug, info, notice, warn, error, and
                     // off which translates to: 5, 4, 3, 2, 1, and 0
                     // as this program (and not the API) define it.

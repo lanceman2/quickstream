@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../../../../lib/debug.h"
+#include "../../../../lib/debug.h"
 
 
 // What we want:

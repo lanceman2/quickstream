@@ -7,7 +7,8 @@ libquickstream.so_SOURCES :=\
  block.c\
  parameter.c\
  app.c\
- makeRingBuffer.c
+ makeRingBuffer.c\
+ GetPluginPath.c
 
 
 libquickstream.so_LDFLAGS := -lpthread -ldl -lrt

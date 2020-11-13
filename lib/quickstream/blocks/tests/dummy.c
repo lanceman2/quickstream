@@ -1,6 +1,6 @@
-#include "../../../../../include/quickstream/block.h"
+#include "../../../../include/quickstream/block.h"
 
-#include "../../../../debug.h"
+#include "../../../debug.h"
 
 
 int bootstrap(struct QsApp *app) {

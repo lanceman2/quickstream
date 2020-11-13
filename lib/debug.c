@@ -69,7 +69,7 @@ void qsSetSpewLevel(int level) {
     if(level > 5) level = 5;
     else if(level < 0) level = 0;
     spewLevel = level;
-    DSPEW("Spew level set to %d", level);
+    //DSPEW("Spew level set to %d", level);
 }
 
 

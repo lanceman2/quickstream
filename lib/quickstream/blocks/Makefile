@@ -1,6 +1,6 @@
 SUBDIRS := tests
 
-INSTALL_DIR = $(PREFIX)/lib/quickstream/blocks/filters
+INSTALL_DIR = $(PREFIX)/lib/quickstream/blocks
 
 #stdin.so_SOURCES := stdin.c
 #stdout.so_SOURCES := stdout.c
@@ -8,4 +8,4 @@ INSTALL_DIR = $(PREFIX)/lib/quickstream/blocks/filters
 #nullSink.so_SOURCES := nullSink.c
 
 
-include ../../../../quickbuild.make
+include ../../../quickbuild.make

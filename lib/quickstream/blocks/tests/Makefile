@@ -2,9 +2,9 @@
 # 2.  build all [a-z]*.cpp as a block module
 # 3.  build all [A-Z]*.c as a uninstalled test
 
-root := ../../../../..
+root := ../../../..
 
-INSTALL_DIR = $(PREFIX)/lib/quickstream/blocks/filters/tests
+INSTALL_DIR = $(PREFIX)/lib/quickstream/blocks/tests
 
 c_plugins := $(patsubst %.c, %, $(wildcard [a-z]*.c))
 

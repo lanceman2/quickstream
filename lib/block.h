@@ -16,10 +16,6 @@ struct QsOut;
 
 
 
-#define QS_IS_SIMPLEBLOCK  (001)
-
-
-
 struct QsBlock {
 
     // The app that created/loaded this block and owns this block.
@@ -56,9 +52,10 @@ struct QsBlock {
     int (* stop)(uint32_t numInputs, uint32_t numOutputs);
 
 
-    // QS_IS_SIMPLEBLOCK  (001) or is QsSuperBlock
+    // This just lets us know if the memory allocated is a struct
+    // QsSimpleBlock or struct QsSuperBlock
     //
-    uint32_t flags;
+    bool isSuperBlock;
 };
 
 

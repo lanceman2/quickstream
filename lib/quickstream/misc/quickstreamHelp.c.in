@@ -146,7 +146,7 @@ static struct QsOption
 // The code below will check for duplicate options, but it will not sort
 // these:
 /*----------------------------------------------------------------------*/
-    { "--block", 'b', "FILENAME { args ... }", false,
+    { "--block", 'b', "FILENAME [NAME]", false,
 
         "load block module with filename FILENAME.  An independent"
         " instance of the block will be created for each time a block"
@@ -155,7 +155,7 @@ static struct QsOption
         " brackets (with spaces around the brackets) are passed to"
         " the module construct() function.  For example:\n"
         "\n"
-        "    --block stdin { --name input }\n"
+        "    --block stdin input\n"
         "\n"
         "will load the \"stdin\" block module and pass the arguments"
         " in the brackets, --name input, to the block module loader,"
