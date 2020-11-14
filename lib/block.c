@@ -40,7 +40,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // 6. Call bootscrap()
 
     DASSERT(graph);
-    ASSERT(graph->mainThread == pthread_self(), "Not graph main thread");
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
     DASSERT(fileName);
     DASSERT(fileName[0]);
 
@@ -136,6 +136,8 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         return 0;
     }
 
+
+
     // TODO: HERE check that this DSO is not loaded in any graphs.
 
 
@@ -196,7 +198,9 @@ static void qsSuperBlockUnload(struct QsSuperBlock *b) {
 void qsBlockUnload(struct QsBlock *b) {
 
     DASSERT(b);
-    
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+
+
     DSPEW("Freeing block named %s", b->name);
 
     if(b->name) free((void *) b->name);

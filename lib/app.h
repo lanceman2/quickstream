@@ -4,6 +4,7 @@ struct QsGraph;
 struct QsBlock;
 
 
+
 struct QsThreadPool {
 
     // associated graph for this threadPool
@@ -77,13 +78,17 @@ enum QsGraphFlowState {
 struct QsBootstrapCallbacks;
 
 
+// A singly linked list of all graphs.  We do not expect a lot of them.
+extern struct QsGraph *graphs;
+extern pthread_t mainThread;
+
 struct QsGraph {
 
     // List of blocks.  Indexed by name.
     struct QsDictionary *blocks;
 
-    // The thread that created this graph structure:
-    pthread_t mainThread;
+    // For the singly linked list of graphs.
+    struct QsGraph *next;
 
     // We keep a list of bootstrap callbacks which get called once
     // for each block that exists in this graph.  This lets blocks
