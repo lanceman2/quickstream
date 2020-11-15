@@ -3,7 +3,7 @@
 #include "../../../debug.h"
 
 
-int bootstrap(struct QsApp *app) {
+int bootstrap(struct QsGraph *graph) {
 
     DSPEW();
 

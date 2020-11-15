@@ -14,7 +14,7 @@
 // QsParameter is the parameter queue
 struct QsParameter;
 struct QsBlock;
-struct QsApp;
+struct QsGraph;
 
 
 enum QsParameterType {
@@ -387,7 +387,7 @@ int qsCreatePassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum,
  The name of a block is set by the person running the quickstream
  program.  The name is unique for that loaded block running in a given
  program.  The name is generated automatically of can be set using the
- qsAppLoadBlock() function in a quickstream runner program.
+ qsGraphLoadBlock() function in a quickstream runner program.
 
  qsGetBlockName() can only be called in a block module in it's
  construct(), start(), stop(), and destroy() functions.
@@ -405,16 +405,16 @@ const char* qsGetBlockName(void);
 
 /** Get a block pointer from the blocks loaded name
 
- \param app is the App that the block was loaded with.
+ \param graph is the graph that the block was loaded with.
 
  \param bName is the name of the block.
 
  \return a pointer to the struct QsBlock object, or 0 if the
- block with that name was not found in that app.
+ block with that name was not found in that graph.
  */
 
 extern
-struct QsBlock *qsBlockGetFromName(struct QsApp *app,
+struct QsBlock *qsBlockGetFromName(struct QsGraph *graph,
         const char *bName);
 
 
@@ -431,9 +431,9 @@ struct QsBlock *qsBlockGetFromName(struct QsApp *app,
 
  The bootstrap() function may setup options in it's block.
 
- bootstrap() is called when qsAppLoadBlock() is called.
+ bootstrap() is called when qsGraphLoadBlock() is called.
 
- \param app is a pointer to the app that was used to load this block
+ \param graph is a pointer to the graph that was used to load this block
  module.
 
  \return 0 on success, greater than 0 in the case where the DSO (dynamic
@@ -443,7 +443,7 @@ struct QsBlock *qsBlockGetFromName(struct QsApp *app,
  \memberof CBlockAPI
 
  */
-int bootstrap(struct QsApp *app);
+int bootstrap(struct QsGraph *graph);
 
 
 

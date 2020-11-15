@@ -6,36 +6,73 @@
 #include <inttypes.h>
 #include <dlfcn.h>
 #include <pthread.h>
-
 #include "../include/quickstream/builder.h"
+
 
 #include "block.h"
 #include "builder.h"
 #include "app.h"
 #include "Dictionary.h"
 #include "debug.h"
+#include "LoadDSOFromTmpFile.h"
 
-
-#if 0
 static
 int FindHandle_cb(const char *blockName, struct QsBlock *b, void **dlhh) {
 
     if(b->dlhandle == *dlhh) {
+        dlclose(*dlhh);
         *dlhh = 0;
         return 1; // We are done.
     }
     return 0; // keep looking
 }
+
+
+static void qsSimpleBlockUnload(struct QsSimpleBlock *b) {
+
+#ifdef DEBUG
+    memset(b, 0, sizeof(*b));
 #endif
+}
+
+
+static void qsSuperBlockUnload(struct QsSuperBlock *b) {
+
+#ifdef DEBUG
+    memset(b, 0, sizeof(*b));
+#endif
+}
+
+
+static
+void qsBlockUnload_noDestory(struct QsBlock *b) {
+
+    DASSERT(b);
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+
+
+    DSPEW("Freeing block named %s", b->name);
+
+    if(b->name) free((void *) b->name);
+
+    if(b->dlhandle) dlclose(b->dlhandle);
+
+    if(b->isSuperBlock)
+        qsSuperBlockUnload((struct QsSuperBlock *) b);
+    else
+        qsSimpleBlockUnload((struct QsSimpleBlock *) b);
+
+    free(b);
+}
+
 
 struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         const char *blockName_in) {
 
-    // 0. Get block name
-    // 1. dlopen()
-    // 2. check if already dlopen()ed and fix
-    // 3. see if isSuperBlock is defined.
-    // 4. Allocate the correct struct.
+    // 1. Get block name
+    // 2. dlopen()
+    // 3. check if already dlopen()ed and fix
+    // 4. see if isSuperBlock is defined and Allocate
     // 5. add block to graph
     // 6. Call bootscrap()
 
@@ -44,8 +81,11 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     DASSERT(fileName);
     DASSERT(fileName[0]);
 
+    ///////////////////////////////////////////////////////////////////
+    // 1. Get block name
+    ///////////////////////////////////////////////////////////////////
+ 
     char *blockName = (char *) blockName_in;
-
 
     if(!blockName || blockName[0] == '\0') {
 
@@ -125,6 +165,12 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
     char *path = GetPluginPath(QS_BLOCK_PREFIX, fileName, ".so");
 
+
+    ///////////////////////////////////////////////////////////////////
+    // 2. dlopen()
+    ///////////////////////////////////////////////////////////////////
+
+
     void *dlhandle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
 
     // See if this dlhandle has been created before in another block in
@@ -137,12 +183,36 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     }
 
 
+    ///////////////////////////////////////////////////////////////////
+    // 3. check if already dlopen()ed and fix
+    ///////////////////////////////////////////////////////////////////
 
-    // TODO: HERE check that this DSO is not loaded in any graphs.
+    // HERE check if this DSO is already loaded in any graphs.  We can't
+    // load this DSO this way, if it's just getting functions for a block
+    // that already exists.  It must be loaded as an independent code.
+    for(struct QsGraph *g = graphs; g; g = g->next)
+        qsDictionaryForEach(g->blocks,
+            (int (*) (const char *key, void *value,
+                void *userData)) FindHandle_cb, &dlhandle);
 
+    if(dlhandle == 0)
+        // This DSO was loaded already.  So we make a temporary copy of
+        // the DSO and load it as a different set of independent functions
+        // that do not share functions with a block that is already
+        // loaded.  The temporary file is automatically removed by the OS
+        // when this program exits.  This is a really cool trick.
+        if((dlhandle = LoadDSOFromTmpFile(path)) == 0) {
+            free(path);
+            return 0;
+        }
+
+
+    ///////////////////////////////////////////////////////////////////
+    // 4. see if isSuperBlock is defined and Allocate correct block type
+    ///////////////////////////////////////////////////////////////////
 
     struct QsBlock *b;
-    
+
     if(dlsym(dlhandle, "isSuperBlock")) {
         // SUPER BLOCK
         struct QsSuperBlock *suB = calloc(1, sizeof(*suB));
@@ -161,6 +231,12 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     b->graph = graph;
     b->name = strdup(blockName);
     ASSERT(b->name, "strdup() failed");
+
+
+    ///////////////////////////////////////////////////////////////////
+    // 5. add block to graph
+    ///////////////////////////////////////////////////////////////////
+
     struct QsDictionary *entry = 0;
     int ret = qsDictionaryInsert(graph->blocks, blockName, b, &entry);
     ASSERT(ret == 0, "qsDictionaryInsert(,\"%s\",,) failed", blockName);
@@ -172,46 +248,57 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
             ((b->isSuperBlock)?"SUPER":"simple"),
             b->name, path);
 
+
+    ///////////////////////////////////////////////////////////////////
+    // 6. Call bootscrap()
+    ///////////////////////////////////////////////////////////////////
+
+    int (*bootstrap)(struct QsGraph *graph) = dlsym(dlhandle, "bootstrap");
+    if(bootstrap == 0) {
+        ERROR("dlsym(, \"bootstrap\") failed");
+        free(path);
+        qsBlockUnload_noDestory(b);
+        return 0;
+    }
+
+    // TODO: setup thread specfic data for bootstrap call.
+    // Making this re-entrant code.
+
+    ret = bootstrap(graph);
+    if(ret) {
+
+        if(ret < 0) {
+            ERROR("bootstrap() failed for block named \"%s\"", b->name);
+            free(path);
+            qsBlockUnload_noDestory(b);
+            return 0;
+        }
+        // In this case we keep a block that is a struct in the program
+        // but there will be no more calling callbacks from the DSO.
+        DSPEW("bootstrap() returned %d removing callbacks"
+                " for block named \"%s\"",
+                ret, b->name);
+        dlclose(dlhandle);
+        b->dlhandle = 0;
+    }
+
+    // TODO: setup thread specfic data for bootstrap call.
+    // Making this re-entrant code.
+
+
+
     free(path);
 
     return (struct QsBlock *) b;
 }
 
 
-static void qsSimpleBlockUnload(struct QsSimpleBlock *b) {
-
-#ifdef DEBUG
-    memset(b, 0, sizeof(*b));
-#endif
-}
-
-
-static void qsSuperBlockUnload(struct QsSuperBlock *b) {
-
-#ifdef DEBUG
-    memset(b, 0, sizeof(*b));
-#endif
-}
-
-
-
 void qsBlockUnload(struct QsBlock *b) {
 
-    DASSERT(b);
-    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    if(b->dlhandle) {
+        void (*destroy)(void) = dlsym(b->dlhandle, "destroy");
+        if(destroy) destroy();
+    }
 
-
-    DSPEW("Freeing block named %s", b->name);
-
-    if(b->name) free((void *) b->name);
-
-    if(b->dlhandle) dlclose(b->dlhandle);
-
-    if(b->isSuperBlock)
-        qsSuperBlockUnload((struct QsSuperBlock *) b);
-    else
-        qsSimpleBlockUnload((struct QsSimpleBlock *) b);
-
-    free(b);
+    qsBlockUnload_noDestory(b);
 }
-

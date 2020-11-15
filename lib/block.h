@@ -24,6 +24,8 @@ struct QsBlock {
     // block name that is unique to this block for all block in graph.
     const char *name;
 
+    // dlhandle can be zero as a sign that block functions should not be
+    // called any more; functions from the DSO, like start() and work().
     void *dlhandle; // from dlopen()
 
     // The threadPool that can run this blocks work()
