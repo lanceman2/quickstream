@@ -19,6 +19,12 @@ BUILD_NO_INSTALL :=\
  184_DictionaryRemove_test\
  190_DictionaryRemove_test\
  194_DictionaryDict_test\
+ fail\
+ success
+
+
+fail_SOURCES := fail.c
+success_SOURCES := success.c
 
 
 # Just tests that debug.c is independent of other files,

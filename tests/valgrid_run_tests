@@ -13,6 +13,7 @@ export VALGRIND_RUN="valgrind\
  --leak-check=full\
  --trace-children=yes\
  --show-leak-kinds=all\
+ --trace-children-skip='*'\
  --errors-for-leak-kinds=all\
  --error-exitcode=1"
 

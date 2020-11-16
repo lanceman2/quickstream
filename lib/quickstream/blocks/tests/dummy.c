@@ -14,3 +14,8 @@ int bootstrap(struct QsGraph *graph) {
 
     return 0; // 0 => success
 }
+
+void destroy() {
+
+    DSPEW();
+}

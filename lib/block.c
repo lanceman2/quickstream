@@ -6,8 +6,8 @@
 #include <inttypes.h>
 #include <dlfcn.h>
 #include <pthread.h>
-#include "../include/quickstream/builder.h"
 
+#include "../include/quickstream/builder.h"
 
 #include "block.h"
 #include "builder.h"
@@ -48,13 +48,19 @@ static
 void qsBlockUnload_noDestory(struct QsBlock *b) {
 
     DASSERT(b);
+    DASSERT(b->name);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
 
     DSPEW("Freeing block named %s", b->name);
 
-    if(b->name) free((void *) b->name);
-
     if(b->dlhandle) dlclose(b->dlhandle);
+
+    if(b->name) {
+#ifdef DEBUG
+        memset((char *)b->name, 0, strlen(b->name));
+#endif
+        free((void *) b->name);
+    }
 
     if(b->isSuperBlock)
         qsSuperBlockUnload((struct QsSuperBlock *) b);
@@ -74,7 +80,8 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // 4. see if isSuperBlock is defined and Allocate
     // 5. add block to graph's block list
     // 6. Call bootscrap()
-    // 7. Add cleanup callback for block's entry in graph block list
+    // 7. Get callbacks
+    // 8. Add cleanup callback for block's entry in graph block list
 
     DASSERT(graph);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
@@ -151,13 +158,25 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
         DSPEW("Found unique block name \"%s\"", blockName);
 
-    } else if(qsDictionaryFind(graph->blocks, blockName)) {
+    } else {
+
+        // TODO: We decided that block names are unique for all blocks in
+        // a program.  This avoids introducing another name layer to
+        // accessing block parameters.  For example a parameter named
+        // "freq" in block named "tx" and program "my_transmitter" can
+        // be accessed by a total name like "my_transmitter:tx:freq".
+        // With graph names it'd be like:
+        // "my_transmitter:graph_0:tx:freq", and that sucks.
         //
-        // Because they requested a particular name and the name is
-        // already taken, we can fail here.
-        //
-        ERROR("Block name \"%s\" is in use already", blockName);
-        return 0;
+        for(struct QsGraph *g = graphs; g; g = g->next)
+            if(qsDictionaryFind(g->blocks, blockName)) {
+                //
+                // Because they requested a particular name and the name
+                // is already taken, we can fail here.
+                //
+                ERROR("Block name \"%s\" is in use already", blockName);
+                return 0;
+            }
     }
 
     // We now have what will be a valid block name.
@@ -261,9 +280,6 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     //
     struct QsBlock *oldBlock = pthread_getspecific(_qsGraphKey);
     //
-    ASSERT(!oldBlock || oldBlock->graph == b->graph,
-            "You cannot mix QsGraph objects in "
-            "other QsGraph function calls");
     DASSERT(oldBlock != b);
     //
     // Set the thread specific data to the block structure.
@@ -301,9 +317,20 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         b->dlhandle = 0;
     }
 
+    ///////////////////////////////////////////////////////////////////
+    // 7. Get callbacks
+    ///////////////////////////////////////////////////////////////////
+
+    if(!b->isSuperBlock) {
+        ((struct QsSimpleBlock *) b)->work = dlsym(dlhandle, "work");
+        ((struct QsSimpleBlock *) b)->work = dlsym(dlhandle, "flush");
+    }
+    b->start = dlsym(dlhandle, "start");
+    b->stop = dlsym(dlhandle, "stop");
+
 
     ///////////////////////////////////////////////////////////////////
-    // 7. Add cleanup callback for block's entry in graph block list
+    // 8. Add cleanup callback for block's entry in graph block list
     ///////////////////////////////////////////////////////////////////
 
     qsDictionarySetFreeValueOnDestroy(entry,
@@ -324,8 +351,34 @@ void qsBlockUnload(struct QsBlock *b) {
 
     if(b->dlhandle) {
         void (*destroy)(void) = dlsym(b->dlhandle, "destroy");
-        if(destroy) destroy();
+
+        if(destroy) {
+            // Setup thread specfic data for bootstrap call.
+            // And Make this re-entrant code.
+            //
+            struct QsBlock *oldBlock = pthread_getspecific(_qsGraphKey);
+            //
+            DASSERT(oldBlock != b);
+            //
+            // Set the thread specific data to the block structure.
+            CHECK(pthread_setspecific(_qsGraphKey, b));
+
+            // A block cannot call destroy() on itself.
+            DASSERT(b->inWhichCallback == _QS_IN_NONE);
+
+            // We add a marker to block struct so we know what block
+            // callback function is being called.
+            //
+            b->inWhichCallback = _QS_IN_DESTROY;
+
+            destroy();
+
+            b->inWhichCallback = _QS_IN_NONE;
+
+            CHECK(pthread_setspecific(_qsGraphKey, oldBlock));
+        }
     }
+
 
     qsBlockUnload_noDestory(b);
 }

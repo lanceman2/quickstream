@@ -47,25 +47,13 @@ struct QsBlock {
     // The threadPool that can run this blocks work()
     struct QsThreadPool *threadPool;
 
-    // Some callbacks like getConfig(), construct() and destroy() we
+    // Some callbacks like boostrap(), construct() and destroy() we
     // do not same a pointer to, and dlsym() just before we call them.
-    //
-    // TODO: we may not be improving performance by saving pointers to
-    // these functions, except for work() which is called in a tight loop.
     //
     // Pointers to optional callbacks from the DSO they are 0 if they are
     // not present.
     //
-    int (*preStart)(struct QsBlock *b,
-        uint32_t numInputs, uint32_t numOutputs);
-    int (*postStart)(struct QsBlock *b,
-        uint32_t numInputs, uint32_t numOutputs);
-
-    int (*preStop)(struct QsBlock *b,
-        uint32_t numInputs, uint32_t numOutputs);
-    int (*postStop)(struct QsBlock *b,
-        uint32_t numInputs, uint32_t numOutputs);
-
+    //
     int (* start)(uint32_t numInputs, uint32_t numOutputs);
     int (* stop)(uint32_t numInputs, uint32_t numOutputs);
 

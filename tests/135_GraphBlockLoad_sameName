@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Testing that the loading of a block with a non-unique name fails.
+
+set -x
+
+if ../bin/quickstream\
+ --block tests/dummy xx\
+ --block tests/dummy xx ; then
+    # This avoids the memory leaks from bash that valgrind detects
+    # if we call "exit 1".
+    exec ./fail
+fi
+
+
+if ../bin/quickstream\
+ --block tests/dummy xx\
+ --graph\
+ --block tests/dummy xx ; then
+    # This avoids the memory leaks from bash that valgrind detects.
+    exec ./fail
+fi
+
+
+# This avoids the memory leaks from bash that valgrind detects.
+exec ./success
