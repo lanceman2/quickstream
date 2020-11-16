@@ -16,6 +16,15 @@ struct QsOut;
 
 
 
+#define _QS_IN_NONE             ((uint32_t) 0x2499f504)
+
+#define _QS_IN_BOOTSTRAP        ((uint32_t) 0x38def4de)
+// construct()
+#define _QS_IN_CONSTRUCT        ((uint32_t) 0xe583e10c)
+// and destroy()
+#define _QS_IN_DESTROY          ((uint32_t) 0x17fb51d9)
+
+
 struct QsBlock {
 
     // The graph that created/loaded this block and owns this block.
@@ -23,6 +32,13 @@ struct QsBlock {
 
     // block name that is unique to this block for all block in graph.
     const char *name;
+
+    // _QS_IN_NONE
+    // _QS_IN_BOOTSTRAP
+    // _QS_IN_CONSTRUCT
+    // _QS_IN_DESTROY
+    //
+    uint32_t inWhichCallback;
 
     // dlhandle can be zero as a sign that block functions should not be
     // called any more; functions from the DSO, like start() and work().

@@ -18,7 +18,18 @@ pthread_t mainThread;
 static bool mainThreadSet = false;
 
 
+pthread_key_t _qsGraphKey;
+static pthread_once_t key_once = PTHREAD_ONCE_INIT;
+
+/* Allocate the key */
+static void make_key() {
+    CHECK(pthread_key_create(&_qsGraphKey, 0));
+}
+
+
 struct QsGraph *qsGraphCreate(void) {
+
+    CHECK(pthread_once(&key_once, make_key));
 
     struct QsGraph *graph = calloc(1, sizeof(*graph));
     ASSERT(graph, "calloc(1,%zu) failed", sizeof(*graph));
@@ -28,7 +39,8 @@ struct QsGraph *qsGraphCreate(void) {
     if(mainThreadSet == false) {
         mainThread = pthread_self();
         mainThreadSet = true;
-    }
+    } else
+        ASSERT(mainThread == pthread_self(), "Not graph main thread");
 
     // Add this to the list of graphs
     graph->next = graphs;

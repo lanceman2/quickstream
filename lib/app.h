@@ -82,6 +82,10 @@ struct QsBootstrapCallbacks;
 extern struct QsGraph *graphs;
 extern pthread_t mainThread;
 
+// Used to get/set thread specific pointer to block structs
+// in block user functions.
+extern pthread_key_t _qsGraphKey;
+
 struct QsGraph {
 
     // List of blocks.  Indexed by name.

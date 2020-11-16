@@ -79,6 +79,22 @@ static char *qsErrorBuffer = 0;
 
 #define BUFLEN  1024
 
+
+// So programs using this stuff can free memory before exiting,
+// and so not have allocated memory that is not free()ed.
+//
+// So programs that call ERROR() can pass valgrind run tests.
+//
+void qsErrorFree(void) {
+
+    pthread_mutex_lock(&mutex);
+    if(qsErrorBuffer) {
+        free(qsErrorBuffer);
+        qsErrorBuffer = 0;
+    }
+    pthread_mutex_unlock(&mutex);
+}
+
 //
 // The non-zero return value must be free()ed by the API user.
 //

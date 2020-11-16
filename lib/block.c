@@ -50,7 +50,6 @@ void qsBlockUnload_noDestory(struct QsBlock *b) {
     DASSERT(b);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
 
-
     DSPEW("Freeing block named %s", b->name);
 
     if(b->name) free((void *) b->name);
@@ -73,8 +72,9 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // 2. dlopen()
     // 3. check if already dlopen()ed and fix
     // 4. see if isSuperBlock is defined and Allocate
-    // 5. add block to graph
+    // 5. add block to graph's block list
     // 6. Call bootscrap()
+    // 7. Add cleanup callback for block's entry in graph block list
 
     DASSERT(graph);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
@@ -231,7 +231,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     b->graph = graph;
     b->name = strdup(blockName);
     ASSERT(b->name, "strdup() failed");
-
+    b->inWhichCallback = _QS_IN_NONE;
 
     ///////////////////////////////////////////////////////////////////
     // 5. add block to graph
@@ -241,12 +241,6 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     int ret = qsDictionaryInsert(graph->blocks, blockName, b, &entry);
     ASSERT(ret == 0, "qsDictionaryInsert(,\"%s\",,) failed", blockName);
     DASSERT(entry);
-    qsDictionarySetFreeValueOnDestroy(entry,
-            (void (*)(void *)) qsBlockUnload);
-
-    DSPEW("Loaded %s block named \"%s\" from path=%s",
-            ((b->isSuperBlock)?"SUPER":"simple"),
-            b->name, path);
 
 
     ///////////////////////////////////////////////////////////////////
@@ -255,21 +249,46 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
     int (*bootstrap)(struct QsGraph *graph) = dlsym(dlhandle, "bootstrap");
     if(bootstrap == 0) {
-        ERROR("dlsym(, \"bootstrap\") failed");
+        ERROR("dlsym(, \"bootstrap\") failed: %s", dlerror());
         free(path);
+        qsDictionaryRemove(entry, blockName);
         qsBlockUnload_noDestory(b);
         return 0;
     }
 
-    // TODO: setup thread specfic data for bootstrap call.
-    // Making this re-entrant code.
+    // Setup thread specfic data for bootstrap call.
+    // And Make this re-entrant code.
+    //
+    struct QsBlock *oldBlock = pthread_getspecific(_qsGraphKey);
+    //
+    ASSERT(!oldBlock || oldBlock->graph == b->graph,
+            "You cannot mix QsGraph objects in "
+            "other QsGraph function calls");
+    DASSERT(oldBlock != b);
+    //
+    // Set the thread specific data to the block structure.
+    CHECK(pthread_setspecific(_qsGraphKey, b));
+
+    DASSERT(b->inWhichCallback == _QS_IN_NONE);
+
+    // We add a marker to block struct so we know what block callback
+    // function is being called.
+    //
+    b->inWhichCallback = _QS_IN_BOOTSTRAP;
 
     ret = bootstrap(graph);
+
+    b->inWhichCallback = _QS_IN_NONE;
+
+    CHECK(pthread_setspecific(_qsGraphKey, oldBlock));
+
+
     if(ret) {
 
         if(ret < 0) {
             ERROR("bootstrap() failed for block named \"%s\"", b->name);
             free(path);
+            qsDictionaryRemove(entry, blockName);
             qsBlockUnload_noDestory(b);
             return 0;
         }
@@ -282,9 +301,17 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         b->dlhandle = 0;
     }
 
-    // TODO: setup thread specfic data for bootstrap call.
-    // Making this re-entrant code.
 
+    ///////////////////////////////////////////////////////////////////
+    // 7. Add cleanup callback for block's entry in graph block list
+    ///////////////////////////////////////////////////////////////////
+
+    qsDictionarySetFreeValueOnDestroy(entry,
+            (void (*)(void *)) qsBlockUnload);
+
+    DSPEW("Loaded %s block named \"%s\" from path=%s",
+            ((b->isSuperBlock)?"SUPER":"simple"),
+            b->name, path);
 
 
     free(path);

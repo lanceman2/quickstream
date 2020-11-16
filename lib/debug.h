@@ -77,6 +77,36 @@ extern void qs_spew(int level, FILE *stream, int errn, const char *pre, const ch
 
 extern void qs_assertAction(FILE *stream);
 
+extern void qsErrorFree(void);
+
+
+// This CPP macro function CHECK() is just so we can call most pthread_*()
+// (pthread_mutex_init() for example) and maybe other functions that
+// return 0 on success and an int error number on failure, and asserts on
+// failure printing errno (from ASSERT()) and the return value.  This is
+// not so bad given this does not obscure what is being run.  Like for
+// example:
+//
+//   CHECK(pthread_mutex_lock(&s->mutex));
+//
+// You can totally tell what that is doing.  One line of code instead of
+// three.  Note (x) can only appear once in the macro expression,
+// otherwise (x) could get executed more than once if it was listed more
+// than once.
+//
+// CHECK() is not a debugging thing; it's inserting the (x) code every
+// time.  And the same goes for ASSERT(); ASSERT() is not a debugging
+// thing either, it is the coder being to lazy to recover from a large
+// number of failure code paths.  If malloc(10) fails we call ASSERT.
+// If pthread_mutex_lock() fails we call ASSERT. ...
+//
+#define CHECK(x) \
+    do { \
+        int ret = (x); \
+        ASSERT(ret == 0, #x "=%d FAILED", ret); \
+    } while(0)
+
+
 
 
 #  define _SPEW(level, stream, errn, bufferIt, pre, fmt, ... )\

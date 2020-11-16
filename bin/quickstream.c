@@ -37,7 +37,6 @@ extern void usage(int fd);
 
 
 static void gdb_catcher(int signum) {
-
     // The action of ASSERT() depends on how this is compiled.
     ASSERT(0, "Caught signal %d\n", signum);
 }
@@ -49,6 +48,7 @@ int main(int argc, const char * const *argv) {
     signal(SIGSEGV, gdb_catcher);
 
     int i = 1;
+    int ret = 0; // return code.
     const char *arg = 0;
 
 
@@ -102,7 +102,9 @@ int main(int argc, const char * const *argv) {
                     if(!b) {
                         fprintf(stderr, "Loading block %s FAILED\n",
                                 arg);
-                        return 1;
+                        i = argc;
+                        ret = 1; // error return code.
+                        break; // fall out and cleanup.
                     }
                 }
                 // next
@@ -113,7 +115,6 @@ int main(int argc, const char * const *argv) {
                 CreateGraph();
                 break;
             case 's': // sleep SECONDS
-
                 if(!arg) {
                     fprintf(stderr, "--sleep with no SECONDS\n");
                     return 1;
@@ -200,5 +201,11 @@ int main(int argc, const char * const *argv) {
         free(graphs);
     }
 
-    return 0;
+    // To free memory that was allocated by the spew and error CPP macro
+    // functions: ASSERT(), DASSERT(), ERROR(), WARN(), NOTICE(), INFO(),
+    // DSPEW() and SPEW() from debug.c and debug.h.
+    //
+    qsErrorFree();
+
+    return ret;
 }
