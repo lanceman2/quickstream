@@ -494,32 +494,38 @@ more restricted.  Interfaces between blocks are standardized by
 quickstream.
 
 
-### Work
+### work/flow
 
-We adopted the term work function from GNU radio, through quickstream only
-has one work function prototype.
+In quickstream the flow() function is some-what analogous GNU radio's
+work() function.  We say some-what because in quickstream we have other
+events and corresponding functions that cause block module function's to
+do work.  In quickstream flow() is the work that is done to feed the data
+into the stream buffers.  In quickstream blocks can also do work do to
+events that are not due to changes in the stream buffers, like file I/O
+and OS (operating system) signal events.
 
 
 ### Controller
 
 or controller block.  A controller is plugin block module that does not
 have stream data input or stream data output is called a controller block
-or controller for short.  The controller's work function, if it exists,
-will only be triggered by the state of OS (operating system) file
-descriptors or from other callbacks in this block which queue a work
-call.
+or controller for short.  The controller has no flow() function.  The
+controllers flow-time working functions are not directly caused by
+stream buffer flows.
 
 
 ### Filter
 
 or filter block.  A filter is a plugin block module that reads input
-and/or writes outputs.
+and/or writes outputs in the stream via a flow() function.
 
 
 ### Source
 
 or source filter block.  A source is a plugin filter block module that has
-no inputs and one or more outputs.
+no inputs and one or more outputs.  Source block's flow() calls are
+triggered by like file I/O and OS (operating system) signal events.
+
 
 ### Sink
 
@@ -595,7 +601,7 @@ is only one interface for a given quickstream primitive functionality.  No
 guessing which class to inherit.  No built-in inter-filter data typing.
 We provide just a modular streaming paradigm without a particular end
 application use case.  The idea of inter-module data types is not
-introduced in the work interfaces, that would limit it's use, and can be
+introduced in the flow() interfaces, that would limit it's use, and can be
 considered at a higher software interface layer.  In the future
 benchmarking will tell.  TODO: Add links here...
 
@@ -624,13 +630,15 @@ https://raw.githubusercontent.com/lanceman2/quickstream.doc/master/jobFlow.png)
 
 #### Triggering
 
+  TODO: rewrite this section:
+
   1. For flow graphs with a single file descriptor use blocking w/r
      without epoll_wait().
   2. At flow-time, if there is no non-fd driven task in the queue then the
      last thread will go to epoll_wait().
   3. For dumb users that do not use qsSetFDPoll() (or whatever it's
      called) then they will be adding blocking calls to their running flow
-     graphs work() functions, it will still work, but performance may
+     graphs flow() functions, it will still work, but performance may
      suffer.
   4. Blocks can trigger themselves work from their other callbacks.
 

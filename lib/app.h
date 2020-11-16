@@ -19,7 +19,7 @@ struct QsThreadPool {
     pthread_cond_t cond;  // idle threads just wait with this cond.
 
     // numThreads is the number of pthreads that exist from this
-    // threadPool, be they idle or in the process of calling work().  We
+    // threadPool, be they idle or in the process of calling flow().  We
     // must have a ThreadPool mutex lock to access numThreads.
     //
     // numThreads <= maxThreads
@@ -37,7 +37,8 @@ struct QsThreadPool {
     // The blocks may be:
     //
     //   1. queued: waiting in the worker thread queue
-    //   2. working: calling work() on by a running thread
+    //   2. working: calling flow() or other trigger action on by a running
+    //      thread
     //   3. waiting: in an un-runnable work state due to
     //        3a) waiting on stream buffer or parameter input/output
     //          calling pthread_cond_wait().

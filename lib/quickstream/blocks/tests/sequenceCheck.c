@@ -120,7 +120,7 @@ int start(uint32_t numInputs, uint32_t numOutputs) {
 }
 
 
-int work(void *buffers[], const size_t lens[],
+int flow(void *buffers[], const size_t lens[],
         uint32_t numInputs, uint32_t numOutputs) {
 
     for(uint32_t i=0; i<numInputs; ++i) {

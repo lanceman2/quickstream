@@ -8,7 +8,10 @@ if ../bin/quickstream\
  --block tests/dummy xx\
  --block tests/dummy xx ; then
     # This avoids the memory leaks from bash that valgrind detects
-    # if we call "exit 1".
+    # if we call "exit 1".  Apparently valgrind, at least the way we are
+    # running it, does not check memory before execute; so replacing bash
+    # with an non-leaky program removes the valgrind memory problem that
+    # is in the bash process that ./fail replaces.
     exec ./fail
 fi
 

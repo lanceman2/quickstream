@@ -41,10 +41,10 @@ struct QsBlock {
     uint32_t inWhichCallback;
 
     // dlhandle can be zero as a sign that block functions should not be
-    // called any more; functions from the DSO, like start() and work().
+    // called any more; functions from the DSO, like start() and flow().
     void *dlhandle; // from dlopen()
 
-    // The threadPool that can run this blocks work()
+    // The threadPool that can run this blocks flow()
     struct QsThreadPool *threadPool;
 
     // Some callbacks like boostrap(), construct() and destroy() we
@@ -95,27 +95,27 @@ struct QsSimpleBlock {
     size_t *advanceLens; // allocated after start and freed at stop
     //
     // outputLens from qsOuput() and qsGetOutputBuffer() calls from in
-    // filter work().   Length of this array is filter block numOutputs.
+    // filter flow().   Length of this array is filter block numOutputs.
     size_t *outputLens; // amount output was advanced in input() call.
 
     // This will be the pthread_getspecific() data for each flow thread.
-    // Each thread just calls the filter (QsSimpleBlock) work() function.
-    // When there is more than on thread calling a filter work() we need
-    // to know things, QsJob, about that thread in that work() call.
+    // Each thread just calls the filter (QsSimpleBlock) flow() function.
+    // When there is more than on thread calling a filter flow() we need
+    // to know things, QsJob, about that thread in that flow() call.
 
 
-    // Super blocks can't have a work() or flush().  The super blocks
+    // Super blocks can't have a flow() or flush().  The super blocks
     // are not used while the stream is flowing.  The super blocks are
     // just flow-graph build-time and paused-time construct.
     //
-    int (* work)(void *buffer[], const size_t len[],
+    int (* flow)(void *buffer[], const size_t len[],
             uint32_t numInputs, uint32_t numOutputs);
     //
-    // flush() gets called in place of work() when the stream is flushing;
+    // flush() gets called in place of flow() when the stream is flushing;
     // that is it is called until len[] is all zeroed and there is no
     // block feeding this block.
     //
-    // But if flush() is not present, then work() is called in it's place
+    // But if flush() is not present, then flow() is called in it's place
     // in the same way that flush() would be called.
     int (* flush)(void *buffer[], const size_t len[],
             uint32_t numInputs, uint32_t numOutputs);
@@ -128,7 +128,7 @@ struct QsSimpleBlock {
     struct QsInput *inputs; // array of struct QsInput
 
     // We queue up setCallbacks that need to be called in the owner block
-    // thread before and/or after the work() call.  This will queue up
+    // thread before and/or after the flow() call.  This will queue up
     // many different parameters, but only the last element value is
     // queued for a given parameter, so each parameter can only have one
     // entry in this queue.
@@ -144,7 +144,7 @@ struct QsSimpleBlock {
     // block owns these setter parameters.
     struct QsSetter *first, *last;
 
-    // next in Job queue that is waiting for a worker thread in the
+    // next in Job queue that is waiting for a flower thread in the
     // ThreadPool.
     //
     struct QsBlock *next;
@@ -157,7 +157,7 @@ struct QsInput {
     //
     // After initialization, readPtr is only read and written by the
     // reading filter block.  We use a reading filter mutex for
-    // multi-thread filters work()s, but otherwise reading/writing the
+    // multi-thread filters flow()s, but otherwise reading/writing the
     // buffer is lock-less.
     //
     uint8_t *readPtr;
@@ -278,7 +278,7 @@ struct QsOutput {  // points to reader filter blocks
 
     uint32_t numInputs; // length of inputs (readers) array
 
-    // work() just returns 0 if a threshold is not reached.
+    // flow() just returns 0 if a threshold is not reached.
 };
 
 

@@ -191,10 +191,6 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
 
     void *dlhandle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
-
-    // See if this dlhandle has been created before in another block in
-    // this graph.
-
     if(!dlhandle) {
         WARN("dlopen(\"%s\",) failed: %s", path, dlerror());
         free(path);
@@ -322,8 +318,8 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     ///////////////////////////////////////////////////////////////////
 
     if(!b->isSuperBlock) {
-        ((struct QsSimpleBlock *) b)->work = dlsym(dlhandle, "work");
-        ((struct QsSimpleBlock *) b)->work = dlsym(dlhandle, "flush");
+        ((struct QsSimpleBlock *) b)->flow = dlsym(dlhandle, "flow");
+        ((struct QsSimpleBlock *) b)->flush = dlsym(dlhandle, "flush");
     }
     b->start = dlsym(dlhandle, "start");
     b->stop = dlsym(dlhandle, "stop");

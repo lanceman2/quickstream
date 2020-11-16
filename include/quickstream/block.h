@@ -53,10 +53,10 @@ enum QsParameterType {
 #define QS_KEEP_AT_RESTART (02)
 /** free get callback user data */
 #define QS_FREE_USERDATA   (04)
-/** queue up callback before work() */
-#define QS_Q_BEFORE_WORK   (010)
-/** queue up callback after work() */
-#define QS_Q_AFTER_WORK    (020)
+/** queue up callback before flow() */
+#define QS_Q_BEFORE_FLOW   (010)
+/** queue up callback after flow() */
+#define QS_Q_AFTER_FLOW    (020)
 
 
 
@@ -84,7 +84,7 @@ enum QsParameterType {
  the array.
 
  \param setCallback is the callback function that will be called before
- or after the block work() function, after each time a connected getter
+ or after the block flow() function, after each time a connected getter
  parameter changes.
 
  The \p setCallback function may call qsParameterGetterPush().
@@ -142,7 +142,7 @@ qsParameterConstantCreate(struct QsBlock *block, const char *pname,
  Push a value to all connected blocks setter parameters.  Because this is
  running in the thread of the block that owns this getter parameter the
  needed setter callback functions will be queue up, and called before or
- after the parameter setter block's work() function thread.
+ after the parameter setter block's flow() function thread.
 
  \param parameter is a pointer to the getter parameter.
 
@@ -211,7 +211,7 @@ uint32_t qsParameterGetterPush(struct QsParameter *getter,
 
 /** Get an output buffer pointer
 
- qsGetBuffer() may only be called in the block's work() function.  If a
+ qsGetBuffer() may only be called in the block's flow() function.  If a
  given block at a given input() call will generate output than
  qsGetBuffer() must be called and later followed by a call to
  qsOutput().
@@ -219,8 +219,8 @@ uint32_t qsParameterGetterPush(struct QsParameter *getter,
  If output is to be generated for this output port number than
  qsOutput() must be called some time after this call to qsGetBuffer().
 
- If qsGetBuffer() is not called in a given block work() callback
- function there will be no output from the block in the given work()
+ If qsGetBuffer() is not called in a given block flow() callback
+ function there will be no output from the block in the given flow()
  call.
 
  \param outputPortNum the associated output port.  If the output
@@ -257,7 +257,7 @@ void qsOutput(uint32_t outputPortNum, size_t len);
 
 /** advance the current input buffer
 
- qsAdvanceInput() can only be called in a block work() function.
+ qsAdvanceInput() can only be called in a block flow() function.
 
  In order to advance the input buffer a length that is not the length
  that was passed into the input() call, this qsAdvanceInput() function
@@ -285,10 +285,10 @@ void qsAdvanceInput(uint32_t inputPortNum, size_t len);
 
 /** set the current block's input threshold
 
- Set the minimum input needed in order for current blocks work()
+ Set the minimum input needed in order for current blocks flow()
  function to be called.  This threshold, if reached for the
  corresponding input port number, will cause input() to be called.  If
- this simple threshold condition is not adequate the blocks work()
+ this simple threshold condition is not adequate the blocks flow()
  function may quickly just return 0, and effectively wait for more a
  complex threshold condition to be reached by continuing to just quickly
  return 0 until the block sees the level of inputs that it likes.
@@ -310,7 +310,7 @@ void qsSetInputThreshold(uint32_t inputPortNum, size_t len);
 // Sets maxRead
 /** Set the input read promise
 
- The block work() promises to read at least one byte of data on a
+ The block flow() promises to read at least one byte of data on a
  given input() call, if there is len bytes of input on the port
  inputPortNum to read.  If this promise is not kept the program will
  fail.  This is to keep the fixed ring buffers from being overrun.
@@ -392,7 +392,7 @@ int qsCreatePassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum,
  qsGetBlockName() can only be called in a block module in it's
  construct(), start(), stop(), and destroy() functions.
 
- If you need the block name in work() get it in start() or
+ If you need the block name in flow() get it in start() or
  construct().  The blocks name will never change after it's loaded.
 
  \return a string that you should only read.
@@ -418,6 +418,23 @@ struct QsBlock *qsBlockGetFromName(struct QsGraph *graph,
         const char *bName);
 
 
+/** Setup a trigger for stream flow and/or parameter get events
+
+ We at trigger a get or an output with a read or write fd, or a signal.
+
+ If filter blocks do not call qsTriggerCreate() for their stream inputs
+ and outputs it will be called automatically.
+
+ This can be called in a block's construct() or start() functions.  If
+ qsTriggerCreate() is called in construct() the trigger will stay setup
+ across stream flow restarts, else, if qsTriggerCreate() is called in
+ start() the trigger will not stay setup across stream flow restarts, but
+ the trigger can be recreated at each start() by calling qsTriggerCreate()
+ in start().
+
+ \return 0 on success.
+ */
+extern int qsTriggerCreate();
 
 
 /** The block plugin bootstrap module callback function
@@ -449,6 +466,8 @@ int bootstrap(struct QsGraph *graph);
 
 /** optional construct() function
 
+ Triggers setup in construct() do not need to be setup again at each
+ stream flow cycle.
 
  /return 0 on success, and 1 to unload the block, and less than 0 on
  error.
@@ -467,11 +486,15 @@ void destroy(void);
 
 
 /** optional block start function
- 
+
+ Triggers setup in start() do need to be setup again at each
+ stream flow cycle in start() in the next flow cycle.
+
+
  This function, if present, is called each time the stream starts
- running, just before any block in the graph has it's \ref work()
+ running, just before any block in the graph has it's \ref flow()
  function called.  We call this time the start of a flow cycle.  After
- this is called \ref work() will be called in a regular fashion for
+ this is called \ref flow() will be called in a regular fashion for
  the duration of the flow cycle.
  
  This function lets that block determine what the number of inputs and
@@ -574,7 +597,7 @@ int stop(uint32_t numInPorts, uint32_t numOutPorts);
 
 
 
-int work(void *in[], const size_t lenIn[],
+int flow(void *in[], const size_t lenIn[],
         uint32_t numIn, uint32_t numOut);
 
 

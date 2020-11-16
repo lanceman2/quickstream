@@ -116,13 +116,13 @@ struct QsThreadPool *qsGraphThreadPool(struct QsGraph *graph, uint32_t maxThread
 /** Add a block to a thread pool
  
  For each block added to a thread pool, the thread pool threads will run the
- block's work() function as the stream flows.  The threads in the pool are
+ block's flow() function as the stream flows.  The threads in the pool are
  shared between all the blocks that are added.
 
  \param tp a pointer to a thread pool object that was returned from a call
  to qsGraphThreadPool().
 
- \param block who's work() function is called by a thread in this pool, as
+ \param block who's flow() function is called by a thread in this pool, as
  the stream flows.
  */
 
@@ -145,9 +145,12 @@ void qsThreadPoolRemove(struct QsThreadPool *tp);
 
 
 /** Ready the graph
- 
- Allocate the stream buffers and call the block start() functions, but
- does not run the flow.
+
+ If this is the first time the graph will flow all the block's construct()
+ functions that exist will be called first.
+
+ This allocates the stream buffers and calls the block start() functions,
+ but does not run the flow.
 
  \param graph a pointer to an graph.
 
@@ -176,7 +179,7 @@ int qsGraphWait(struct QsGraph *graph);
 
 /** Begin the stream flow
 
- Begin the stream flow by calling the work() functions of all source blocks
+ Begin the stream flow by calling the flow() functions of all source blocks
  that are triggered.
 
  If not running with just main thread this will return and then you can
@@ -215,7 +218,7 @@ int qsGraphStop(struct QsGraph *graph);
 
 /** Halt the flow
 
- Stop calling all work() functions, even if there is data in the stream.
+ Stop calling all flow() functions, even if there is data in the stream.
 
  \param graph a pointer to the graph object that is associated with the stream
  graph that we want to halt the flow in.
