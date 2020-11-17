@@ -2,7 +2,6 @@
 struct QsDictionary;
 struct QsGraph;
 struct QsBlock;
-struct QsParameter;
 struct QsSetter;
 
 // For real stream I/O connections
@@ -26,6 +25,18 @@ struct QsOut;
 
 
 struct QsBlock {
+
+    // QsBlock is the base class for QsSimpleBlock and QsSuperBlock.  A
+    // pointer to a struct QsBlock is the opaque interface that the API
+    // (application user interface) user uses to access both QsSimpleBlock
+    // and QsSuperBlock.  The quickstream API user never sees
+    // QsSimpleBlock or QsSuperBlock.  Hence struct QsBlock is an
+    // interface wrapper to QsSimpleBlock and QsSuperBlock.  This leads to
+    // a more seamless interface to quickstream blocks.  You use simple
+    // blocks just like supper blocks; and that's very powerful.
+    //
+    // Counter to that, GNU radio blocks have their guts hanging out
+    // all other the place.  I could go on about it, to no end.
 
     // The graph that created/loaded this block and owns this block.
     struct QsGraph *graph;

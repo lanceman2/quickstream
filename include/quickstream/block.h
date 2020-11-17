@@ -418,23 +418,17 @@ struct QsBlock *qsBlockGetFromName(struct QsGraph *graph,
         const char *bName);
 
 
-/** Setup a trigger for stream flow and/or parameter get events
+/** Setup a signal trigger for parameter get events
 
- We at trigger a get or an output with a read or write fd, or a signal.
 
- If filter blocks do not call qsTriggerCreate() for their stream inputs
- and outputs it will be called automatically.
 
- This can be called in a block's construct() or start() functions.  If
- qsTriggerCreate() is called in construct() the trigger will stay setup
- across stream flow restarts, else, if qsTriggerCreate() is called in
- start() the trigger will not stay setup across stream flow restarts, but
- the trigger can be recreated at each start() by calling qsTriggerCreate()
- in start().
 
  \return 0 on success.
+
+ \memberof CBlockAPI
  */
-extern int qsTriggerCreate();
+extern int qsTriggerParameterCreateFromSignal(int signum,
+        struct QsParameter *getter);
 
 
 /** The block plugin bootstrap module callback function
@@ -458,7 +452,6 @@ extern int qsTriggerCreate();
  error that we can't recover from.
 
  \memberof CBlockAPI
-
  */
 int bootstrap(struct QsGraph *graph);
 
