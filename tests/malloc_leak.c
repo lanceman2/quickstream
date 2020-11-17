@@ -1,10 +1,16 @@
+// Testing that valrind can find the memory lead by running this
+// with valgrind.
+//
+// Try running:
+//
+//      ./valgrid_run_tests malloc_leak
+
+
 #include <stdlib.h>
-#include <stdio.h>
 
 int main(void) {
 
-    char *ptr = malloc(1);
-    printf("ptr=%p\n", ptr);
+    malloc(1);
 
     // We needed a test to test that valgrind is working.
 

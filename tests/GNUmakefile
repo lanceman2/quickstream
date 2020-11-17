@@ -1,5 +1,8 @@
 #! This is a "GNU make" make file.
 
+# Adding a test that is a bash script does not require editing this file.
+
+
 # If this directory is not recursed into from the directory above this we
 # recurse up a directory if make was run in this directory.
 ifeq ($(strip $(MAKELEVEL)),0)
@@ -13,7 +16,7 @@ endif
 BUILD_NO_INSTALL :=\
  tests/tests\
  021_debug\
- 031_malloc_leak\
+ malloc_leak\
  180_Dictionary_test\
  165_DictionaryRemove_test\
  184_DictionaryRemove_test\
@@ -41,7 +44,7 @@ success_SOURCES := success.c
 184_DictionaryRemove_test_SOURCES := 184_DictionaryRemove_test.c ../lib/Dictionary.c ../lib/debug.c
 190_DictionaryRemove_test_SOURCES := 190_DictionaryRemove_test.c ../lib/Dictionary.c ../lib/debug.c
 194_DictionaryDict_test_SOURCES := 194_DictionaryDict_test.c ../lib/Dictionary.c ../lib/debug.c
-031_malloc_leak_SOURCES := 031_malloc_leak.c
+malloc_leak_SOURCES := malloc_leak.c
 
 
 ifeq ($(wildcard ../makefile)),)

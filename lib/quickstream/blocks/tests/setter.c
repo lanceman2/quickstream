@@ -2,7 +2,6 @@
 
 #include "../../../debug.h"
 
-bool isSuperBlock;
 
 static int count = 0;
 
