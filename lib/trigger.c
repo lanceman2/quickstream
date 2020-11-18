@@ -11,8 +11,12 @@
 
 
 
-int qsTriggerParameterCreateFromSignal(int signum,
-        struct QsParameter *getter) {
+int qsTriggerSignalCreate(int signum,
+        void (*triggerCallback)(void *userData),
+        void *userData) {
+
+   
+    
 
 
     return 0; // success

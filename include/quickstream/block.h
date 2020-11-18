@@ -132,7 +132,7 @@ qsParameterGetterCreate(struct QsBlock *block, const char *pname,
 extern
 struct QsParameter *
 qsParameterConstantCreate(struct QsBlock *block, const char *pname,
-        enum QsParameterType type, size_t psize);
+        enum QsParameterType type, size_t psize, void *initialVal);
 
 
 
@@ -418,17 +418,31 @@ struct QsBlock *qsBlockGetFromName(struct QsGraph *graph,
         const char *bName);
 
 
-/** Setup a signal trigger for parameter get events
+/** Create a trigger callback from a operating system signal
 
+ How blocks code is run is very restricted and controlled by quickstream.
+ Blocks do not control how and what threads run their functions.  Hence
+ quickstream can't let blocks catch signals; doing so could corrupt
+ memory in the running program.
 
+ qsTriggerSignalCreate() sets up a signal catcher that will eventually
+ lead to calling the \p triggerCallback function which the user passes.
+ The calling thread will be assigned for a quickstream thread from the
+ block's assigned thread-pool.  The how threads run block's functions is
+ configured from code not in the blocks, from programs that run the stream
+ graph.
+
+ \todo More here.
 
 
  \return 0 on success.
 
  \memberof CBlockAPI
  */
-extern int qsTriggerParameterCreateFromSignal(int signum,
-        struct QsParameter *getter);
+extern
+int qsTriggerSignalCreate(int signum,
+        void (*triggerCallback)(void *userData),
+        void *userData);
 
 
 /** The block plugin bootstrap module callback function

@@ -1,6 +1,5 @@
 #include <stdio.h>
 
-
 #include "../../../../include/quickstream/block.h"
 
 #include "../../../debug.h"

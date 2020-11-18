@@ -28,12 +28,11 @@ struct QsParameter {
     // size in bytes of the parameter data that is copied for each 
     size_t size;
 
-
     // Bit-wise or-ed flag
     //
     // TODO: This stupid list is evolving.
     //
-    // QS_FREE_USERDATA   (04)
+    // QS_FREE_USERDATA   (01)
     //
     uint32_t flags;
 
@@ -80,7 +79,10 @@ struct QsSetter {
     // TODO: Is this needed:
     //
     // Zero or one getter or constant may connect to this setter.
-    //struct QsParameter *feeder;
+    //
+    // 0 if not connected.
+    //
+    struct QsParameter *feeder;
 
 
     // This is a flow-time constant.  Passed to the setCallback().
@@ -97,11 +99,11 @@ struct QsSetter {
     // memory that this points to.
     const void *value;
 
-    void (*setCallback)(struct QsSetter *p,
+    void (*setCallback)(struct QsParameter *p,
             const void *value, size_t size, void *userData);
 
     // Set if the feeder parameter is constant.
     //
     // Feeders can be either constant or getters.
-    bool isConstant;
+    bool feederIsConstant;
 };

@@ -23,17 +23,29 @@
 //
 // Maybe this beats repeating this code many times in this file.
 //
-#define GET_BLOCK(b) \
+// There are 2 cases:
+//   1. the creator and owner block are different blocks
+//      and they must both be from the same graph.
+//   2. the creator and owner block are the same block
+//
+//   In either case we return the owner block.
+//
+// The parameter owner block must be a simple block.
+//
+//
+#define GET_OWNER_BLOCK(b) \
     do {\
         ASSERT(pname && pname[0]);\
         ASSERT(mainThread == pthread_self(), "Not graph main thread");\
-        if(b)\
-            ASSERT((GetBlock())->inWhichCallback == _QS_IN_BOOTSTRAP,\
-                "%s() must be called from bootstrap", __func__);\
-        else {\
+        if(b) {\
+            struct QsBlock *creatorB = GetBlock();\
+            ASSERT(creatorB->inWhichCallback == _QS_IN_BOOTSTRAP,\
+                "%s() must be called from bootstrap()", __func__);\
+            ASSERT(creatorB == b || creatorB->graph == b->graph);\
+        } else {\
             b = GetBlock();\
             ASSERT(b->inWhichCallback == _QS_IN_BOOTSTRAP,\
-                "%s() must be called from bootstrap", __func__);\
+                "%s() must be called from bootstrap()", __func__);\
         }\
         ASSERT(b->isSuperBlock == false);\
     } while(0)
@@ -44,6 +56,14 @@ void FreeParameter(struct QsParameter *p) {
 
     DASSERT(p);
     DASSERT(p->name);
+
+    if(p->kind == QsConstant) {
+        DASSERT(((struct QsConstant *) p)->value);
+#ifdef DEBUG
+        memset(((struct QsConstant *) p)->value, 0, p->size);
+#endif
+        free(((struct QsConstant *) p)->value);
+    }
 
 #ifdef DEBUG
     memset((char *) p->name, 0, strlen(p->name));
@@ -77,8 +97,6 @@ void *AllocateParameter(const char *parameterKind,
         enum QsParameterKind kind, size_t structSize) {
 
     DASSERT(pdict);
-    DASSERT(pname);
-    DASSERT(pname[0]);
     DASSERT(psize);
     DASSERT(structSize > sizeof(struct QsParameter));
 
@@ -116,16 +134,15 @@ qsParameterSetterCreate(struct QsBlock *b, const char *pname,
         void (*cleanup)(struct QsParameter *, void *userData),
         void *userData, uint32_t flags) {
 
-    GET_BLOCK(b);
+    GET_OWNER_BLOCK(b);
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsSetter *p = AllocateParameter("Setter",
         smB->setters, psize, type, b->name, pname,
         QsSetter, sizeof(*p));
     if(!p) return  (struct QsParameter *) p;
-
-
-
+    p->userData = userData;
+    p->setCallback = setCallback;
 
     return (struct QsParameter *) p;
 }
@@ -135,7 +152,7 @@ struct QsParameter *
 qsParameterGetterCreate(struct QsBlock *b, const char *pname,
         enum QsParameterType type, size_t psize) {
 
-    GET_BLOCK(b);
+    GET_OWNER_BLOCK(b);
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsGetter *p = AllocateParameter("Getter",
@@ -143,16 +160,15 @@ qsParameterGetterCreate(struct QsBlock *b, const char *pname,
         QsGetter, sizeof(*p));
     if(!p) return  (struct QsParameter *) p;
 
-
     return (struct QsParameter *) p;
 }
 
 
 struct QsParameter *
 qsParameterConstantCreate(struct QsBlock *b, const char *pname,
-        enum QsParameterType type, size_t psize) {
+        enum QsParameterType type, size_t psize, void *initialVal) {
 
-    GET_BLOCK(b);
+    GET_OWNER_BLOCK(b);
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsConstant *p = AllocateParameter("Constant",
@@ -160,7 +176,11 @@ qsParameterConstantCreate(struct QsBlock *b, const char *pname,
         QsConstant, sizeof(*p));
     if(!p) return  (struct QsParameter *) p;
 
+    // p->value will be free()ed in FreeParameter().
+    p->value = malloc(psize);
+    ASSERT(p->value, "malloc(%zu) failed", psize);
+
+    memcpy(p->value, initialVal, psize);
 
     return (struct QsParameter *) p;
 }
-

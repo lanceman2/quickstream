@@ -8,6 +8,13 @@
 static int count = 0;
 
 
+static
+void triggerCallback(struct QsParameter *p) {
+
+
+}
+
+
 int bootstrap(struct QsGraph *graph) {
 
     DSPEW("count = %d", count++);
@@ -16,14 +23,10 @@ int bootstrap(struct QsGraph *graph) {
     struct QsParameter *getter = qsParameterGetterCreate(0, "getter",
             QS_DOUBLE, sizeof(double));
 
-    qsTriggerParameterCreateFromSignal(SIGALRM, getter);
+    qsTriggerSignalCreate(SIGALRM,
+            (void (*)(void *userData)) triggerCallback, getter);
 
     return 0; // 0 => success
-}
-
-int construct(void) {
-
-    return 0; // success 
 }
 
 int start(uint32_t numInPorts, uint32_t numOutPorts) {
@@ -40,11 +43,4 @@ int stop(uint32_t numInPorts, uint32_t numOutPorts) {
     // signal generator.
 
     return 0; // success
-}
-
-
-
-void destroy() {
-
-    DSPEW();
 }
