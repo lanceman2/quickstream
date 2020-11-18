@@ -9,11 +9,12 @@
 
 #include "../include/quickstream/builder.h"
 
+#include "debug.h"
+#include "Dictionary.h"
 #include "block.h"
 #include "builder.h"
 #include "app.h"
 #include "Dictionary.h"
-#include "debug.h"
 #include "LoadDSOFromTmpFile.h"
 
 static
@@ -30,6 +31,10 @@ int FindHandle_cb(const char *blockName, struct QsBlock *b, void **dlhh) {
 
 static void qsSimpleBlockUnload(struct QsSimpleBlock *b) {
 
+    qsDictionaryDestroy(b->constants);
+    qsDictionaryDestroy(b->getters);
+    qsDictionaryDestroy(b->setters);
+
 #ifdef DEBUG
     memset(b, 0, sizeof(*b));
 #endif
@@ -37,6 +42,8 @@ static void qsSimpleBlockUnload(struct QsSimpleBlock *b) {
 
 
 static void qsSuperBlockUnload(struct QsSuperBlock *b) {
+
+    // Super blocks do not have parameters.
 
 #ifdef DEBUG
     memset(b, 0, sizeof(*b));
@@ -240,6 +247,11 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         ASSERT(smB, "calloc(1, %zu) failed", sizeof(*smB));
         b = &smB->block;
         //b->isSuperBlock is false via calloc()
+
+        // Add parameter dictionaries.
+        smB->constants = qsDictionaryCreate();
+        smB->getters = qsDictionaryCreate();
+        smB->setters = qsDictionaryCreate();
     }
 
     b->dlhandle = dlhandle;
@@ -247,6 +259,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     b->name = strdup(blockName);
     ASSERT(b->name, "strdup() failed");
     b->inWhichCallback = _QS_IN_NONE;
+
 
     ///////////////////////////////////////////////////////////////////
     // 5. add block to graph
@@ -270,6 +283,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         qsBlockUnload_noDestory(b);
         return 0;
     }
+
 
     // Setup thread specfic data for bootstrap call.
     // And Make this re-entrant code.

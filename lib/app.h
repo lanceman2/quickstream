@@ -87,6 +87,18 @@ extern pthread_t mainThread;
 // in block user functions.
 extern pthread_key_t _qsGraphKey;
 
+
+// Get the current block while in a block callback.
+static inline
+struct QsBlock *GetBlock(void) {
+    struct QsBlock *b = pthread_getspecific(_qsGraphKey);
+    ASSERT(b, "pthread_getspecific() failed to get block");
+    DASSERT(b->graph);
+    DASSERT(b->name);
+    return b;
+}
+
+
 struct QsGraph {
 
     // List of blocks.  Indexed by name.

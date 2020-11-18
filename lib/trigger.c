@@ -2,11 +2,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "../include/quickstream/block.h"
+
 #include "parameter.h"
 #include "trigger.h"
 #include "debug.h"
 
-#include "../include/quickstream/block.h"
 
 
 

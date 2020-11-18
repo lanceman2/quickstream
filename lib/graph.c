@@ -7,6 +7,7 @@
 
 #include "debug.h"
 #include "Dictionary.h"
+#include "block.h"
 #include "app.h"
 #include "builder.h"
 

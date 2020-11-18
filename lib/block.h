@@ -82,8 +82,10 @@ struct QsSimpleBlock {
     struct QsBlock block;
 
     // lists of parameters owned by this block
+    struct QsDictionary *constants;
     struct QsDictionary *getters;
     struct QsDictionary *setters;
+
 
 
     // The number of inputs can change before start and after stop, so can

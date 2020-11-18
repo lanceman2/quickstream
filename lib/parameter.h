@@ -37,9 +37,11 @@ struct QsParameter {
     //
     uint32_t flags;
 
-
     // Kind of parameter
     enum QsParameterKind kind;
+
+    enum QsParameterType type;
+
 };
 
 
