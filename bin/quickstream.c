@@ -13,7 +13,11 @@
 
 
 // The spew level.
-static int level = 1; // 0 == no spew, 1 == error, ...
+// 0 == no spew, 1 == error, 2 == warn, 3 == notice, 4 == info, 5 == debug
+//
+// DEFAULT_SPEW_LEVEL is defined in
+//   ../lib/quickstream/misc/quickstreamHelp.c.in
+static int level = DEFAULT_SPEW_LEVEL;
 
 // Current graph:
 static struct QsGraph *graph = 0;
@@ -130,6 +134,31 @@ int main(int argc, const char * const *argv) {
                     if(level >= 4) // 4 = INFO
                         fprintf(stderr,"Sleeping %lg seconds\n", val);
                     usleep( (useconds_t) (val * 1000000.0));
+                }
+                // next
+                arg = 0;
+                ++i;
+                break;
+            case 't': // --threads
+                if(!arg) {
+                    fprintf(stderr, "--sleep with no SECONDS\n");
+                    return 1;
+                }
+                {
+                    errno = 0;
+                    char *endptr = 0;
+                    uint32_t maxThreads = strtol(arg, &endptr, 10);
+                    if(endptr == arg || maxThreads > 1000000) {
+                        fprintf(stderr, "Bad --threads option\n\n");
+                        return 1;
+                    }
+                    if(level >= 4) // 4 = INFO
+                        fprintf(stderr,"Adding thread "
+                                "pool with at most %" PRIu32
+                                " threads\n", maxThreads);
+                    if(!graph)
+                        CreateGraph();
+                    ASSERT(qsGraphThreadPoolCreate(graph, maxThreads));
                 }
                 // next
                 arg = 0;

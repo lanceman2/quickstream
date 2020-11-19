@@ -10,6 +10,7 @@
 #include "../include/quickstream/builder.h"
 
 #include "debug.h"
+#include "trigger.h"
 #include "Dictionary.h"
 #include "block.h"
 #include "builder.h"
@@ -34,6 +35,15 @@ static void qsSimpleBlockUnload(struct QsSimpleBlock *b) {
     qsDictionaryDestroy(b->constants);
     qsDictionaryDestroy(b->getters);
     qsDictionaryDestroy(b->setters);
+
+    struct QsTrigger *next;
+    for(struct QsTrigger *t = b->triggers; t; t = next) {
+        next = t->next;
+#ifdef DEBUG
+        memset(t, 0, t->size);
+#endif
+        free(t);
+    }
 
 #ifdef DEBUG
     memset(b, 0, sizeof(*b));

@@ -110,7 +110,8 @@ void qsGraphDestroy(struct QsGraph *graph);
  \return a pointer to an opaque thread pool object.
  */
 extern
-struct QsThreadPool *qsGraphThreadPool(struct QsGraph *graph, uint32_t maxThreads);
+struct QsThreadPool *qsGraphThreadPoolCreate(struct QsGraph *graph,
+        uint32_t maxThreads);
 
 
 /** Add a block to a thread pool
@@ -125,10 +126,10 @@ struct QsThreadPool *qsGraphThreadPool(struct QsGraph *graph, uint32_t maxThread
  \param block who's flow() function is called by a thread in this pool, as
  the stream flows.
  */
-
 extern
 void qsThreadPoolAddBlock(struct QsThreadPool *tp,
         struct QsBlock *block);
+
 
 /** Remove a thread pool
 
@@ -139,9 +140,8 @@ void qsThreadPoolAddBlock(struct QsThreadPool *tp,
  to qsGraphThreadPool().
 
 */
-
 extern
-void qsThreadPoolRemove(struct QsThreadPool *tp);
+void qsThreadPoolDestroy(struct QsThreadPool *tp);
 
 
 /** Ready the graph

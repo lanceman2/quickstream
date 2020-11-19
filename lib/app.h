@@ -14,6 +14,8 @@ struct QsThreadPool {
     // access it.
     uint32_t maxThreads;
 
+    struct QsThreadPool *next;
+
     pthread_mutex_t mutex;
     // cond is paired with mutex.
     pthread_cond_t cond;  // idle threads just wait with this cond.
@@ -104,6 +106,11 @@ struct QsGraph {
     // List of blocks.  Indexed by name.
     struct QsDictionary *blocks;
 
+    // Another list of the blocks, as a doubly linked list of the block in
+    // the order in which they are loaded.  So we may call block callback
+    // functions in load order and reverse load order.
+    struct QsBlock *firstBlock, *lastBlock;
+
     // For the singly linked list of graphs.
     struct QsGraph *next;
 
@@ -140,9 +147,8 @@ struct QsGraph {
     // having more than one thread pool.  Sometimes setting CPU thread
     // affinity can have a big performance effect.
     //
-    // realloc() allocated array of threadPools:
+    // A singly linked list of thread pools.
     //
-    uint32_t numThreadPools;
     struct QsThreadPool *threadPools;
 
     // The main (master) thread waits on this conditional while the worker

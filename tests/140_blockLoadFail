@@ -1,0 +1,16 @@
+#!/bin/bash
+
+
+# Checking that loading a block that does not exest does not leak
+# memory.
+
+
+if ! ../bin/quickstream\
+ --block tests/dummy xx\
+ --block tests/DOESnotExist\
+ --block tests/dummy\
+ ; then
+    exec ./success
+fi
+
+exec ./fail

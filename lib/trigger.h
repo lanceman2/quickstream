@@ -20,6 +20,11 @@ struct QsTrigger {
     //
     struct QsSimpleBlock *block;
 
+    // For singly linked list of triggers in block.
+    struct QsTrigger *next;
+
+    size_t size;
+
     // Kind of trigger
     enum QsTriggerKind kind;
 };
@@ -28,7 +33,7 @@ struct QsTrigger {
 struct QsSignal {
 
     // inherit QsTrigger
-    struct QsTrigger *trigger;
+    struct QsTrigger trigger;
 
     // The signal number.  See run in shell: "kill -L".
     int signum;

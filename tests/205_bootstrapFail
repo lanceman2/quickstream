@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Checking that loading a block that fails to bootstrap does not leak
+# memory.
+
+
+if ! ../bin/quickstream\
+ --block tests/bootstrapFail ; then
+    exec ./success
+fi
+
+exec ./fail

@@ -57,6 +57,15 @@ void qsGraphDestroy(struct QsGraph *graph) {
     DASSERT(graph);
     DASSERT(graph->blocks);
 
+    {
+        // Destroy the thread pools:
+        struct  QsThreadPool *next;
+        for(struct QsThreadPool *tp = graph->threadPools; tp; tp = next) {
+            next = tp->next;
+            qsThreadPoolDestroy(tp);
+        }
+    }
+
     // Remove this from the list of graphs
     DASSERT(graphs);
     if(graphs == graph)
@@ -77,6 +86,65 @@ void qsGraphDestroy(struct QsGraph *graph) {
     memset(graph, 0, sizeof(*graph));
 #endif
 
-
     free(graph);
 }
+
+
+struct QsThreadPool *qsGraphThreadPoolCreate(struct QsGraph *graph,
+        uint32_t maxThreads) {
+
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    DASSERT(graph);
+
+    struct QsThreadPool *tp = calloc(1, sizeof(*tp));
+    ASSERT(tp, "calloc(1,%zu) failed", sizeof(*tp));
+
+    // Add threadPool to the graphs list of thread pools
+    tp->next = graph->threadPools;
+    graph->threadPools = tp;
+
+    tp->maxThreads = maxThreads;
+    tp->graph = graph;
+
+    // This newly created thread pool will be the new default thread pool
+    // for all newly created blocks, until we make another.  Also old
+    // blocks in this graph that do not have a thread pool yet will be set
+    // to using this thread pool, for now.  The user can move blocks to
+    // any thread pool that they like with qsThreadPoolAddBlock().
+
+    
+
+    return tp;
+}
+
+
+void qsThreadPoolDestroy(struct QsThreadPool *tp) {
+
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    DASSERT(tp);
+    DASSERT(tp->graph);
+
+    struct QsGraph *graph = tp->graph;
+
+    {
+        // Remove this thread pool, tp, from the graph thread pool list.
+        //
+        struct QsThreadPool *prev = 0;
+        struct QsThreadPool *t;
+        for(t = graph->threadPools; t && t != tp; tp = tp->next)
+            prev = t;
+        DASSERT(t);
+        DASSERT(t == tp);
+        if(prev)
+            prev->next = tp->next;
+        else
+            graph->threadPools = tp->next;
+    }
+
+#ifdef DEBUG
+    memset(tp, 0, sizeof(*tp));
+#endif
+
+    free(tp);
+}
+

@@ -13,10 +13,14 @@ struct QsBuffer;
 struct QsIn;
 struct QsOut;
 
+struct QsTrigger;
 
 
+// These numbers are somewhat random in the hope to not accidentally match
+// some other number.  We saw this as better than an enum.
+//
 #define _QS_IN_NONE             ((uint32_t) 0x2499f504)
-
+//
 #define _QS_IN_BOOTSTRAP        ((uint32_t) 0x38def4de)
 // construct()
 #define _QS_IN_CONSTRUCT        ((uint32_t) 0xe583e10c)
@@ -40,6 +44,16 @@ struct QsBlock {
 
     // The graph that created/loaded this block and owns this block.
     struct QsGraph *graph;
+
+    // We keep a doubly linked list of blocks in the owner graph in the
+    // order in which they are loaded; so that we can iterate through them
+    // in the order in which they are loaded and the reverse order in
+    // which they loaded.  We call construct() and start() in forward
+    // order.  We call stop() and destroy() in reverse order.
+    //
+    // Note: we also have a dictionary list of the blocks in the graph.
+    //
+    struct QsBlock *next, *prev;
 
     // block name that is unique to this block for all block in graph.
     const char *name;
@@ -86,6 +100,13 @@ struct QsSimpleBlock {
     struct QsDictionary *getters;
     struct QsDictionary *setters;
 
+    // A singly linked list of triggers.  This is for resource cleanup.
+    // The block is responsible for cleaning up triggers when it is
+    // destroyed.  When the stream is flowing, it's the triggers that call
+    // block functions, and not block functions that call triggers.  So we
+    // do not need a fast list data structure for triggers that are
+    // associated with the block.
+    struct QsTrigger *triggers;
 
 
     // The number of inputs can change before start and after stop, so can

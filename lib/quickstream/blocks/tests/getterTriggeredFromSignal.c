@@ -12,6 +12,7 @@ static
 void triggerCallback(struct QsParameter *p) {
 
 
+    DSPEW();
 }
 
 
