@@ -1,6 +1,7 @@
 
 struct QsDictionary;
 struct QsGraph;
+struct QsThreadPool;
 struct QsBlock;
 struct QsSetter;
 
@@ -55,6 +56,8 @@ struct QsBlock {
     //
     struct QsBlock *next, *prev;
 
+
+
     // block name that is unique to this block for all block in graph.
     const char *name;
 
@@ -69,8 +72,6 @@ struct QsBlock {
     // called any more; functions from the DSO, like start() and flow().
     void *dlhandle; // from dlopen()
 
-    // The threadPool that can run this blocks flow()
-    struct QsThreadPool *threadPool;
 
     // Some callbacks like boostrap(), construct() and destroy() we
     // do not same a pointer to, and dlsym() just before we call them.
@@ -107,6 +108,14 @@ struct QsSimpleBlock {
     // do not need a fast list data structure for triggers that are
     // associated with the block.
     struct QsTrigger *triggers;
+
+
+    // The threadPool that can run this block's flow()
+    struct QsThreadPool *threadPool;
+
+    // We keep a doubly linked list of blocks queued in the threadPool
+    // using this "next" and "prev":
+    struct QsBlock *next, *prev;
 
 
     // The number of inputs can change before start and after stop, so can
@@ -177,11 +186,6 @@ struct QsSimpleBlock {
     // pointers to the setter parameter callbacks that are queued.  This
     // block owns these setter parameters.
     struct QsSetter *first, *last;
-
-    // next in Job queue that is waiting for a flower thread in the
-    // ThreadPool.
-    //
-    struct QsBlock *next;
 };
 
 

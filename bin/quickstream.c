@@ -139,6 +139,13 @@ int main(int argc, const char * const *argv) {
                 arg = 0;
                 ++i;
                 break;
+            case 'R': // --ready
+
+                if(graph)
+                    qsGraphReady(graph);
+
+
+                break;
             case 't': // --threads
                 if(!arg) {
                     fprintf(stderr, "--sleep with no SECONDS\n");

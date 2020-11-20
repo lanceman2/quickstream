@@ -15,6 +15,13 @@ int bootstrap(struct QsGraph *graph) {
     return 0; // 0 => success
 }
 
+int start(uint32_t numInPorts, uint32_t numOutPorts) {
+
+    DSPEW();
+
+    return -1; // success
+}
+
 int construct(void) {
 
     return 0; // success 

@@ -522,7 +522,8 @@ void destroy(void);
  writing to.  numOutPorts will be the same value for the duration of the
  current flow cycle.
 
- \return 0 on success, or non-zero on failure.
+ \return 0 on success, less than 0 on failure to signal the program to fail,
+ and greater than 0 to remove the callback. 
  
  \memberof CBlockAPI
  */

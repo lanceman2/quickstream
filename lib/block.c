@@ -8,6 +8,8 @@
 #include <pthread.h>
 
 #include "../include/quickstream/builder.h"
+#include "../include/quickstream/app.h"
+
 
 #include "debug.h"
 #include "trigger.h"
@@ -66,6 +68,7 @@ void qsBlockUnload_noDestory(struct QsBlock *b) {
 
     DASSERT(b);
     DASSERT(b->name);
+    DASSERT(b->graph);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
 
     DSPEW("Freeing block named %s", b->name);
@@ -78,6 +81,33 @@ void qsBlockUnload_noDestory(struct QsBlock *b) {
 #endif
         free((void *) b->name);
     }
+
+    {
+        // Remove this block, b, from the doubly linked list of blocks
+        // that is in the graph.
+        struct QsGraph *g = b->graph;
+
+        if(b->prev) {
+            DASSERT(b != g->firstBlock);
+            b->prev->next = b->next;
+        } else {
+            DASSERT(b == g->firstBlock);
+            g->firstBlock = b->next;
+            if(b->next)
+                b->next->prev = 0;
+        }
+
+        if(b->next) {
+            DASSERT(b != g->lastBlock);
+            b->next->prev = b->prev;
+        } else {
+            DASSERT(b == g->lastBlock);
+            g->lastBlock = b->prev;
+            if(b->prev)
+                b->prev->next = 0;
+        }
+    }
+
 
     if(b->isSuperBlock)
         qsSuperBlockUnload((struct QsSuperBlock *) b);
@@ -96,9 +126,10 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // 3. check if already dlopen()ed and fix
     // 4. see if isSuperBlock is defined and Allocate
     // 5. add block to graph's block list
-    // 6. Call bootscrap()
-    // 7. Get callbacks
-    // 8. Add cleanup callback for block's entry in graph block list
+    // 6. Add this block to the graph doubly linked list of blocks.
+    // 7. Call bootscrap()
+    // 8. Get callbacks
+    // 9. Add cleanup callback for block's entry in graph block list
 
     DASSERT(graph);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
@@ -262,6 +293,11 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         smB->constants = qsDictionaryCreate();
         smB->getters = qsDictionaryCreate();
         smB->setters = qsDictionaryCreate();
+
+        // Add this simple block to the default thread pool if there is
+        // one.
+        if(graph->threadPools)
+            qsThreadPoolAddBlock(graph->threadPools, b);
     }
 
     b->dlhandle = dlhandle;
@@ -282,7 +318,27 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
 
     ///////////////////////////////////////////////////////////////////
-    // 6. Call bootscrap()
+    // 6. Add this block to the graph doubly linked list of blocks.
+    ///////////////////////////////////////////////////////////////////
+
+    if(graph->firstBlock) {
+        DASSERT(graph->firstBlock->prev == 0);
+        DASSERT(graph->lastBlock);
+        DASSERT(graph->lastBlock->next == 0);
+
+        // Add b to the end of the list:
+        b->prev = graph->lastBlock;
+        graph->lastBlock = b;
+        b->prev->next = b;
+
+    } else {
+        // There are none in the list.
+        DASSERT(!graph->lastBlock);
+        graph->lastBlock = graph->firstBlock = b;
+    }
+
+    ///////////////////////////////////////////////////////////////////
+    // 7. Call bootscrap()
     ///////////////////////////////////////////////////////////////////
 
     int (*bootstrap)(struct QsGraph *graph) = dlsym(dlhandle, "bootstrap");
@@ -338,10 +394,17 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     }
 
     ///////////////////////////////////////////////////////////////////
-    // 7. Get callbacks
+    // 8. Get callbacks
     ///////////////////////////////////////////////////////////////////
 
-    if(!b->isSuperBlock) {
+    if(b->isSuperBlock) {
+        if(dlsym(dlhandle, "flow"))
+            WARN("Super block \"%s\" with not have flow() called",
+                    b->name);
+        if(dlsym(dlhandle, "flush"))
+            WARN("Super block \"%s\" with not have flush() called",
+                    b->name);
+    } else {
         ((struct QsSimpleBlock *) b)->flow = dlsym(dlhandle, "flow");
         ((struct QsSimpleBlock *) b)->flush = dlsym(dlhandle, "flush");
     }
@@ -350,7 +413,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
 
     ///////////////////////////////////////////////////////////////////
-    // 8. Add cleanup callback for block's entry in graph block list
+    // 9. Add cleanup callback for block's entry in graph block list
     ///////////////////////////////////////////////////////////////////
 
     qsDictionarySetFreeValueOnDestroy(entry,

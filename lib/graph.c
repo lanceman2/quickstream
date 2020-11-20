@@ -107,12 +107,15 @@ struct QsThreadPool *qsGraphThreadPoolCreate(struct QsGraph *graph,
     tp->graph = graph;
 
     // This newly created thread pool will be the new default thread pool
-    // for all newly created blocks, until we make another.  Also old
-    // blocks in this graph that do not have a thread pool yet will be set
-    // to using this thread pool, for now.  The user can move blocks to
-    // any thread pool that they like with qsThreadPoolAddBlock().
+    // for all newly created simple blocks, until we make another.  Also
+    // old simple blocks in this graph that do not have a thread pool yet
+    // will be set to using this thread pool, for now.  The user can move
+    // blocks to any thread pool that they like with
+    // qsThreadPoolAddBlock().
 
-    
+    for(struct QsBlock *b = graph->firstBlock; b; b = b->next)
+        if(!b->isSuperBlock && !((struct QsSimpleBlock *) b)->threadPool)
+            qsThreadPoolAddBlock(tp, b);
 
     return tp;
 }
@@ -148,3 +151,64 @@ void qsThreadPoolDestroy(struct QsThreadPool *tp) {
     free(tp);
 }
 
+
+void qsThreadPoolAddBlock(struct QsThreadPool *tp, struct QsBlock *b) {
+
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    DASSERT(tp);
+    DASSERT(tp->graph);
+    DASSERT(b);
+    ASSERT(b->isSuperBlock == 0,
+            "Super Blocks cannot gets added to thread pools");
+    ASSERT(b->graph == tp->graph,
+            "The block does not belong to the "
+            "same graph as the thread pool");
+
+    ((struct QsSimpleBlock *) b)->threadPool = tp;
+}
+
+
+int qsGraphReady(struct QsGraph *graph) {
+
+    DASSERT(graph);
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+
+    ASSERT(graph->flowState == QsGraphPaused);
+
+    // TODO: Allocate stream buffers
+
+    int ret = 0;
+    for(struct QsBlock *b = graph->firstBlock; b; b = b->next) {
+        if(b->start) {
+            uint32_t numIn, numOut;
+            if(b->isSuperBlock) {
+                numIn = 0;
+                numOut = 0;
+            } else {
+                numIn = ((struct QsSimpleBlock *) b)->numInputs;
+                numOut = ((struct QsSimpleBlock *) b)->numOutputs;
+            }
+
+            if((ret = b->start(numIn, numOut)) > 0) {
+                NOTICE("Removing block \"%s\" start() callback",
+                        b->name);
+                b->start = 0;
+            } else if(ret < 0) {
+                ERROR("Block \"%s\" start() callback failed",
+                        b->name);
+                break;
+            }
+        }
+    }
+
+    if(ret < 0) {
+        // One of the block's start() calls returned less than 0.
+        graph->flowState = QsGraphFailed;
+        // TODO: Free stuff.
+        return ret;
+    }
+
+    graph->flowState = QsGraphReady;
+
+    return 0; // success
+}

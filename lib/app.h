@@ -68,12 +68,15 @@ enum QsGraphFlowState {
 
     // blocks are still being created and connected
     // The stream has been stopped or was never flowing.
-    GraphPaused = 0,
+    QsGraphPaused = 0,
     // start() callbacks have been called and stream buffers allocated
     // and superBlocks have been flattened
-    GraphReady,
+    QsGraphReady,
     // flowing or flushing
-    GraphFlowing
+    QsGraphFlowing,
+    // If we can no longer run this graph because a callback returned
+    // error less than 0.
+    QsGraphFailed
 };
 
 
@@ -147,7 +150,8 @@ struct QsGraph {
     // having more than one thread pool.  Sometimes setting CPU thread
     // affinity can have a big performance effect.
     //
-    // A singly linked list of thread pools.
+    // A singly linked list of thread pools.  "threadPools" points to the
+    // last thread pool created.
     //
     struct QsThreadPool *threadPools;
 
