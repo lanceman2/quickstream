@@ -121,8 +121,8 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // 4. see if isSuperBlock is defined and Allocate
     // 5. Add block to graph's block list
     // 6. Add this block to the graph doubly linked list of blocks.
-    // 7. Call bootscrap()
-    // 8. Get callbacks
+    // 7. Get callbacks
+    // 8. Call bootscrap()
     // 9. Add cleanup callback for block's entry in graph block list
 
     DASSERT(graph);
@@ -333,7 +333,36 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     }
 
     ///////////////////////////////////////////////////////////////////
-    // 7. Call bootscrap()
+    // 7. Get callbacks
+    ///////////////////////////////////////////////////////////////////
+
+    if(b->isSuperBlock) {
+        if(dlsym(dlhandle, "flow")) {
+            ERROR("Super block \"%s\" cannot have flow() called",
+                    b->name);
+            free(path);
+            qsDictionaryRemove(entry, blockName);
+            qsBlockUnload_noDestory(b);
+            return 0;
+        }
+        if(dlsym(dlhandle, "flush")) {
+            ERROR("Super block \"%s\" cannot have flush() called",
+                    b->name);
+            free(path);
+            qsDictionaryRemove(entry, blockName);
+            qsBlockUnload_noDestory(b);
+            return 0;
+        }
+    } else {
+        ((struct QsSimpleBlock *) b)->flow = dlsym(dlhandle, "flow");
+        ((struct QsSimpleBlock *) b)->flush = dlsym(dlhandle, "flush");
+    }
+    b->start = dlsym(dlhandle, "start");
+    b->stop = dlsym(dlhandle, "stop");
+
+
+    ///////////////////////////////////////////////////////////////////
+    // 8. Call bootscrap()
     ///////////////////////////////////////////////////////////////////
 
     int (*bootstrap)(struct QsGraph *graph) = dlsym(dlhandle, "bootstrap");
@@ -387,24 +416,6 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         dlclose(dlhandle);
         b->dlhandle = 0;
     }
-
-    ///////////////////////////////////////////////////////////////////
-    // 8. Get callbacks
-    ///////////////////////////////////////////////////////////////////
-
-    if(b->isSuperBlock) {
-        if(dlsym(dlhandle, "flow"))
-            WARN("Super block \"%s\" with not have flow() called",
-                    b->name);
-        if(dlsym(dlhandle, "flush"))
-            WARN("Super block \"%s\" with not have flush() called",
-                    b->name);
-    } else {
-        ((struct QsSimpleBlock *) b)->flow = dlsym(dlhandle, "flow");
-        ((struct QsSimpleBlock *) b)->flush = dlsym(dlhandle, "flush");
-    }
-    b->start = dlsym(dlhandle, "start");
-    b->stop = dlsym(dlhandle, "stop");
 
 
     ///////////////////////////////////////////////////////////////////

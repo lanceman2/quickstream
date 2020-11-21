@@ -52,7 +52,8 @@ struct QsBlock {
     // which they loaded.  We call construct() and start() in forward
     // order.  We call stop() and destroy() in reverse order.
     //
-    // Note: we also have a dictionary list of the blocks in the graph.
+    // Note: we also have a dictionary list of the blocks in the graph
+    // so that we can lookup a block by name.
     //
     struct QsBlock *next, *prev;
 

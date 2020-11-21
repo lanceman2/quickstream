@@ -263,11 +263,40 @@ int qsGraphReady(struct QsGraph *graph) {
             ERROR("Mick says: \"You can't always get what you want.\""
                     "You have a thread pool with 0 threads and more than"
                     " one thread pool total.");
-            qsGraphStop(graph);
             // We may yet recover from this, if they reconfigure the
             // thread pools.
             return -1; // error
         }
+    }
+
+    // It could easily happen that there is a thread pool with no assigned
+    // blocks for it to run.  Thread pools like that are of no use, and
+    // just waist memory and add extra code to let them exist.  Design
+    // decision: We choice to make them disappear here with just a
+    // warning.
+    for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
+        struct QsBlock *b;
+        for(b = graph->firstBlock; b; b = b->next) {
+            DASSERT(b->isSuperBlock ||
+                    ((struct QsSimpleBlock *)b)->threadPool);
+            if(!b->isSuperBlock &&
+                    ((struct QsSimpleBlock *)b)->threadPool == tp)
+                break;
+        }
+        if(!b) {
+            // We have not found a block that is using thread pool, tp,
+            // so we get rid of it.
+            WARN("Removing empty thread pool");
+            qsThreadPoolDestroy(tp);
+        }
+    }
+
+    if(!graph->threadPools) {
+        // From above, if there are no thread pools than there are no
+        // simple blocks.  Super blocks do not have triggers.  If there
+        // are no simple blocks, there is nothing to run.
+        ERROR("No simple blocks in graph");
+        return -1; // error
     }
 
 
@@ -290,6 +319,7 @@ int qsGraphReady(struct QsGraph *graph) {
         return ret;
     }
 
+ERROR();
 
     graph->flowState = QsGraphReady;
 
@@ -325,10 +355,11 @@ int qsGraphWait(struct QsGraph *graph) {
 
     DASSERT(graph);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
-    ASSERT(graph->flowState == QsGraphFlowing &&
-            graph->flowState != QsGraphFailed);
+    ASSERT(graph->flowState == QsGraphFlowing);
     DASSERT(graph->threadPools);
 
+
+    // MORE HERE
 
 
     qsGraphStop(graph);

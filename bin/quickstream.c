@@ -156,6 +156,7 @@ int main(int argc, const char * const *argv) {
                     ret = qsGraphRun(graphs[i]);
                     if(ret) break;
                 }
+                if(ret) break;
                 //
                 // Now wait for them to finish running:
                 for(uint32_t i = 0; i<numGraphs; ++i) {

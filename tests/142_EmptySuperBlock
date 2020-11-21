@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -ex
+
+# this should fail
+if ../bin/quickstream\
+ --block /tests/emptySuperBlock
+ --run ; then
+    exec ./fail
+fi
+
+# this should fail
+if ../bin/quickstream\
+ --block /tests/emptySuperBlock
+ --ready\
+ --run ; then
+    exec ./fail
+fi
+
+exec ./success

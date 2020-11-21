@@ -3,6 +3,8 @@
 #include "../../../debug.h"
 
 
+bool isSuperBlock = true;
+
 static int count = 0;
 
 
