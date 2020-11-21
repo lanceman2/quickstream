@@ -1,5 +1,4 @@
 
-
 struct QsGraph;
 struct QsBlock;
 
@@ -70,7 +69,7 @@ enum QsGraphFlowState {
     // The stream has been stopped or was never flowing.
     QsGraphPaused = 0,
     // start() callbacks have been called and stream buffers allocated
-    // and superBlocks have been flattened
+    // and superBlocks have been flattened (if that means anything).
     QsGraphReady,
     // flowing or flushing
     QsGraphFlowing,
@@ -111,7 +110,9 @@ struct QsGraph {
 
     // Another list of the blocks, as a doubly linked list of the block in
     // the order in which they are loaded.  So we may call block callback
-    // functions in load order and reverse load order.
+    // functions in load order and reverse load order.  This list contains
+    // both simple blocks and super blocks.  Note: super blocks do not
+    // have flow() and flush() function.
     struct QsBlock *firstBlock, *lastBlock;
 
     // For the singly linked list of graphs.

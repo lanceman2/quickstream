@@ -2,14 +2,9 @@
 
 #include "../../../debug.h"
 
-bool isSuperBlock;
-
-static int count = 0;
 
 
 int bootstrap(struct QsGraph *graph) {
-
-    DSPEW("count = %d", count++);
 
 
     return 0; // 0 => success
@@ -19,7 +14,7 @@ int start(uint32_t numInPorts, uint32_t numOutPorts) {
 
     DSPEW();
 
-    return 0; // success
+    return -1; // fail the program
 }
 
 int construct(void) {

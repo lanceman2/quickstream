@@ -139,16 +139,35 @@ int main(int argc, const char * const *argv) {
                 arg = 0;
                 ++i;
                 break;
-            case 'R': // --ready
+            case 'R': // --ready all the stream flow graphs
+                for(uint32_t i = 0; i<numGraphs; ++i) {
+                    ret = qsGraphReady(graphs[i]);
+                    if(ret) break;
+                }
+                break;
+            case 'r': // --run run all the stream flow graphs
 
-                if(graph)
-                    qsGraphReady(graph);
+                // TODO: We need to explore combinations of failure modes
+                // for this flow/run sequence of calls.  Can we cleanup
+                // while the stream is flowing?  What about when there is
+                // more than one graph and only some graphs fail?
 
-
+                for(uint32_t i = 0; i<numGraphs; ++i) {
+                    ret = qsGraphRun(graphs[i]);
+                    if(ret) break;
+                }
+                //
+                // Now wait for them to finish running:
+                for(uint32_t i = 0; i<numGraphs; ++i) {
+                    // For the case when there are no other threads than this
+                    // main thread this will not block and do the right thing.
+                    ret = qsGraphWait(graphs[i]);
+                    if(ret < 0) break;
+                }
                 break;
             case 't': // --threads
                 if(!arg) {
-                    fprintf(stderr, "--sleep with no SECONDS\n");
+                    fprintf(stderr, "--threads with no MAX_THREADS\n");
                     return 1;
                 }
                 {
@@ -171,7 +190,7 @@ int main(int argc, const char * const *argv) {
                 arg = 0;
                 ++i;
                 break;
-            case 'v':
+            case 'v': // --verbose
                 if(!arg) {
                     fprintf(stderr, "--verbose with no level\n");
                     return 1;
@@ -215,15 +234,23 @@ int main(int argc, const char * const *argv) {
                 }
 
                 default:
-                // This should not hgraphen, unless the options are not
-                // coded correctly.  We are missing a case for this
-                // char.
-                ERROR("BAD CODE: Missing case for option character: "
+                // This should not happen, unless the options are not
+                // coded correctly.  We are missing a case for this char.
+                // This should be a case that is caught in case '*'.  That
+                // means we have a short option char that is not in this
+                // switch().
+                ERROR("BAD CODE: Missing case for option character case: "
                         "%c opt=%s arg=%s\n", c, argv[i-1], arg);
                 fprintf(stderr, "unknown option character: %c\n", c);
-                // this will exit with error.
+                // This will exit with error.  The program need more
+                // coding.  We are totally screwed.
                 return 1;
         }
+
+        if(ret)
+            // Something failed in a way that we can't continue to run.
+            // We will skip parsing the rest of the arguments options.
+            break;
     }
 
     if(graphs) {

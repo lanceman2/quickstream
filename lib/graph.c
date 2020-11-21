@@ -51,11 +51,75 @@ struct QsGraph *qsGraphCreate(void) {
 }
 
 
+static inline
+int RunStartOrStop(struct QsBlock *b,
+        int (*st)(uint32_t numIn, uint32_t numOut),
+        const char *funcName) {
+
+    if(!st) return 0;
+
+    uint32_t numIn, numOut;
+    if(b->isSuperBlock) {
+        numIn = 0;
+        numOut = 0;
+    } else {
+        numIn = ((struct QsSimpleBlock *) b)->numInputs;
+        numOut = ((struct QsSimpleBlock *) b)->numOutputs;
+    }
+
+    int ret;
+
+    if((ret = st(numIn, numOut)) > 0) {
+        NOTICE("Removing block's \"%s\" %s() callback",
+                b->name, funcName);
+        b->start = 0;
+        return 0;
+    } else if(ret < 0) {
+        ERROR("Block \"%s\" %s()=%d callback failed",
+                b->name, funcName, ret);
+        return ret;
+    }
+    return 0;
+}
+
+
+static
+int qsGraphStop(struct QsGraph *graph) {
+
+    DASSERT(graph);
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    ASSERT(graph->flowState == QsGraphFlowing ||
+            graph->flowState == QsGraphReady);
+
+
+    int ret = 0;
+    for(struct QsBlock *b = graph->firstBlock; b; b = b->next)
+        if((ret = RunStartOrStop(b, b->stop, "stop")))
+            break;
+
+
+    if(ret < 0) {
+        // One of the block's stop() calls returned less than 0.
+        graph->flowState = QsGraphFailed;
+        // TODO: Free stuff.
+        return ret;
+    }
+
+    graph->flowState = QsGraphPaused;
+
+    return 0; // success
+}
+
+
 void qsGraphDestroy(struct QsGraph *graph) {
  
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
     DASSERT(graph);
     DASSERT(graph->blocks);
+    ASSERT(graph->flowState != QsGraphFlowing);
+
+    if(graph->flowState == QsGraphReady)
+        qsGraphStop(graph);
 
     {
         // Destroy the thread pools:
@@ -95,6 +159,7 @@ struct QsThreadPool *qsGraphThreadPoolCreate(struct QsGraph *graph,
 
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
     DASSERT(graph);
+    ASSERT(graph->flowState == QsGraphPaused);
 
     struct QsThreadPool *tp = calloc(1, sizeof(*tp));
     ASSERT(tp, "calloc(1,%zu) failed", sizeof(*tp));
@@ -125,9 +190,10 @@ void qsThreadPoolDestroy(struct QsThreadPool *tp) {
 
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
     DASSERT(tp);
-    DASSERT(tp->graph);
-
     struct QsGraph *graph = tp->graph;
+    DASSERT(graph);
+    ASSERT(graph->flowState == QsGraphPaused ||
+            graph->flowState == QsGraphFailed);
 
     {
         // Remove this thread pool, tp, from the graph thread pool list.
@@ -163,6 +229,7 @@ void qsThreadPoolAddBlock(struct QsThreadPool *tp, struct QsBlock *b) {
     ASSERT(b->graph == tp->graph,
             "The block does not belong to the "
             "same graph as the thread pool");
+    ASSERT(tp->graph->flowState == QsGraphPaused);
 
     ((struct QsSimpleBlock *) b)->threadPool = tp;
 }
@@ -172,34 +239,49 @@ int qsGraphReady(struct QsGraph *graph) {
 
     DASSERT(graph);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
-
     ASSERT(graph->flowState == QsGraphPaused);
+
+    // Check for thread pools structures.  Not making threads yet, just
+    // data.
+    if(graph->threadPools == 0)
+        // Make a default thread pool.
+        qsGraphThreadPoolCreate(graph, QS_DEFAULT_MAXTHREADS);
+    else {
+        bool haveZeroMaxThreads = false;
+        // Check for an invalid graph thread pools case.
+        for(struct QsThreadPool *tp = graph->threadPools; tp;
+                tp = tp->next)
+            if(tp->numThreads == 0) {
+                haveZeroMaxThreads = true;
+                break;
+            }
+
+        if(haveZeroMaxThreads && graph->threadPools->next) {
+            // We have a main thread running a thread pool and at the same
+            // time we have yet another thread pool.  That hurts my head
+            // too much to think about.  So fuck it.
+            ERROR("Mick says: \"You can't always get what you want.\""
+                    "You have a thread pool with 0 threads and more than"
+                    " one thread pool total.");
+            qsGraphStop(graph);
+            // We may yet recover from this, if they reconfigure the
+            // thread pools.
+            return -1; // error
+        }
+    }
+
+
+    // At this point all simple blocks in this graph should have a thread
+    // pool assigned to it.
+
 
     // TODO: Allocate stream buffers
 
-    int ret = 0;
-    for(struct QsBlock *b = graph->firstBlock; b; b = b->next) {
-        if(b->start) {
-            uint32_t numIn, numOut;
-            if(b->isSuperBlock) {
-                numIn = 0;
-                numOut = 0;
-            } else {
-                numIn = ((struct QsSimpleBlock *) b)->numInputs;
-                numOut = ((struct QsSimpleBlock *) b)->numOutputs;
-            }
 
-            if((ret = b->start(numIn, numOut)) > 0) {
-                NOTICE("Removing block \"%s\" start() callback",
-                        b->name);
-                b->start = 0;
-            } else if(ret < 0) {
-                ERROR("Block \"%s\" start() callback failed",
-                        b->name);
-                break;
-            }
-        }
-    }
+    int ret = 0;
+    for(struct QsBlock *b = graph->firstBlock; b; b = b->next)
+        if((ret = RunStartOrStop(b, b->start, "start")))
+            break;
 
     if(ret < 0) {
         // One of the block's start() calls returned less than 0.
@@ -208,7 +290,52 @@ int qsGraphReady(struct QsGraph *graph) {
         return ret;
     }
 
+
     graph->flowState = QsGraphReady;
+
+    return 0; // success
+}
+
+
+int qsGraphRun(struct QsGraph *graph) {
+
+    DASSERT(graph);
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    ASSERT(graph->flowState != QsGraphFlowing &&
+            graph->flowState != QsGraphFailed);
+
+    int ret;
+
+    if(graph->flowState == QsGraphPaused)
+        if((ret = qsGraphReady(graph)))
+            return ret;
+
+
+
+
+    DASSERT(graph->flowState == QsGraphReady);
+
+    graph->flowState = QsGraphFlowing;
+
+    return 0;
+}
+
+
+int qsGraphWait(struct QsGraph *graph) {
+
+    DASSERT(graph);
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    ASSERT(graph->flowState == QsGraphFlowing &&
+            graph->flowState != QsGraphFailed);
+    DASSERT(graph->threadPools);
+
+
+
+    qsGraphStop(graph);
+
+    // success.
+    graph->flowState = QsGraphPaused;
+
 
     return 0; // success
 }

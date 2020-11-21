@@ -40,6 +40,15 @@
 #define QUICKSTREAM_URL   "https://github.com/lanceman2/quickstream"
 
 
+/** The default number of maximum threads in a thread pool
+
+ If a use never explicitly creates a thread pool for a graph this number
+ is the default number of threads in a thread pool when the thread pool
+ is created automatically when readying the flow stream.
+ */
+#define QS_DEFAULT_MAXTHREADS ((uint32_t) 8)
+
+
 struct QsGraph;
 struct QsThreadPool;
 struct QsBlock;
@@ -154,7 +163,9 @@ void qsThreadPoolDestroy(struct QsThreadPool *tp);
 
  \param graph a pointer to an graph.
 
- \return 0 on success
+ \return 0 on success, and less than 0 on unrecoverable error.
+
+ Return error(s): a block's start() returned less than 0.
  */
 extern
 int qsGraphReady(struct QsGraph *graph);
@@ -192,10 +203,10 @@ int qsGraphWait(struct QsGraph *graph);
  \return 0 on success
  */
 extern
-int qsGraphFlow(struct QsGraph *graph);
+int qsGraphRun(struct QsGraph *graph);
 
 
-/** Call all the block's stop() functions
+/* Call all the block's stop() functions
 
  Call all the block's stop() functions in the reverse order in which the
  blocks were loaded.
@@ -212,8 +223,8 @@ int qsGraphFlow(struct QsGraph *graph);
  less than zero if any of the block's stop() functions returned less than
  zero.
  */
-extern
-int qsGraphStop(struct QsGraph *graph);
+//extern
+//int qsGraphStop(struct QsGraph *graph);
 
 
 /** Halt the flow

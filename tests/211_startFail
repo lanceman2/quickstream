@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Checking that loading a block that fails to start(), returning -1, fails
+# and does not leak memory either.
+
+set -x
+
+if ! ../bin/quickstream\
+ --block tests/dummy\
+ --block tests/startFail\
+ --block tests/dummy\
+ --ready ; then
+    exec ./success
+fi
+
+exec ./fail

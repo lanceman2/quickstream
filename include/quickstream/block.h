@@ -511,8 +511,7 @@ void destroy(void);
 
  The following functions may only be called in the block's start()
  function: qsCreateOutputBuffer(), qsCreatePassThroughBuffer(),
- qsSetInputThreshold(), qsSetInputReadPromise(), and
- qsBlockGetName().
+ qsSetInputThreshold(), and qsSetInputReadPromise().
  *
  \param numInPorts is the number of input buffers in the inBuffers input
  array.  numInPorts will be the same value for the duration of the
@@ -522,8 +521,9 @@ void destroy(void);
  writing to.  numOutPorts will be the same value for the duration of the
  current flow cycle.
 
- \return 0 on success, less than 0 on failure to signal the program to fail,
- and greater than 0 to remove the callback. 
+ \return 0 on success, less than 0 on failure to signal the program to
+ fail, and greater than 0 to remove the start() callback on all future
+ starts for the current program.
  
  \memberof CBlockAPI
  */

@@ -66,11 +66,6 @@ static void qsSuperBlockUnload(struct QsSuperBlock *b) {
 static
 void qsBlockUnload_noDestory(struct QsBlock *b) {
 
-    DASSERT(b);
-    DASSERT(b->name);
-    DASSERT(b->graph);
-    ASSERT(mainThread == pthread_self(), "Not graph main thread");
-
     DSPEW("Freeing block named %s", b->name);
 
     if(b->dlhandle) dlclose(b->dlhandle);
@@ -108,7 +103,6 @@ void qsBlockUnload_noDestory(struct QsBlock *b) {
         }
     }
 
-
     if(b->isSuperBlock)
         qsSuperBlockUnload((struct QsSuperBlock *) b);
     else
@@ -121,11 +115,11 @@ void qsBlockUnload_noDestory(struct QsBlock *b) {
 struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         const char *blockName_in) {
 
-    // 1. Get block name
+    // 1. Get unique block name
     // 2. dlopen()
     // 3. check if already dlopen()ed and fix
     // 4. see if isSuperBlock is defined and Allocate
-    // 5. add block to graph's block list
+    // 5. Add block to graph's block list
     // 6. Add this block to the graph doubly linked list of blocks.
     // 7. Call bootscrap()
     // 8. Get callbacks
@@ -135,9 +129,10 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
     DASSERT(fileName);
     DASSERT(fileName[0]);
+    ASSERT(graph->flowState == QsGraphPaused);
 
     ///////////////////////////////////////////////////////////////////
-    // 1. Get block name
+    // 1. Get unique block name
     ///////////////////////////////////////////////////////////////////
  
     char *blockName = (char *) blockName_in;
@@ -308,7 +303,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
 
     ///////////////////////////////////////////////////////////////////
-    // 5. add block to graph
+    // 5. Add block to graph's block list
     ///////////////////////////////////////////////////////////////////
 
     struct QsDictionary *entry = 0;
@@ -431,6 +426,13 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
 
 void qsBlockUnload(struct QsBlock *b) {
+
+    DASSERT(b);
+    DASSERT(b->name);
+    DASSERT(b->graph);
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    ASSERT(b->graph->flowState == QsGraphPaused ||
+            b->graph->flowState == QsGraphFailed);
 
     if(b->dlhandle) {
         void (*destroy)(void) = dlsym(b->dlhandle, "destroy");

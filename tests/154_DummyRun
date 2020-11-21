@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+
+../bin/quickstream\
+ --block tests/dummy.so\
+ --block tests/dummy xx\
+ --block tests/dummy\
+ --run
+
+exec ../bin/quickstream\
+ --block tests/dummy.so\
+ --block tests/dummy xx\
+ --block tests/dummy\
+ --ready\
+ --run
+
