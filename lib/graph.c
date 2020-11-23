@@ -8,8 +8,9 @@
 #include "debug.h"
 #include "Dictionary.h"
 #include "block.h"
-#include "app.h"
+#include "graph.h"
 #include "builder.h"
+#include "run.h"
 
 // A singly linked list of all graphs.  We do not expect a lot of them.
 struct QsGraph *graphs = 0;
@@ -54,7 +55,7 @@ struct QsGraph *qsGraphCreate(void) {
 static inline
 int RunStartOrStop(struct QsBlock *b,
         int (*st)(uint32_t numIn, uint32_t numOut),
-        const char *funcName) {
+        const char *funcName, uint32_t cbType) {
 
     if(!st) return 0;
 
@@ -67,9 +68,17 @@ int RunStartOrStop(struct QsBlock *b,
         numOut = ((struct QsSimpleBlock *) b)->numOutputs;
     }
 
-    int ret;
+    DASSERT(b->inWhichCallback == _QS_IN_NONE);
+    b->inWhichCallback = cbType;
+    // Make it so the start() or stop() call can tell what block it is
+    // using pthread_getspecific().
+    DASSERT(pthread_getspecific(_qsGraphKey) == 0);
+    CHECK(pthread_setspecific(_qsGraphKey, b));
+    int ret = st(numIn, numOut);
+    CHECK(pthread_setspecific(_qsGraphKey, 0));
+    b->inWhichCallback = _QS_IN_NONE;
 
-    if((ret = st(numIn, numOut)) > 0) {
+    if(ret > 0) {
         NOTICE("Removing block's \"%s\" %s() callback",
                 b->name, funcName);
         b->start = 0;
@@ -94,7 +103,7 @@ int qsGraphStop(struct QsGraph *graph) {
 
     int ret = 0;
     for(struct QsBlock *b = graph->firstBlock; b; b = b->next)
-        if((ret = RunStartOrStop(b, b->stop, "stop")))
+        if((ret = RunStartOrStop(b, b->stop, "stop", _QS_IN_STOP)))
             break;
 
 
@@ -309,7 +318,7 @@ int qsGraphReady(struct QsGraph *graph) {
 
     int ret = 0;
     for(struct QsBlock *b = graph->firstBlock; b; b = b->next)
-        if((ret = RunStartOrStop(b, b->start, "start")))
+        if((ret = RunStartOrStop(b, b->start, "start", _QS_IN_START)))
             break;
 
     if(ret < 0) {
@@ -318,8 +327,6 @@ int qsGraphReady(struct QsGraph *graph) {
         // TODO: Free stuff.
         return ret;
     }
-
-ERROR();
 
     graph->flowState = QsGraphReady;
 
@@ -334,18 +341,23 @@ int qsGraphRun(struct QsGraph *graph) {
     ASSERT(graph->flowState != QsGraphFlowing &&
             graph->flowState != QsGraphFailed);
 
-    int ret;
-
-    if(graph->flowState == QsGraphPaused)
+    if(graph->flowState == QsGraphPaused) {
+        int ret;
         if((ret = qsGraphReady(graph)))
             return ret;
-
-
-
+    }
 
     DASSERT(graph->flowState == QsGraphReady);
+    DASSERT(graph->threadPools);
+    // If we have a thread pool with 0 workers than it better be the only
+    // thread pool.
+    DASSERT((graph->threadPools->maxThreads == 0 &&
+                graph->threadPools->next == 0) ||
+        graph->threadPools->maxThreads != 0);
 
     graph->flowState = QsGraphFlowing;
+
+    run(graph);
 
     return 0;
 }

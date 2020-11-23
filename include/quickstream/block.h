@@ -122,6 +122,23 @@ qsParameterGetterCreate(struct QsBlock *block, const char *pname,
         enum QsParameterType type, size_t psize);
 
 
+
+/** check if a getter parameter is connected
+
+ Getter parameters feed setter parameters in other blocks when they are
+ connected.  If a getter parameter is not connected then the getter is
+ effectively neutralised, and has not effect when the stream is running.
+
+ /param getter is a pointer to a getter parameter that we are checking to
+ see if it is connected to a setter parameter in another block.
+
+ /return the number of times the getter is connected to a setter.
+ */
+extern
+uint32_t
+qsParameterGetterNumConnections(struct QsParameter *getter);
+
+
 /** create an constant output parameter
 
  Constant parameters are pushed to the any number of connected setter
@@ -467,7 +484,7 @@ int qsTriggerSignalCreate(int signum,
 
  \memberof CBlockAPI
  */
-int bootstrap(struct QsGraph *graph);
+int bootstrap(void);
 
 
 

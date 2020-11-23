@@ -15,6 +15,12 @@ static const char *seedsString = 0;
 static const char *passThroughList = 0;
 
 
+int bootstrap(void) {
+
+    return 0; // success
+}
+
+
 int construct(void) {
 
     DSPEW();

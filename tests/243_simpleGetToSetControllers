@@ -5,4 +5,5 @@ set -e
 exec ../bin/quickstream\
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
- --block tests/dummy
+ --block tests/dummy\
+ --run

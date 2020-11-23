@@ -23,7 +23,7 @@ void setCleanup_CB(struct QsParameter *p, void *userData) {
 }
 
 
-int bootstrap(struct QsGraph *graph) {
+int bootstrap(void) {
 
     DSPEW("count = %d", count++);
 

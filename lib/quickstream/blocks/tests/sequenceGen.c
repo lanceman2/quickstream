@@ -12,6 +12,11 @@ static size_t maxWrite;
 static size_t totalOut, count;
 static struct RandomString *rs;
 
+int bootstrap(void) {
+
+    return 0; // success
+}
+
 
 int construct(void) {
 

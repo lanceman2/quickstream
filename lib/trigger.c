@@ -9,7 +9,7 @@
 #include "trigger.h"
 #include "debug.h"
 #include "block.h"
-#include "app.h"
+#include "graph.h"
 
 
 static
@@ -44,7 +44,10 @@ int qsTriggerSignalCreate(int signum,
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsSignal *sig = AllocateTrigger(sizeof(*sig), smB, QsSignal);
+    sig->triggerCallback = triggerCallback;
+    sig->userData = userData;
     sig->signum = signum;
+    
 
 
     return 0; // success

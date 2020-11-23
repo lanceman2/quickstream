@@ -20,13 +20,18 @@ struct QsTrigger;
 // These numbers are somewhat random in the hope to not accidentally match
 // some other number.  We saw this as better than an enum.
 //
-#define _QS_IN_NONE             ((uint32_t) 0x2499f504)
-//
+#define _QS_IN_NONE             ((uint32_t) 0x2499f501)
+// in bootstrap()
 #define _QS_IN_BOOTSTRAP        ((uint32_t) 0x38def4de)
-// construct()
+// in construct()
 #define _QS_IN_CONSTRUCT        ((uint32_t) 0xe583e10c)
-// and destroy()
+// in destroy()
 #define _QS_IN_DESTROY          ((uint32_t) 0x17fb51d9)
+// in start()
+#define _QS_IN_START            ((uint32_t) 0x9f1e3b8b)
+// in stop()
+#define _QS_IN_STOP             ((uint32_t) 0xdb85f71d)
+
 
 
 struct QsBlock {

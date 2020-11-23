@@ -6,7 +6,7 @@
 
 
 
-int bootstrap(struct QsGraph *graph) {
+int bootstrap(void) {
 
     DSPEW();
 

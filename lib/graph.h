@@ -136,12 +136,6 @@ struct QsGraph {
     enum QsGraphFlowState flowState;
 
 
-    // We can define and set different flow() functions that run the flow
-    // graph different ways.  This function gets set in qsGraphFlow().
-    //
-    uint32_t (*flow)(struct QsGraph *graph);
-
-
     // We can have any number of thread pools with any amount of threads
     // in each thread pool.  Every block in this graph must be assigned to one
     // thread pool.

@@ -10,7 +10,7 @@
 #include "Dictionary.h"
 #include "parameter.h"
 #include "block.h"
-#include "app.h"
+#include "graph.h"
 
 
 
@@ -90,6 +90,7 @@ void FreeParameter(struct QsParameter *p) {
 
 static inline
 void *AllocateParameter(const char *parameterKind,
+        struct QsBlock *b,
         struct QsDictionary *pdict,
         size_t psize, enum QsParameterType type,
         const char *bname,
@@ -110,7 +111,7 @@ void *AllocateParameter(const char *parameterKind,
 
     struct QsParameter *p = calloc(1, structSize);
     ASSERT(p, "calloc(1,%zu) failed", structSize);
-
+    p->block = b;
     p->kind = kind;
     p->name = strdup(pname);
     p->size = psize;
@@ -138,6 +139,7 @@ qsParameterSetterCreate(struct QsBlock *b, const char *pname,
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsSetter *p = AllocateParameter("Setter",
+        b,
         smB->setters, psize, type, b->name, pname,
         QsSetter, sizeof(*p));
     if(!p) return  (struct QsParameter *) p;
@@ -156,6 +158,7 @@ qsParameterGetterCreate(struct QsBlock *b, const char *pname,
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsGetter *p = AllocateParameter("Getter",
+        b,
         smB->getters, psize, type, b->name, pname,
         QsGetter, sizeof(*p));
     if(!p) return  (struct QsParameter *) p;
@@ -172,6 +175,7 @@ qsParameterConstantCreate(struct QsBlock *b, const char *pname,
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsConstant *p = AllocateParameter("Constant",
+        b,
         smB->constants, psize, type, b->name, pname,
         QsConstant, sizeof(*p));
     if(!p) return  (struct QsParameter *) p;
@@ -184,3 +188,21 @@ qsParameterConstantCreate(struct QsBlock *b, const char *pname,
 
     return (struct QsParameter *) p;
 }
+
+
+uint32_t qsParameterGetterNumConnections(struct QsParameter *getter) {
+
+    DASSERT(getter);
+    ASSERT(getter->kind == QsGetter);
+    // This can only be called in start or stop, and TODO maybe in the
+    // stream runner code.
+    DASSERT(getter->block);
+    ASSERT(getter->block->inWhichCallback == _QS_IN_START ||
+            getter->block->inWhichCallback == _QS_IN_STOP); 
+
+
+    ERROR("                                   FUCK");
+
+    return 0;
+}
+

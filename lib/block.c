@@ -16,7 +16,7 @@
 #include "Dictionary.h"
 #include "block.h"
 #include "builder.h"
-#include "app.h"
+#include "graph.h"
 #include "Dictionary.h"
 #include "LoadDSOFromTmpFile.h"
 
@@ -365,7 +365,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // 8. Call bootscrap()
     ///////////////////////////////////////////////////////////////////
 
-    int (*bootstrap)(struct QsGraph *graph) = dlsym(dlhandle, "bootstrap");
+    int (*bootstrap)(void) = dlsym(dlhandle, "bootstrap");
     if(bootstrap == 0) {
         ERROR("dlsym(, \"bootstrap\") failed: %s", dlerror());
         free(path);
@@ -392,7 +392,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     //
     b->inWhichCallback = _QS_IN_BOOTSTRAP;
 
-    ret = bootstrap(graph);
+    ret = bootstrap();
 
     b->inWhichCallback = _QS_IN_NONE;
 

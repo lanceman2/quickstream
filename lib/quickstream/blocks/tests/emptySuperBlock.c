@@ -8,7 +8,7 @@ bool isSuperBlock = true;
 static int count = 0;
 
 
-int bootstrap(struct QsGraph *graph) {
+int bootstrap(void) {
 
     DSPEW("count = %d", count++);
 

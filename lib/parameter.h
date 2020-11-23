@@ -2,6 +2,7 @@ struct QsParameter;
 struct QsSetter;
 struct QsGetter;
 struct QsConstant;
+struct QsBlock;
 
 
 enum QsParameterKind {
@@ -18,7 +19,8 @@ struct QsParameter {
 
     // This struct is constant after it is created.
 
-    // The block that owns this parameter.
+    // The block that owns this parameter.  Super blocks do not
+    // own parameters.
     struct QsBlock *block;
 
     // name of the parameter.  Unique for each block for all setters

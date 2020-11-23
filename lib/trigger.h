@@ -4,7 +4,7 @@ struct QsSimpleBlock;
 
 enum QsTriggerKind {
 
-    QsSignal
+    QsSignal // TODO: add more kinds
 };
 
 
@@ -12,7 +12,15 @@ enum QsTriggerKind {
 
 struct QsTrigger {
 
-    // QSTrigger is the public API interface.
+    // A trigger is the potential of a block to have a thread call a
+    // block's running callback, be the callback flow(), flush() or
+    // anonymous callback passed in from one of the trigger create
+    // functions:  qsTriggerSignalCreate(), ... TODO add to this list...
+
+    // triggers go pop, and make flow/run events.
+
+    // The opaque QsTrigger is a public API interface.
+
 
     // This block owns this trigger.
     //
@@ -23,6 +31,7 @@ struct QsTrigger {
     // For singly linked list of triggers in block.
     struct QsTrigger *next;
 
+    // Size of the struct that inherits this base class struct.
     size_t size;
 
     // Kind of trigger
@@ -35,9 +44,12 @@ struct QsSignal {
     // inherit QsTrigger
     struct QsTrigger trigger;
 
+    void (*triggerCallback)(void *userData);
+
+    void *userData;
+
     // The signal number.  See run in shell: "kill -L".
     int signum;
-
 
 };
 

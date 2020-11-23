@@ -4,7 +4,7 @@
 
 
 
-int bootstrap(struct QsGraph *graph) {
+int bootstrap(void) {
 
 
     return 0; // 0 => success
