@@ -314,6 +314,8 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // 6. Add this block to the graph doubly linked list of blocks.
     ///////////////////////////////////////////////////////////////////
 
+    // This list is used for calling start() in load order, and stop()
+    // in reverse load order.
     if(graph->firstBlock) {
         DASSERT(graph->firstBlock->prev == 0);
         DASSERT(graph->lastBlock);

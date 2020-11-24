@@ -10,7 +10,8 @@ libquickstream.so_SOURCES :=\
  makeRingBuffer.c\
  GetPluginPath.c\
  trigger.c\
- run.c
+ run.c\
+ threadPool.c
 
 
 libquickstream.so_LDFLAGS := -lpthread -ldl -lrt

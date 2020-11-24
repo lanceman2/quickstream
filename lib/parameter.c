@@ -485,6 +485,7 @@ int PrintParameterCB(const char *pname, struct QsParameter *p,
 void qsGraphParametersPrint(struct QsGraph *graph, FILE *file) {
 
     DASSERT(graph);
+    DASSERT(file);
 
     fprintf(file, " kind    type   size block  parameter_name\n"
                   "------   ------ ---- ------ --------------\n");

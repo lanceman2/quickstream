@@ -120,7 +120,7 @@ struct QsSimpleBlock {
 
     // We keep a doubly linked list of blocks queued in the threadPool
     // using this "next" and "prev":
-    struct QsBlock *next, *prev;
+    struct QsSimpleBlock *next, *prev;
 
 
     // The number of inputs can change before start and after stop, so can
