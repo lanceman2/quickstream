@@ -103,9 +103,8 @@ struct QsSimpleBlock {
     struct QsBlock block;
 
     // lists of parameters owned by this block
-    struct QsDictionary *constants;
-    struct QsDictionary *getters;
-    struct QsDictionary *setters;
+    struct QsDictionary *getters; // getters and constants
+    struct QsDictionary *setters; // just setters
 
     // A singly linked list of triggers.  This is for resource cleanup.
     // The block is responsible for cleaning up triggers when it is

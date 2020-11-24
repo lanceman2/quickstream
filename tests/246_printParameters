@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -ex
+
+exec ../bin/quickstream\
+ --block tests/getterTriggeredFromSignal getter\
+ --block tests/setter setter\
+ --block tests/dummy\
+ --parameters-print

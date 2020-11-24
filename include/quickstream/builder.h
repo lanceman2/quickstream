@@ -102,6 +102,18 @@ struct QsBlock;
 struct QsParameter;
 
 
+/** Kind of parameter
+
+ There are 3 kinds of parameters.
+ */
+enum QsParameterKind {
+
+    QsConstant, /** Gets pushed to setters, but not at flow-time */
+    QsGetter,   /** Gets pushed to setters at flow-time */
+    QsSetter    /** Is set from constant and getter */
+};
+
+
 /** bit flag used to mark the use of regular expressions to find
  * parameter with qsParameter functions
  */
@@ -150,7 +162,7 @@ struct QsBlock *qsBlockGetGraph(struct QsBlock *block);
  \return a pointer to the block with the name.
  */
 extern
-struct QsBlock *qsBlockGetBlockByName(struct QsGraph *graph, const char *bname);
+struct QsBlock *qsGraphGetBlockByName(struct QsGraph *graph, const char *bname);
 
 
 /** get a block name from the block pointer
@@ -175,20 +187,28 @@ const char *qsBlockGetName(struct QsBlock *block);
  \param pname is the name of the parameter, which is unique for a given
  block.
 
- \param isGetter is true than we are looking for a getter parameter,
+ \param isSetter is true than we are looking for a setter parameter,
  else we are looking for a setter parameter.  A getter parameter and a
- setter parameter may have the same name.
+ setter parameter may have the same name.  But a getter and constant
+ parameter may not have the same name.
 
  \return a pointer to the parameter object, or 0 if not found.
-
  */
 extern
 struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
-        const char *pname, bool isGetter);
+        const char *pname, bool isSetter);
+
+
+
+/** Get kind of parameter
+ */
+extern
+enum QsParameterKind qsParameterKind(struct QsParameter *p);
+
 
 
 /** Get the value entry size of a parameter object
-
+:e 
  \param p is a pointer to the parameter object.
 
  \return the value entry size of a parameter object.
@@ -252,8 +272,7 @@ enum QsParameterType qsParameterGetType(struct QsParameter *p);
 
  */
 extern
-int qsParameterConnect(struct QsParameter *from,
-        struct QsParameter *to);
+int qsParameterConnect(struct QsParameter *from, struct QsParameter *to);
 
 
 /** Super block exposing a parameter of an inner block

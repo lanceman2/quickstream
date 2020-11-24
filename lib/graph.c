@@ -313,7 +313,10 @@ int qsGraphReady(struct QsGraph *graph) {
     // pool assigned to it.
 
 
-    // TODO: Allocate stream buffers
+    // TODO: HERE Allocate stream buffers
+
+
+    // TODO: HERE set any parameters that are feed by constant parameters.
 
 
     int ret = 0;
@@ -382,3 +385,13 @@ int qsGraphWait(struct QsGraph *graph) {
 
     return 0; // success
 }
+
+struct QsBlock *qsGraphGetBlockByName(struct QsGraph *graph,
+        const char *bname) {
+
+    DASSERT(graph);
+    DASSERT(graph->blocks);
+
+    return (struct QsBlock *) qsDictionaryFind(graph->blocks, bname);
+}
+

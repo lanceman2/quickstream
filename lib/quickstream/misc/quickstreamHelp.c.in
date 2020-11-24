@@ -207,7 +207,28 @@ static struct QsOption
         "print this help to stdout and then exit."
     },
 /*----------------------------------------------------------------------*/
-    { "--plug", 'p', "\"FROM_F TO_F FROM_PORT TO_PORT\"",  false,
+    { "--parameters-connect", 'C', "BNAME0 PNAME0 BNAME1 PNAME1",  false,
+
+        "connects two parameters.  Getter and constant parameters may"
+        " be connected to setter parameters, and constant parameters "
+        "may be connected to other constant parameters.  "
+        "Setter parameters may only"
+        " have one getter and constant parameter connected to it.  This"
+        " makes connections only for the last graph created.  You can't"
+        " make parameter connections between different graphs.  "
+        "BNAME0 is the name of the block we are connecting from.  "
+        "PNAME0 is the name of the parameter we are connecting from.  "
+        "BNAME1 is the name of the block we are connecting to.  "
+        "PNAME1 is the name of the parameter we are connecting to."
+    },
+/*----------------------------------------------------------------------*/
+    { "--parameters-print", 'P', 0,  false,
+
+        "print a list of all parameters to stdout.  This"
+        " prints parameters only for the last graph created."
+    },
+/*----------------------------------------------------------------------*/
+    { "--plug", 'p', "\"FROM_B TO_B FROM_PORT TO_PORT\"",  false,
 
         "connects two blocks with more control over which"
         " ports get connected.  FROM_F refers to the block we"
@@ -242,7 +263,10 @@ static struct QsOption
     { "--run", 'r', 0,                  false,
 
         "run the all streams.  This readies the streams, if they have not"
-        " been yet, and runs them."
+        " been yet, and runs them.\n"
+        "\n"
+        "If --ready was not called before this --run then --ready will be"
+        " called automatically."
     },
 /*----------------------------------------------------------------------*/
     { "--sleep", 's', "SEC",            false,

@@ -34,8 +34,7 @@ int FindHandle_cb(const char *blockName, struct QsBlock *b, void **dlhh) {
 
 static void qsSimpleBlockUnload(struct QsSimpleBlock *b) {
 
-    qsDictionaryDestroy(b->constants);
-    qsDictionaryDestroy(b->getters);
+    qsDictionaryDestroy(b->getters); // getters and constants
     qsDictionaryDestroy(b->setters);
 
     struct QsTrigger *next;
@@ -119,11 +118,11 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // 2. dlopen()
     // 3. check if already dlopen()ed and fix
     // 4. see if isSuperBlock is defined and Allocate
-    // 5. Add block to graph's block list
+    // 5. Add block to graph's block Dictionary list
     // 6. Add this block to the graph doubly linked list of blocks.
     // 7. Get callbacks
     // 8. Call bootscrap()
-    // 9. Add cleanup callback for block's entry in graph block list
+    // 9. Add cleanup callback for block's entry in graph block Dictionary
 
     DASSERT(graph);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
@@ -285,8 +284,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         //b->isSuperBlock is false via calloc()
 
         // Add parameter dictionaries.
-        smB->constants = qsDictionaryCreate();
-        smB->getters = qsDictionaryCreate();
+        smB->getters = qsDictionaryCreate(); // getters and constants
         smB->setters = qsDictionaryCreate();
 
         // Add this simple block to the default thread pool if there is
@@ -303,7 +301,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
 
     ///////////////////////////////////////////////////////////////////
-    // 5. Add block to graph's block list
+    // 5. Add block to graph's block lists
     ///////////////////////////////////////////////////////////////////
 
     struct QsDictionary *entry = 0;

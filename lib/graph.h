@@ -111,8 +111,10 @@ struct QsGraph {
     // Another list of the blocks, as a doubly linked list of the block in
     // the order in which they are loaded.  So we may call block callback
     // functions in load order and reverse load order.  This list contains
-    // both simple blocks and super blocks.  Note: super blocks do not
-    // have flow() and flush() functions.
+    // both simple blocks and super blocks.
+    //
+    // Note: super blocks do not have flow() and flush() functions.
+    //
     struct QsBlock *firstBlock, *lastBlock;
 
     // For the singly linked list of graphs.

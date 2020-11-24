@@ -136,7 +136,7 @@ qsParameterGetterCreate(struct QsBlock *block, const char *pname,
  */
 extern
 uint32_t
-qsParameterGetterNumConnections(struct QsParameter *getter);
+qsParameterNumConnections(struct QsParameter *getter);
 
 
 /** create an constant output parameter

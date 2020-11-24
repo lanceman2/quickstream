@@ -31,7 +31,7 @@ int bootstrap(void) {
 int start(uint32_t numInPorts, uint32_t numOutPorts) {
 
 
-    if(qsParameterGetterNumConnections(getter) == 0) return 0;
+    if(qsParameterNumConnections(getter) == 0) return 0;
 
     // This block needs a start() function to setup and start the periodic
     // signal generator.
@@ -48,7 +48,7 @@ int start(uint32_t numInPorts, uint32_t numOutPorts) {
 int stop(uint32_t numInPorts, uint32_t numOutPorts) {
 
 
-    if(qsParameterGetterNumConnections(getter) == 0) return 0;
+    if(qsParameterNumConnections(getter) == 0) return 0;
 
     // This block needs a stop() function to stop and remove the periodic
     // signal generator.

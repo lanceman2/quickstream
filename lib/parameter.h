@@ -5,15 +5,6 @@ struct QsConstant;
 struct QsBlock;
 
 
-enum QsParameterKind {
-
-    // There are 3 kinds of parameters.
-
-    QsConstant, // Gets pushed to setters, but not at flow-time
-    QsGetter,   // Gets pushed to setters at flow-time
-    QsSetter    // Is set from constant and getter
-};
-
 
 struct QsParameter {
 
@@ -99,7 +90,7 @@ struct QsSetter {
     // This points to allocated memory that is written to before each
     // setcallback() call.  We need the mutex lock to read or write to the
     // memory that this points to.
-    const void *value;
+    void *value;
 
     void (*setCallback)(struct QsParameter *p,
             const void *value, size_t size, void *userData);
@@ -107,5 +98,5 @@ struct QsSetter {
     // Set if the feeder parameter is constant.
     //
     // Feeders can be either constant or getters.
-    bool feederIsConstant;
+    //bool feederIsConstant;
 };

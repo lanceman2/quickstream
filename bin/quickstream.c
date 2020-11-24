@@ -86,7 +86,7 @@ int main(int argc, const char * const *argv) {
                 return 0;
 
             /////////////////////////////////////////////////////////////
-            //           NON-EXITING CASES                             //
+            //           NON-EXITING CASES    (if no error)            //
             /////////////////////////////////////////////////////////////
 
             case 'b': // --block FILENAME [BLOCK_NAME]
@@ -114,6 +114,114 @@ int main(int argc, const char * const *argv) {
                 // next
                 arg = 0;
                 ++i;
+                break;
+            case 'C': // --parameters-connect
+                // We must have 4 additional args:
+                if( (i+4) < argc ||
+                        (argv[i+1][0] == '-') ||
+                        (argv[i+2][0] == '-') ||
+                        (argv[i+3][0] == '-') ||
+                        (argv[i+4][0] == '-')
+                        ) {
+                    fprintf(stderr, "--parameters-connect "
+                            "without 4 name args\n");
+                    return 1;
+                }
+                if(!graph) {
+                    // If there not graph than their are no blocks.
+                    fprintf(stderr, "--parameters-connect "
+                            "with no blocks loaded");
+                    return 1;
+                }
+                // All these stupid block and parameter names must have a
+                // match.
+                //
+                // The names must be of this form:
+                //
+                // example:
+                //   --parameters-connect block0 par0 block1 par1
+                {
+                    struct QsBlock *b0 = qsGraphGetBlockByName(graph,
+                            argv[i+1]);
+                    // The from parameter must not be a setter.
+                    struct QsParameter *p0 = b0?
+                        qsParameterGetPointer(b0, argv[i+2],
+                                false/*isSetter*/):0;
+
+                    struct QsBlock *b1 = qsGraphGetBlockByName(graph,
+                            argv[i+3]);
+                    // If p0 is a constant parameter than p1 could be a
+                    // setter or a constant.
+                    struct QsParameter *p1 = b1?
+                        qsParameterGetPointer(b1, argv[i+4],
+                                /*isSetter*/true):0;
+                    if(!p1 && qsParameterKind(p0) == QsConstant)
+                        // Okay maybe it's a constant
+                        p1 = qsParameterGetPointer(b1, argv[i+4],
+                                /*isSetter*/false);
+
+
+                    if(!b0 || !p0 || !b1 || !p1) {
+                        fprintf(stderr, "--parameters-connect "
+                                "%s %s %s %s FAILED: ",
+                                argv[i+1], argv[i+2],
+                                argv[i+3], argv[i+4]);
+                        if(!b0)
+                            fprintf(stderr, "Failed to find "
+                                    "block named \"%s\" ",
+                                    argv[i+1]);
+                        else if(!p0)
+                            fprintf(stderr, "Failed to find "
+                                    "parameter named \"%s\" in block "
+                                    "\"%s\" ",
+                                    argv[i+2], argv[i+1]);
+                        if(!b1)
+                            fprintf(stderr, "Failed to find "
+                                    "block named \"%s\" ",
+                                    argv[i+3]);
+                        else if(!p1)
+                            fprintf(stderr, "Failed to find "
+                                    "parameter named \"%s\" in block "
+                                    "\"%s\" ",
+                                    argv[i+4], argv[i+3]);
+                        fprintf(stderr,"\n");
+                        ret = 1; // fail
+                        break;
+                    }
+
+                    // TODO: this is already checked in
+                    // qsParameterConnect():
+                    //
+                    // We can connect certain kinds of parameters from and
+                    // to each other.  Here is the complete list of
+                    // possible kinds of connections:
+                    //
+                    //   1. Getter    to  Setter
+                    //   2. Constant  to  Setter
+                    //   3. Constant  to  Constant
+                    //
+                    if(!(qsParameterKind(p0) == QsGetter &&
+                            qsParameterKind(p1) == QsSetter) ||
+                        !(qsParameterKind(p0) == QsConstant &&
+                            qsParameterKind(p1) == QsSetter) ||
+                        !(qsParameterKind(p0) == QsConstant &&
+                            qsParameterKind(p1) == QsConstant) 
+                      ) {
+                        fprintf(stderr,"--parameters-connect: Wrong mix "
+                                "of parameter connections.\n");
+                        ret = 1; // fail
+                        break;
+                    }
+
+                    ret = qsParameterConnect(p0, p1);
+                }
+                // next
+                arg = 0;
+                i += 2; // 2 additional args for the 2 parameter names
+                break;
+            case 'P': // --parameters-print
+                if(graph)
+                    qsGraphParametersPrint(graph, stdout);
                 break;
             case 'g': // --graph
                 CreateGraph();

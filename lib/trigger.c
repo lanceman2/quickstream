@@ -4,6 +4,9 @@
 #include <pthread.h>
 
 #include "../include/quickstream/block.h"
+#include "../include/quickstream/builder.h"
+
+
 
 #include "parameter.h"
 #include "trigger.h"

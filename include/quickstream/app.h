@@ -241,6 +241,17 @@ extern
 int qsGraphHalt(struct QsGraph *graph);
 
 
+/** Print the name of all parameters
+ 
+  \param graph a pointer to the graph object that is associated with the
+  stream graph that we want to halt the flow in.
+
+  \param file is a libc stream file pointer to print to.
+*/
+extern
+void qsGraphParametersPrint(struct QsGraph *graph, FILE *file);
+
+
 /** Print a vizgraph dot file for the graph
  
  Print a vizgraph dot file for the graph to a libc stream file.
