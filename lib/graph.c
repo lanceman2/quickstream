@@ -1,6 +1,6 @@
-
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <pthread.h>
 
 #include "../include/quickstream/app.h" // public interfaces
@@ -9,6 +9,7 @@
 #include "Dictionary.h"
 #include "block.h"
 #include "graph.h"
+#include "trigger.h"
 #include "threadPool.h"
 #include "builder.h"
 #include "run.h"
@@ -25,6 +26,9 @@ pthread_key_t _qsGraphKey;
 static pthread_once_t key_once = PTHREAD_ONCE_INIT;
 
 /* Allocate the key */
+// We never destroy this key because we can't anticipate when the user
+// will make more graphs.  It would appear that this does not make a
+// memory leak.
 static void make_key() {
     CHECK(pthread_key_create(&_qsGraphKey, 0));
 }
@@ -100,6 +104,16 @@ int qsGraphStop(struct QsGraph *graph) {
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
     ASSERT(graph->flowState == QsGraphFlowing ||
             graph->flowState == QsGraphReady);
+
+
+    // Stop all triggers in all blocks.
+    for(struct QsBlock *b = graph->firstBlock; b; b = b->next) {
+        if(b->isSuperBlock) continue;
+        
+        for(struct QsTrigger *t = ((struct QsSimpleBlock *)b)->triggers;
+                t; t = t->next)
+            TriggerStop(t);
+    }
 
 
     int ret = 0;
@@ -277,6 +291,16 @@ int qsGraphRun(struct QsGraph *graph) {
     DASSERT((graph->threadPools->maxThreads == 0 &&
                 graph->threadPools->next == 0) ||
         graph->threadPools->maxThreads != 0);
+
+    // Start all triggers in all blocks.
+    for(struct QsBlock *b = graph->firstBlock; b; b = b->next) {
+        if(b->isSuperBlock) continue;
+
+        for(struct QsTrigger *t = ((struct QsSimpleBlock *)b)->triggers;
+                t; t = t->next)
+            TriggerStart(t);
+    }
+
 
     graph->flowState = QsGraphFlowing;
 

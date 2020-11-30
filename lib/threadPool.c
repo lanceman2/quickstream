@@ -14,40 +14,6 @@
 #include "run.h"
 
 
-
-
-void qsThreadPoolDestroy(struct QsThreadPool *tp) {
-
-    ASSERT(mainThread == pthread_self(), "Not graph main thread");
-    DASSERT(tp);
-    struct QsGraph *graph = tp->graph;
-    DASSERT(graph);
-    ASSERT(graph->flowState == QsGraphPaused ||
-            graph->flowState == QsGraphFailed);
-
-    {
-        // Remove this thread pool, tp, from the graph thread pool list.
-        //
-        struct QsThreadPool *prev = 0;
-        struct QsThreadPool *t;
-        for(t = graph->threadPools; t && t != tp; tp = tp->next)
-            prev = t;
-        DASSERT(t);
-        DASSERT(t == tp);
-        if(prev)
-            prev->next = tp->next;
-        else
-            graph->threadPools = tp->next;
-    }
-
-#ifdef DEBUG
-    memset(tp, 0, sizeof(*tp));
-#endif
-
-    free(tp);
-}
-
-
 // Return the first block in the line and remove it from the list.
 //
 // static inline
@@ -76,6 +42,8 @@ struct QsSimpleBlock *PopThreadPoolQueue(struct QsThreadPool *tp) {
 }
 
 
+// Remove the block entry from the thread pool the queue
+//
 //static inline
 void RemoveBlockFromThreadPool(struct QsThreadPool *tp,
         struct QsSimpleBlock *b) {
@@ -110,7 +78,7 @@ void RemoveBlockFromThreadPool(struct QsThreadPool *tp,
 }
 
 
-// Add the block to the last entry
+// Add the block to the last entry in the queue
 //static inline
 void AddBlockToThreadPoolQueue(struct QsThreadPool *tp,
         struct QsSimpleBlock *b) {
@@ -130,6 +98,38 @@ void AddBlockToThreadPoolQueue(struct QsThreadPool *tp,
     }
 }
 
+
+
+void qsThreadPoolDestroy(struct QsThreadPool *tp) {
+
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    DASSERT(tp);
+    struct QsGraph *graph = tp->graph;
+    DASSERT(graph);
+    ASSERT(graph->flowState == QsGraphPaused ||
+            graph->flowState == QsGraphFailed);
+
+    {
+        // Remove this thread pool, tp, from the graph thread pool list.
+        //
+        struct QsThreadPool *prev = 0;
+        struct QsThreadPool *t;
+        for(t = graph->threadPools; t && t != tp; tp = tp->next)
+            prev = t;
+        DASSERT(t);
+        DASSERT(t == tp);
+        if(prev)
+            prev->next = tp->next;
+        else
+            graph->threadPools = tp->next;
+    }
+
+#ifdef DEBUG
+    memset(tp, 0, sizeof(*tp));
+#endif
+
+    free(tp);
+}
 
 
 void qsThreadPoolAddBlock(struct QsThreadPool *tp, struct QsBlock *b) {

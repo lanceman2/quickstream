@@ -109,14 +109,13 @@ struct QsSimpleBlock {
     // A singly linked list of triggers.  This is for resource cleanup.
     // The block is responsible for cleaning up triggers when it is
     // destroyed.  When the stream is flowing, it's the triggers that call
-    // block functions, and not block functions that call triggers.  So we
-    // do not need a fast list data structure for triggers that are
-    // associated with the block.
+    // block callback functions.
     struct QsTrigger *triggers;
 
 
-    // The threadPool that can run this block's flow()
+    // The threadPool that can run this block's trigger actions.
     struct QsThreadPool *threadPool;
+
 
     // We keep a doubly linked list of blocks queued in the threadPool
     // using this "next" and "prev":
@@ -190,7 +189,7 @@ struct QsSimpleBlock {
 
     // pointers to the setter parameter callbacks that are queued.  This
     // block owns these setter parameters.
-    struct QsSetter *first, *last;
+    //struct QsSetter *first, *last;
 };
 
 

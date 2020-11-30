@@ -22,12 +22,15 @@ BUILD_NO_INSTALL :=\
  184_DictionaryRemove_test\
  190_DictionaryRemove_test\
  194_DictionaryDict_test\
+ atomic_test\
  fail\
  success
 
 
 fail_SOURCES := fail.c
 success_SOURCES := success.c
+atomic_test_SOURCES := atomic_test.c ../lib/debug.c
+atomic_test_LDFLAGS := -lpthread -lrt
 
 
 # Just tests that debug.c is independent of other files,

@@ -48,7 +48,7 @@ struct QsThreadPool {
     // inherit methods to switch the block to the other states.
     //
     // Job queue that is waiting for a worker thread starting at "first"
-    // and going to "last".
+    // and going toward "last".
     //
     // Need mutex to access.
     //
