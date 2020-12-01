@@ -51,7 +51,6 @@ void *AllocateTrigger(size_t size, struct QsSimpleBlock *b,
 // TODO: Do we want the ability to make more of these.
 //
 // We may have just one of these:
-static
 struct QsSignal *sig = 0;
 
 

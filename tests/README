@@ -1,10 +1,71 @@
 Tests for the quickstream software package
 
+How to add a test
+
+  What kind of test?
+
+  Numbered tests, like 194_DictionaryDict_test, are tests that run in the
+  numbered order by running either "./run_tests" or "./valgrid_run_tests".
+
+  ./run_tests
+
+    Running ./run_tests with no arguments runs all numbered tests that are
+    in this directory.   It should in less than a second on a fast computer.
+    Run it and see.
+
+
+  ./valgrid_run_tests
+
+    Running ./valgrind_run_tests with no arguments runs all numbered tests
+    that are in this directory with the valgrind debugging program.  This
+    will take some time to run.  Valgrind slows down your code by at least
+    a factor of ten.  It will check for memory leaks in all the tests run.
+    Tests written with a bash script need to use exec to remove bashes
+    memory leaks.  Just look at them and see.
+
+
+   When adding a numbered test running both ./run_tests and
+   ./valgrid_run_tests must pass after the test is added.  If not, do not
+   add the test as a numbered test.
+
+
+   You can run particular numbered (or not) tests without valgrind like
+   so:
+
+      ./run_tests 194_DictionaryDict_test
+
+    or
+
+       ./194_DictionaryDict_test && echo $?
+
+    You can run particular numbered (or not) tests without valgrind like
+    so:
+
+       ./valgrind_run_tests 194_DictionaryDict_test
+
+
+    So to add a number test copy an existing one to 540_myStupidTest
+    and then edit it.
+
+    You can also add special tests with file names that do not start with
+    three digits.  Such tests will not be run with the no-argument
+    commands: ./run_tests and ./valgrind_run_tests, but they can be run
+    with valgrind memory leak checking like for example:
+
+        ./valgrind_run_tests malloc_leak
+
+    Note: that example is intended to check that valgrind will show that
+    the program malloc_leak has a memory leak.  malloc_leak is a good test
+    but we can't add it to the numbered test suite because it is made to
+    fail.
+
+
+
 At the start of the project the API is unstable, so at the start we tend
-to use the one program "quickstream" to run and test different parts of
-the API.  Had we wrote C code here to test different parts of the API,
-than we'd have more programs/code to change if the API changes.  The
-program "quickstream" can be used to test many parts of the API, though
-the test winds up aggregating more code, having less code to change if the
-API changes is a better trade-off.
+to use the one program "../bin/quickstream" to run and test different
+parts of the API.  Had we wrote C code here to test different parts of the
+API, than we'd have more programs/code to change if the API changes.
+The program "quickstream" can be used to test many parts of the API,
+though the test winds up aggregating more code, having less code to change
+if the API changes is a better trade-off.
 

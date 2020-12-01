@@ -96,6 +96,7 @@ void qsThreadPoolAddBlock(struct QsThreadPool *tp, struct QsBlock *b) {
     // There should be nothing in the thread pool queue yet:
     DASSERT(tp->first == 0);
     DASSERT(tp->last == 0);
+    ((struct QsSimpleBlock *) b)->threadPool = tp;
 }
 
 

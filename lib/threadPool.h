@@ -97,21 +97,19 @@ void RemoveBlockFromThreadPoolQueue(struct QsSimpleBlock *b) {
 
         DASSERT(b == tp->first);
         tp->first = b->next;
-        if(tp->first)
-            tp->first->prev = 0;
     }
     if(b->next) {
 
         DASSERT(b != tp->last);
         b->next->prev = b->prev;
+        b->next = 0;
 
     } else {
 
         DASSERT(b == tp->last);
         tp->last = b->prev;
-        if(tp->last)
-            tp->last->next = 0;
     }
+    b->prev = 0;
 }
 
 

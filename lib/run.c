@@ -15,17 +15,35 @@
 #include "run.h"
 
 
+// This is the blocking call for the worker threads when there is only a
+// system signal trigger, and no other triggers.  So there is only
+// one simple block with a trigger, this signal trigger, sig.
+static
+void WaitForWork_signal(void) {
+
+    DASSERT(sig);
+
+}
+
+
+static
+void (*waitForWork)(void);
+
 
 // Each worker thread will call this:
 //
 //static
-void *runWorker(struct QsGraph *g) {
+void *runWorker(struct QsGraph *g, struct QsThreadPool *tp) {
 
     // Check for work:
 
 
     return 0;
 }
+
+
+
+
 
 
 void run(struct QsGraph *graph) {
@@ -73,23 +91,32 @@ void run(struct QsGraph *graph) {
             }
             if(smB->firstJob)
                 // This block, b (smB), has a trigger triggered.  We call
-                // it a job now.
+                // it a job now.  Now we queue it up for a worker thread.
                 AddBlockToThreadPoolQueue(smB);
         }
     }
 
-
+    // TODO: Add a will it run anything check here.
 
 
     if(graph->threadPools->maxThreads == 0) {
-        // This is the only thread pool
+        // This is the only thread pool and it has no threads.  This is a
+        // special case of running with the main thread and returning when
+        // finished or signaled.
         DASSERT(graph->threadPools->next == 0);
+
+        // TODO: How do we determine which waitForWork() function to use:
+        waitForWork = WaitForWork_signal;
+
         // The main thread will run the stream.
-        runWorker(graph);
+        runWorker(graph, graph->threadPools);
 
     } else {
 
-        // We will have worker threads.
+        // TODO: HERE initialize each threadPool mutexs and conditionals.
+
+
+        // TODO: HERE We will have worker threads.
 
         ERROR("Write MORE CODE HERE");
     }

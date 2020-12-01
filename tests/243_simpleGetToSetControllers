@@ -1,6 +1,17 @@
 #!/bin/bash
 
-set -e
+set -ex
+
+../bin/quickstream\
+ --threads 0\
+ --block tests/getterTriggeredFromSignal getter\
+ --block tests/setter setter\
+ --block tests/dummy\
+ --run\
+ --run
+
+exec ./success
+
 
 exec ../bin/quickstream\
  --block tests/getterTriggeredFromSignal getter\

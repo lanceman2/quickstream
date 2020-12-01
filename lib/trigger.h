@@ -1,5 +1,11 @@
 
 struct QsSimpleBlock;
+struct QsSignal;
+
+
+extern
+struct QsSignal *sig;
+
 
 
 enum QsTriggerKind {

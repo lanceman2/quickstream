@@ -1,7 +1,3 @@
-#ifndef _QS_IN_BOOTSTRAP
-#  error "block.h must be included before blockJobsLists.h"
-#endif
-
 
 // This function should only be used in this file.
 static inline void

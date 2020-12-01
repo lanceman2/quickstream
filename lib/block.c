@@ -283,12 +283,14 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         ASSERT(suB, "calloc(1, %zu) failed", sizeof(*suB));
         b = &suB->block;
         b->isSuperBlock = true;
+        b->graph = graph;
     } else {
         // SIMPLE BLOCK
         struct QsSimpleBlock *smB = calloc(1, sizeof(*smB));
         ASSERT(smB, "calloc(1, %zu) failed", sizeof(*smB));
         b = &smB->block;
         //b->isSuperBlock is false via calloc()
+        b->graph = graph;
 
         // Add parameter dictionaries.
         smB->getters = qsDictionaryCreate(); // getters and constants
@@ -301,7 +303,6 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     }
 
     b->dlhandle = dlhandle;
-    b->graph = graph;
     b->name = strdup(blockName);
     ASSERT(b->name, "strdup() failed");
     b->inWhichCallback = _QS_IN_NONE;

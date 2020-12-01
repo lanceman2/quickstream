@@ -3,7 +3,7 @@
 set -e
 cd $(dirname ${BASH_SOURCE[0]})
 
-if ! which valgrind ; then
+if ! which valgrind > /dev/null ; then
     echo "valgrind was not found in your PATH"
     exit 1
 fi
