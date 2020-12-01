@@ -106,11 +106,25 @@ struct QsSimpleBlock {
     struct QsDictionary *getters; // getters and constants
     struct QsDictionary *setters; // just setters
 
-    // A singly linked list of triggers.  This is for resource cleanup.
-    // The block is responsible for cleaning up triggers when it is
-    // destroyed.  When the stream is flowing, it's the triggers that call
-    // block callback functions.
+    // A doubly linked list of triggers.  The block is responsible for
+    // cleaning up triggers when it is destroyed.  When the stream is
+    // flowing the triggers provide job block callback functions.  This
+    // list uses QsTrigger::next and QsTrigger::prev to make the list.
+    //
+    // The triggers go from the "triggers" list to the jobs list and then
+    // back to triggers after their job is done.
+    //
     struct QsTrigger *triggers;
+    //
+    // "jobs" is another doubly linked list of triggers.
+    //
+    // "jobs" that are ready to be worked on by a thread from the thread
+    // pool.  firstJob will be the first job.  lastJob will be the last.
+    //
+    // We needed both ends of this list so that we can insert in the first
+    // or the last element.  Stream triggers always go last in the jobs
+    // list.
+    struct QsTrigger *firstJob, *lastJob;
 
 
     // The threadPool that can run this block's trigger actions.

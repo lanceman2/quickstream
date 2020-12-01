@@ -10,6 +10,7 @@
 #include "block.h"
 #include "graph.h"
 #include "trigger.h"
+#include "blockJobsLists.h"
 #include "threadPool.h"
 #include "builder.h"
 #include "run.h"
@@ -28,7 +29,7 @@ static pthread_once_t key_once = PTHREAD_ONCE_INIT;
 /* Allocate the key */
 // We never destroy this key because we can't anticipate when the user
 // will make more graphs.  It would appear that this does not make a
-// memory leak.
+// memory leak that Valgrind tests detect.
 static void make_key() {
     CHECK(pthread_key_create(&_qsGraphKey, 0));
 }
@@ -109,7 +110,13 @@ int qsGraphStop(struct QsGraph *graph) {
     // Stop all triggers in all blocks.
     for(struct QsBlock *b = graph->firstBlock; b; b = b->next) {
         if(b->isSuperBlock) continue;
-        
+        struct QsSimpleBlock *smB = (struct QsSimpleBlock *)b;
+
+        // Empty the job queue; putting the jobs into triggers.
+        while(smB->firstJob)
+            PopJobBackToTriggers(smB);
+
+        // Go through all the triggers and "stop" them.
         for(struct QsTrigger *t = ((struct QsSimpleBlock *)b)->triggers;
                 t; t = t->next)
             TriggerStop(t);

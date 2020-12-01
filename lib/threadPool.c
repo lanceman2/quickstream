@@ -42,64 +42,6 @@ struct QsSimpleBlock *PopThreadPoolQueue(struct QsThreadPool *tp) {
 }
 
 
-// Remove the block entry from the thread pool the queue
-//
-//static inline
-void RemoveBlockFromThreadPool(struct QsThreadPool *tp,
-        struct QsSimpleBlock *b) {
-
-    DASSERT(b->threadPool == tp);
-
-    // Remove block, b, from old threadPool doubly linked list.
-    if(b->prev) {
-
-        DASSERT(b != tp->first);
-        b->prev->next = b->next;
-
-    } else {
-
-        DASSERT(b == tp->first);
-        tp->first = b->next;
-        if(tp->first)
-            tp->first->prev = 0;
-    }
-    if(b->next) {
-
-        DASSERT(b != tp->last);
-        b->next->prev = b->prev;
-
-    } else {
-
-        DASSERT(b == tp->last);
-        tp->last = b->prev;
-        if(tp->last)
-            tp->last->next = 0;
-    }
-}
-
-
-// Add the block to the last entry in the queue
-//static inline
-void AddBlockToThreadPoolQueue(struct QsThreadPool *tp,
-        struct QsSimpleBlock *b) {
-
-    DASSERT(b->next == 0);
-    DASSERT(b->prev == 0);
-    DASSERT(b->threadPool == tp);
-
-    if(tp->last) {
-        DASSERT(tp->first);
-        b->prev = tp->last;
-        tp->last->next = b;
-        tp->last = b;
-    } else {
-        DASSERT(tp->first == 0);
-        tp->first = tp->last = b;
-    }
-}
-
-
-
 void qsThreadPoolDestroy(struct QsThreadPool *tp) {
 
     ASSERT(mainThread == pthread_self(), "Not graph main thread");

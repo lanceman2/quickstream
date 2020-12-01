@@ -7,11 +7,12 @@
 #include "debug.h"
 #include "Dictionary.h"
 #include "block.h"
+#include "trigger.h"
+#include "blockJobsLists.h"
 #include "graph.h"
 #include "threadPool.h"
 #include "builder.h"
 #include "run.h"
-#include "trigger.h"
 
 
 
@@ -26,27 +27,56 @@ void *runWorker(struct QsGraph *g) {
     return 0;
 }
 
+
 void run(struct QsGraph *graph) {
 
     DASSERT(mainThread == pthread_self(), "Not graph main thread");
     DASSERT(graph->threadPools);
     DASSERT(graph->flowState == QsGraphFlowing);
+
     // Find a block with a trigger.
-    struct QsBlock *bWithT = graph->firstBlock;
-    for(; bWithT; bWithT = bWithT->next) {
-        if(bWithT->isSuperBlock) continue;
-        if(((struct QsSimpleBlock *) bWithT)->triggers)
+    struct QsBlock *b = graph->firstBlock;
+    for(; b; b = b->next) {
+        if(b->isSuperBlock) continue;
+        // There should be no triggered jobs yet.
+        DASSERT(((struct QsSimpleBlock *) b)->firstJob == 0);
+        DASSERT(((struct QsSimpleBlock *) b)->lastJob == 0);
+        if(((struct QsSimpleBlock *) b)->triggers)
             // We have at least one trigger.
             break;
     }
-    if(!bWithT) {
+    if(!b) {
         NOTICE("No stream triggers found");
         // There is nothing to run.
         return;
     }
 
     // First queue up the triggered blocks in the into their thread pool.
-
+    //
+    b = graph->firstBlock;
+    for(; b; b = b->next) {
+        if(b->isSuperBlock) continue;
+        struct QsTrigger *t = ((struct QsSimpleBlock *) b)->triggers;
+        if(t) {
+            struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
+            DASSERT(t->block == smB);
+            while(t) {
+                // We need the next trigger now since we may edit the list
+                // in TriggersToFirstJob();
+                struct QsTrigger *nextT = t->next;
+                if(t->checkTrigger()) {
+                    // Add this trigger thingy job to a listed list of
+                    // jobs.
+                    TriggersToFirstJob(smB, t);
+                }
+                t = nextT;
+            }
+            if(smB->firstJob)
+                // This block, b (smB), has a trigger triggered.  We call
+                // it a job now.
+                AddBlockToThreadPoolQueue(smB);
+        }
+    }
 
 
 

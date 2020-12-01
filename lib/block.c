@@ -38,6 +38,11 @@ static void qsSimpleBlockUnload(struct QsSimpleBlock *b) {
     qsDictionaryDestroy(b->getters); // getters and constants
     qsDictionaryDestroy(b->setters);
 
+    // We will assume that all the triggers are in the triggers list, so
+    // the jobs list must be empty.
+    DASSERT(b->firstJob == 0);
+    DASSERT(b->lastJob == 0);
+
     struct QsTrigger *next;
     for(struct QsTrigger *t = b->triggers; t; t = next) {
         next = t->next;
@@ -63,6 +68,7 @@ static void qsSuperBlockUnload(struct QsSuperBlock *b) {
 }
 
 
+// This does not call the block module's destroy() function.
 static
 void qsBlockUnload_noDestory(struct QsBlock *b) {
 

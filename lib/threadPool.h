@@ -54,3 +54,86 @@ struct QsThreadPool {
     //
     struct QsSimpleBlock *first, *last;
 };
+
+
+
+// pop off the first in the queue
+//
+static inline
+struct QsSimpleBlock *PopBlockFromThreadPoolQueue(
+        struct QsThreadPool *tp) {
+
+    struct QsSimpleBlock *b = tp->first;
+    if(!b) return b;
+    DASSERT(b->prev == 0);
+
+    tp->first = b->next;
+    if(!tp->first)
+        tp->last = 0;
+    else
+        b->next = 0;
+
+    return b;
+}
+
+
+// Remove the block entry from the thread pool the queue
+//
+// We need to do this sometimes instead of
+// PopBlockFromThreadPoolQueue().
+//
+static inline
+void RemoveBlockFromThreadPoolQueue(struct QsSimpleBlock *b) {
+
+    struct QsThreadPool *tp = b->threadPool;
+
+    // Remove block, b, from old threadPool doubly linked list.
+    if(b->prev) {
+
+        DASSERT(b != tp->first);
+        b->prev->next = b->next;
+
+    } else {
+
+        DASSERT(b == tp->first);
+        tp->first = b->next;
+        if(tp->first)
+            tp->first->prev = 0;
+    }
+    if(b->next) {
+
+        DASSERT(b != tp->last);
+        b->next->prev = b->prev;
+
+    } else {
+
+        DASSERT(b == tp->last);
+        tp->last = b->prev;
+        if(tp->last)
+            tp->last->next = 0;
+    }
+}
+
+
+// Add the block to the last entry in the queue
+static inline
+void AddBlockToThreadPoolQueue(struct QsSimpleBlock *b) {
+
+    DASSERT(b->next == 0);
+    DASSERT(b->prev == 0);
+
+    struct QsThreadPool *tp = b->threadPool;
+
+    if(tp->last) {
+        DASSERT(tp->first);
+        b->prev = tp->last;
+        tp->last->next = b;
+        tp->last = b;
+    } else {
+        DASSERT(tp->first == 0);
+        tp->first = tp->last = b;
+    }
+}
+
+
+
