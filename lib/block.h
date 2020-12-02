@@ -132,8 +132,11 @@ struct QsSimpleBlock {
 
 
     // We keep a doubly linked list of blocks queued in the threadPool
-    // using this "next" and "prev":
+    // using this "next" and "prev".
     struct QsSimpleBlock *next, *prev;
+    //
+    // Is this simple block in the thread pool job queue?
+    bool blockInThreadPoolQueue;
 
 
     // The number of inputs can change before start and after stop, so can

@@ -14,33 +14,6 @@
 #include "run.h"
 
 
-// Return the first block in the line and remove it from the list.
-//
-// static inline
-struct QsSimpleBlock *PopThreadPoolQueue(struct QsThreadPool *tp) {
-
-    DASSERT(tp);
-
-    struct QsSimpleBlock *b = tp->first;
-
-    DASSERT(!b || b->prev == 0);
-
-    if(b) {
-        DASSERT(tp->last);
-        tp->first = b->next;
-        if(b->next) {
-            DASSERT(b->next->prev == b);
-            b->next->prev = 0;
-            b->next = 0;
-        } else {
-            DASSERT(b == tp->last);
-            tp->last = 0;
-        }
-    }
-
-    return b;
-}
-
 
 void qsThreadPoolDestroy(struct QsThreadPool *tp) {
 

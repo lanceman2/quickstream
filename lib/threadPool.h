@@ -12,6 +12,7 @@ struct QsThreadPool {
     // access it.
     uint32_t maxThreads;
 
+    // We use "next" to make a list of threadPools in graph.
     struct QsThreadPool *next;
 
     pthread_mutex_t mutex;
@@ -64,14 +65,24 @@ struct QsSimpleBlock *PopBlockFromThreadPoolQueue(
         struct QsThreadPool *tp) {
 
     struct QsSimpleBlock *b = tp->first;
-    if(!b) return b;
+    if(!b) {
+        DASSERT(tp->last == 0);
+        return b; // 0
+    }
+
     DASSERT(b->prev == 0);
 
     tp->first = b->next;
-    if(!tp->first)
-        tp->last = 0;
-    else
+
+    if(tp->first) {
         b->next = 0;
+        DASSERT(tp->first->prev == b);
+        tp->first->prev = 0;
+    } else {
+        tp->last = 0;
+    }
+
+    b->blockInThreadPoolQueue = false;
 
     return b;
 }
@@ -110,6 +121,8 @@ void RemoveBlockFromThreadPoolQueue(struct QsSimpleBlock *b) {
         tp->last = b->prev;
     }
     b->prev = 0;
+    
+    b->blockInThreadPoolQueue = false;
 }
 
 
@@ -131,7 +144,6 @@ void AddBlockToThreadPoolQueue(struct QsSimpleBlock *b) {
         DASSERT(tp->first == 0);
         tp->first = tp->last = b;
     }
+
+    b->blockInThreadPoolQueue = true;
 }
-
-
-

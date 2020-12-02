@@ -1,5 +1,7 @@
 #include <signal.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <unistd.h>
 #include <pthread.h>
 
 #include "../include/quickstream/app.h" // public interfaces
@@ -15,35 +17,101 @@
 #include "run.h"
 
 
+static inline
+bool IfNeedMutex(struct QsThreadPool *tp) {
+    return (tp->maxThreads > 1);
+}
+
+
+static inline
+void IfMutexLock(struct QsThreadPool *tp) {
+
+    if(IfNeedMutex(tp))
+        CHECK(pthread_mutex_lock(&tp->mutex));
+}
+
+
+static inline
+void IfMutexUnlock(struct QsThreadPool *tp) {
+
+    if(IfNeedMutex(tp))
+        CHECK(pthread_mutex_unlock(&tp->mutex));
+}
+
+
+// We need the threadPool mutex before calling this.
+//
 // This is the blocking call for the worker threads when there is only a
 // system signal trigger, and no other triggers.  So there is only
 // one simple block with a trigger, this signal trigger, sig.
 static
-void WaitForWork_signal(void) {
+bool WaitForWork_signal(struct QsThreadPool *tp) {
 
     DASSERT(sig);
+    struct QsSimpleBlock *b = sig->trigger.block;
+    DASSERT(b->triggers);
+    DASSERT(b->threadPool == tp);
 
+    IfMutexUnlock(tp);
+
+    ASSERT(-1 == pause());
+    // The signal catcher should have caught SIGALRM
+    DASSERT(errno == EINTR);
+
+    IfMutexLock(tp);
+
+    if(sig->triggered) {
+
+        // Reset flag.
+        sig->triggered = 0;
+
+        TriggersToLastJob(b, &sig->trigger);
+        if(!b->blockInThreadPoolQueue)
+            // We don't add it to the thread pool job queue unless it's
+            // not in it already.
+            AddBlockToThreadPoolQueue(b);
+        
+        return true;
+    }
+
+    // It was a different signal from SIGALRM
+    return false; // No more working.
 }
 
 
+// Return true if we have work or false if the graph is done running.
 static
-void (*waitForWork)(void);
+bool (*waitForWork)(struct QsThreadPool *tp) = 0;
 
 
 // Each worker thread will call this:
 //
-//static
+static
 void *runWorker(struct QsGraph *g, struct QsThreadPool *tp) {
+
+    DASSERT(waitForWork);
+
+    IfMutexLock(tp);
 
     // Check for work:
 
+    while(waitForWork(tp)) {
+
+        struct QsSimpleBlock *b = PopBlockFromThreadPoolQueue(tp);
+
+        DASSERT(b->firstJob);
+
+        while(b->firstJob) {
+            struct QsTrigger *t = PopJobBackToTriggers(b);
+
+            t->callback(t->userData);
+        }
+    }
+
+    IfMutexUnlock(tp);
 
     return 0;
 }
-
-
-
-
 
 
 void run(struct QsGraph *graph) {
@@ -99,6 +167,12 @@ void run(struct QsGraph *graph) {
     // TODO: Add a will it run anything check here.
 
 
+    for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next)
+        if(IfNeedMutex(tp))
+            CHECK(pthread_mutex_init(&tp->mutex, 0));
+
+
+
     if(graph->threadPools->maxThreads == 0) {
         // This is the only thread pool and it has no threads.  This is a
         // special case of running with the main thread and returning when
@@ -118,6 +192,11 @@ void run(struct QsGraph *graph) {
 
         // TODO: HERE We will have worker threads.
 
+
         ERROR("Write MORE CODE HERE");
     }
+
+    for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next)
+        if(IfNeedMutex(tp))
+            CHECK(pthread_mutex_destroy(&tp->mutex));
 }

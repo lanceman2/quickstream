@@ -59,7 +59,7 @@ struct QsTrigger {
     // All triggers need this function to be defined.
     bool (*checkTrigger)(void);
 
-    // This is called when this trigger pops:
+    // callback is called after this trigger pops:
     void (*callback)(void *userData);
 
     void *userData;

@@ -110,6 +110,8 @@ struct QsTrigger *PopJobBackToTriggers(struct QsSimpleBlock *b) {
 
     struct QsTrigger *t = b->firstJob;
 
+    DASSERT(t->block == b);
+
     ////////////////////////////////////////////////////////
     // 1. remove "t" from the job list:
     ////////////////////////////////////////////////////////
