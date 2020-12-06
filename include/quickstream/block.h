@@ -449,8 +449,12 @@ struct QsBlock *qsBlockGetFromName(struct QsGraph *graph,
  configured from code not in the blocks, from programs that run the stream
  graph.
 
- \todo More here.
+ \param signum is the system signal number.  See "kill -L".
 
+ \verbinclude triggerCallback.dox
+
+ \param userData is passed to triggerCallback() function each time it is
+ called.
 
  \return 0 on success.
 
@@ -458,7 +462,7 @@ struct QsBlock *qsBlockGetFromName(struct QsGraph *graph,
  */
 extern
 int qsTriggerSignalCreate(int signum,
-        void (*triggerCallback)(void *userData),
+        int (*triggerCallback)(void *userData),
         void *userData);
 
 

@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <setjmp.h>
 #include <pthread.h>
 
 #include "../include/quickstream/app.h" // public interfaces
@@ -10,8 +11,8 @@
 #include "block.h"
 #include "graph.h"
 #include "trigger.h"
-#include "blockJobsLists.h"
 #include "threadPool.h"
+#include "blockJobsLists.h"
 #include "builder.h"
 #include "run.h"
 
@@ -117,7 +118,7 @@ int qsGraphStop(struct QsGraph *graph) {
             PopJobBackToTriggers(smB);
 
         // Go through all the triggers and "stop" them.
-        for(struct QsTrigger *t = ((struct QsSimpleBlock *)b)->triggers;
+        for(struct QsTrigger *t = ((struct QsSimpleBlock *)b)->waiting;
                 t; t = t->next)
             TriggerStop(t);
     }
@@ -259,19 +260,6 @@ int qsGraphReady(struct QsGraph *graph) {
 
     // TODO: HERE set any parameters that are feed by constant parameters.
 
-
-    int ret = 0;
-    for(struct QsBlock *b = graph->firstBlock; b; b = b->next)
-        if((ret = RunStartOrStop(b, b->start, "start", _QS_IN_START)))
-            break;
-
-    if(ret < 0) {
-        // One of the block's start() calls returned less than 0.
-        graph->flowState = QsGraphFailed;
-        // TODO: Free stuff.
-        return ret;
-    }
-
     graph->flowState = QsGraphReady;
 
     return 0; // success
@@ -303,15 +291,29 @@ int qsGraphRun(struct QsGraph *graph) {
     for(struct QsBlock *b = graph->firstBlock; b; b = b->next) {
         if(b->isSuperBlock) continue;
 
-        for(struct QsTrigger *t = ((struct QsSimpleBlock *)b)->triggers;
+        for(struct QsTrigger *t = ((struct QsSimpleBlock *)b)->waiting;
                 t; t = t->next)
             TriggerStart(t);
+    }
+
+    int ret = 0;
+    for(struct QsBlock *b = graph->firstBlock; b; b = b->next)
+        if((ret = RunStartOrStop(b, b->start, "start", _QS_IN_START)))
+            break;
+
+    if(ret < 0) {
+        // One of the block's start() calls returned less than 0.
+        graph->flowState = QsGraphFailed;
+        // TODO: Free stuff.
+        return ret;
     }
 
 
     graph->flowState = QsGraphFlowing;
 
     run(graph);
+
+    qsGraphStop(graph);
 
     return 0;
 }
@@ -321,14 +323,17 @@ int qsGraphWait(struct QsGraph *graph) {
 
     DASSERT(graph);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
-    ASSERT(graph->flowState == QsGraphFlowing);
+    ASSERT(graph->flowState == QsGraphFlowing ||
+            graph->flowState == QsGraphPaused);
     DASSERT(graph->threadPools);
 
+    if(graph->flowState == QsGraphPaused)
+        // We are already paused.
+        return 0;
 
-    // MORE HERE
 
+    // TODO: MORE CODE HERE
 
-    qsGraphStop(graph);
 
     // success.
     graph->flowState = QsGraphPaused;

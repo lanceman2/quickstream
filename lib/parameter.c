@@ -336,6 +336,7 @@ void AddToConstantConnections(struct QsConstant *c,
     ++c->numConnections;
 }
 
+
 static inline
 void AddToGetterConnections(struct QsGetter *g,
         struct QsSetter *s) {
@@ -377,9 +378,11 @@ int qsParameterConnect(struct QsParameter *p0,
     //   2. Constant  to  Setter
     //   3. Constant  to  Constant
     //
-    if( !(p0->kind == QsGetter   && p1->kind == QsSetter) ||
-        !(p0->kind == QsConstant && p1->kind == QsSetter) ||
-        !(p0->kind == QsConstant && p1->kind == QsConstant) 
+    if( !(
+            (p0->kind == QsGetter   && p1->kind == QsSetter) ||
+            (p0->kind == QsConstant && p1->kind == QsSetter) ||
+            (p0->kind == QsConstant && p1->kind == QsConstant)
+         )
     ) {
         ERROR("Wrong mix of kinds of parameter to connect from and to");
         DASSERT(0);
@@ -392,7 +395,7 @@ int qsParameterConnect(struct QsParameter *p0,
         return -1;
     }
 
-    if(p0->block != p1->block) {
+    if(p0->block == p1->block) {
         ERROR("Block \"%s\" cannot connect parameters in itself",
                 p0->block->name);
         DASSERT(0);

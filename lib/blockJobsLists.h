@@ -1,9 +1,9 @@
 
 // This function should only be used in this file.
 static inline void
-_RemoveFromTriggersList(struct QsSimpleBlock *b, struct QsTrigger *t) {
+_RemoveFromWaitingList(struct QsSimpleBlock *b, struct QsTrigger *t) {
 
-    // remove "t" from the triggers list
+    // remove "t" from the waiting list
     //
 
     DASSERT(b);
@@ -11,42 +11,70 @@ _RemoveFromTriggersList(struct QsSimpleBlock *b, struct QsTrigger *t) {
 
     if(t->next) {
 
-        DASSERT(b->lastJob != t);
         t->next->prev = t->prev;
-
-    } else {
-
-        DASSERT(b->lastJob == t);
-        b->lastJob = t->prev;
     }
 
     if(t->prev) {
 
-        DASSERT(b->firstJob != t);
+        DASSERT(b->waiting != t);
         t->prev->next = t->next;
 
     } else {
 
-        DASSERT(b->firstJob == t);
-        b->firstJob = t->next;
+        DASSERT(b->waiting == t);
+        b->waiting = t->next;
     }
+}
+
+
+static inline
+void _FinishQueuingJob(struct QsSimpleBlock *b, struct QsTrigger *t) {
+
+    t->isInJobQueue = true;
+
+    // Since blocks can have more than one trigger this block
+    // could have been in its' thread pool job queue already,
+    // hence the if().
+    if(b->blockInThreadPoolQueue == false)
+        AddBlockToThreadPoolQueue(b);
 }
 
 
 // The triggers have triggered and now there is a job to work on.
 //
-// This moves the trigger from the QsSimpleBlock::triggers list to the
+// This should only be used by a stream trigger.  And there should
+// only be one stream trigger per block.
+//
+// This moves the trigger from the QsSimpleBlock::waiting list to the
 // QsSimpleBlock::lastJob list.
 //
 static inline void
-TriggersToLastJob(struct QsSimpleBlock *b, struct QsTrigger *t) {
+WaitingToLastJob(struct QsTrigger *t) {
 
+    DASSERT(t);
+    DASSERT(t->isRunning);
+    struct QsSimpleBlock *b = t->block;
+    DASSERT(b);
+
+    DASSERT(t->kind == QsStream,
+            "%s() should only be used by stream triggers",
+            __func__);
 
     ////////////////////////////////////////////////////////
-    // 1. remove "t" from the triggers list:
+    // 0. do nothing if it's in the job queue already
     ////////////////////////////////////////////////////////
     //
-    _RemoveFromTriggersList(b, t);
+    if(t->isInJobQueue) {
+        // There should only be one stream trigger per block.
+        DASSERT(b->lastJob == t);
+        return;
+    }
+
+    ////////////////////////////////////////////////////////
+    // 1. remove "t" from the waiting list:
+    ////////////////////////////////////////////////////////
+    //
+    _RemoveFromWaitingList(b, t);
 
     ////////////////////////////////////////////////////////
     // 2. put "t" in job list at lastJob
@@ -64,23 +92,38 @@ TriggersToLastJob(struct QsSimpleBlock *b, struct QsTrigger *t) {
         b->firstJob = t;
     }
     b->lastJob = t;
+
+    ////////////////////////////////////////////////////////
+    // 3. put "t" and the block in the job queue
+    ////////////////////////////////////////////////////////
+    //
+    _FinishQueuingJob(b, t);
 }
 
 
 // The triggers have triggered and now there is a job to work on.
 //
-// This moves the trigger from the QsSimpleBlock::triggers list to the
+// This moves the trigger from the QsSimpleBlock::waiting list to the
 // QsSimpleBlock::firstJob list.
 //
 static inline void
-TriggersToFirstJob(struct QsSimpleBlock *b, struct QsTrigger *t) {
+WaitingToFirstJob(struct QsTrigger *t) {
 
+    DASSERT(t->isRunning);
+    struct QsSimpleBlock *b = t->block;
+    DASSERT(b);
 
     ////////////////////////////////////////////////////////
-    // 1. remove "t" from the triggers list:
+    // 0. do nothing if it's in the job queue already
     ////////////////////////////////////////////////////////
     //
-    _RemoveFromTriggersList(b, t);
+    if(t->isInJobQueue) return;
+
+    ////////////////////////////////////////////////////////
+    // 1. remove "t" from the waiting list:
+    ////////////////////////////////////////////////////////
+    //
+    _RemoveFromWaitingList(b, t);
 
     ////////////////////////////////////////////////////////
     // 2. put "t" in job list at firstJob
@@ -88,6 +131,9 @@ TriggersToFirstJob(struct QsSimpleBlock *b, struct QsTrigger *t) {
     //
     t->prev = 0;
     t->next = b->firstJob;
+
+    DASSERT(b->firstJob == 0);
+
     if(b->firstJob) {
 
         DASSERT(b->lastJob);
@@ -98,6 +144,12 @@ TriggersToFirstJob(struct QsSimpleBlock *b, struct QsTrigger *t) {
         b->lastJob = t;
     }
     b->firstJob = t;
+
+    ////////////////////////////////////////////////////////
+    // 3. put "t" and the block in the job queue
+    ////////////////////////////////////////////////////////
+    //
+    _FinishQueuingJob(b, t);
 }
 
 
@@ -109,8 +161,10 @@ struct QsTrigger *PopJobBackToTriggers(struct QsSimpleBlock *b) {
     DASSERT(b->firstJob);
 
     struct QsTrigger *t = b->firstJob;
-
     DASSERT(t->block == b);
+    DASSERT(t->isInJobQueue);
+    DASSERT(t->isRunning);
+
 
     ////////////////////////////////////////////////////////
     // 1. remove "t" from the job list:
@@ -128,15 +182,20 @@ struct QsTrigger *PopJobBackToTriggers(struct QsSimpleBlock *b) {
     }
 
     ////////////////////////////////////////////////////////
-    // 2. put "t" on the triggers list
+    // 2. put "t" on the waiting list
     ////////////////////////////////////////////////////////
     //
-    t->next = b->triggers;
-    if(b->triggers)
-        b->triggers->prev = t;
+    t->next = b->waiting;
+    if(b->waiting)
+        b->waiting->prev = t;
     t->prev = 0;
-    b->triggers = t;
+    b->waiting = t;
 
+    ////////////////////////////////////////////////////////
+    // 3. mark it as not in the job queue
+    ////////////////////////////////////////////////////////
+    //
+    t->isInJobQueue = false;
 
     return t;
 }

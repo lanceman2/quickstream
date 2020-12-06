@@ -7,8 +7,10 @@ set -ex
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
  --block tests/dummy\
+ --parameters-connect getter getter setter setter\
  --run\
  --run
+
 
 exec ./success
 

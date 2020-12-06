@@ -35,18 +35,6 @@ struct QsThreadPool {
     //
     uint32_t numIdleThreads;
 
-    // The blocks may be:
-    //
-    //   1. queued: waiting in the worker thread queue
-    //   2. working: calling flow() or other trigger action on by a running
-    //      thread
-    //   3. waiting: in an un-runnable work state due to
-    //        3a) waiting on stream buffer or parameter input/output
-    //          calling pthread_cond_wait().
-    //        3b) blocking read or write file descriptor poll
-    //
-    // This job queue is for case 1 above.  The other cases 2 and 3 have
-    // inherit methods to switch the block to the other states.
     //
     // Job queue that is waiting for a worker thread starting at "first"
     // and going toward "last".
@@ -67,9 +55,11 @@ struct QsSimpleBlock *PopBlockFromThreadPoolQueue(
     struct QsSimpleBlock *b = tp->first;
     if(!b) {
         DASSERT(tp->last == 0);
+        // There was no blocks in the queue.
         return b; // 0
     }
 
+    DASSERT(b->blockInThreadPoolQueue);
     DASSERT(b->prev == 0);
 
     tp->first = b->next;
@@ -95,6 +85,8 @@ struct QsSimpleBlock *PopBlockFromThreadPoolQueue(
 //
 static inline
 void RemoveBlockFromThreadPoolQueue(struct QsSimpleBlock *b) {
+
+    DASSERT(b->blockInThreadPoolQueue);
 
     struct QsThreadPool *tp = b->threadPool;
 
@@ -130,6 +122,9 @@ void RemoveBlockFromThreadPoolQueue(struct QsSimpleBlock *b) {
 static inline
 void AddBlockToThreadPoolQueue(struct QsSimpleBlock *b) {
 
+
+    DASSERT(b->blockInThreadPoolQueue == false);
+    
     DASSERT(b->next == 0);
     DASSERT(b->prev == 0);
 

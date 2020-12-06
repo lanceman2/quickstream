@@ -11,7 +11,8 @@ SUBDIRS :=\
  lib\
  lib/quickstream/misc\
  bin\
- lib/quickstream/blocks
+ lib/quickstream/blocks\
+ share/doc/quickstream
 
 
 ifneq ($(wildcard quickbuild.make),quickbuild.make)

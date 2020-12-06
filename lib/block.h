@@ -111,10 +111,10 @@ struct QsSimpleBlock {
     // flowing the triggers provide job block callback functions.  This
     // list uses QsTrigger::next and QsTrigger::prev to make the list.
     //
-    // The triggers go from the "triggers" list to the jobs list and then
-    // back to triggers after their job is done.
+    // The triggers go from the "waiting" list to the jobs list and then
+    // back to waiting after their job is done.
     //
-    struct QsTrigger *triggers;
+    struct QsTrigger *waiting;
     //
     // "jobs" is another doubly linked list of triggers.
     //

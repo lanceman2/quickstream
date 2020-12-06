@@ -9,7 +9,8 @@ if ! ../bin/quickstream\
  --block tests/dummy\
  --block tests/startFail\
  --block tests/dummy\
- --ready ; then
+ --ready\
+ --run ; then
     exec ./success
 fi
 

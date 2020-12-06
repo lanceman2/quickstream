@@ -1,3 +1,5 @@
+// This is used in test ../../../../tests/243_simpleGetToSetControllers
+
 #include <signal.h>
 #include <sys/time.h>
 #include <errno.h>
@@ -6,23 +8,45 @@
 
 #include "../../../debug.h"
 
+
 static
 struct QsParameter *getter = 0;
 
+static int count = 0;
+
+
+int stopItimer(void) {
+
+    // This block needs a stop() function to stop and remove the periodic
+    // signal generator.
+    if(setitimer(ITIMER_REAL, 0, 0)) {
+        ERROR("setitimer(ITIMER_REAL,0,0) failed");
+        return -1; // fail
+    }
+    return 0; // success
+}
+
 
 static
-void triggerCallback(struct QsParameter *p) {
+int triggerCallback(struct QsParameter *p) {
 
-    DSPEW("              TIMER");
+    DSPEW("                      TIMER %d", ++count);
+
+    if(count > 9) {
+        stopItimer();
+        // Stop using the itimer
+        return 1;
+    }
+    return 0;
 }
 
 
 int bootstrap(void) {
 
-    getter = qsParameterGetterCreate(0, "get", QS_DOUBLE, sizeof(double));
+    getter = qsParameterGetterCreate(0, "getter", QS_DOUBLE, sizeof(double));
     DASSERT(getter);
 
-    qsTriggerSignalCreate(SIGALRM, (void (*)(void *)) triggerCallback,
+    qsTriggerSignalCreate(SIGALRM, (int (*)(void *)) triggerCallback,
             /*userData*/getter);
 
     return 0; // 0 => success
@@ -30,13 +54,16 @@ int bootstrap(void) {
 
 int start(uint32_t numInPorts, uint32_t numOutPorts) {
 
+    count = 0;
 
     if(qsParameterNumConnections(getter) == 0) return 0;
 
     // This block needs a start() function to setup and start the periodic
     // signal generator.
     errno = 0;
-    struct itimerval it = {  { 1/*seconds*/, 0/*mictoseconds*/ }, { 0,0 }};
+    struct itimerval it = {
+        { 0/*seconds*/, 1000/*microseconds*/ }, { 0,1000 }};
+        //{ 1/*seconds*/, 0/*microseconds*/ }, { 1,0 }};
     if(setitimer(ITIMER_REAL, &it, 0)) {
         ERROR("setitimer(ITIMER_REAL,,) failed");
         return -1; // fail
@@ -50,12 +77,5 @@ int stop(uint32_t numInPorts, uint32_t numOutPorts) {
 
     if(qsParameterNumConnections(getter) == 0) return 0;
 
-    // This block needs a stop() function to stop and remove the periodic
-    // signal generator.
-    if(setitimer(ITIMER_REAL, 0, 0)) {
-        ERROR("setitimer(ITIMER_REAL,0,0) failed");
-        return -1; // fail
-    }
-
-    return 0; // success
+    return stopItimer();
 }

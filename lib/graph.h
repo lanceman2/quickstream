@@ -26,9 +26,6 @@ enum QsGraphFlowState {
 };
 
 
-// We keep a list of 
-struct QsBootstrapCallbacks;
-
 
 // A singly linked list of all graphs.  We do not expect a lot of them.
 extern struct QsGraph *graphs;
@@ -52,13 +49,14 @@ struct QsBlock *GetBlock(void) {
 
 struct QsGraph {
 
-    // List of blocks.  Indexed by name.
+    // List of blocks.  Indexed by name.  This gives us fast lookup by
+    // block name.
     struct QsDictionary *blocks;
 
-    // Another list of the blocks, as a doubly linked list of the block in
-    // the order in which they are loaded.  So we may call block callback
-    // functions in load order and reverse load order.  This list contains
-    // both simple blocks and super blocks.
+    // Another list of the blocks, as a doubly linked list of all the
+    // blocks in the order in which they are loaded.  So we may call block
+    // callback functions in load order and reverse load order.  This list
+    // contains both simple blocks and super blocks.
     //
     // Note: super blocks do not have flow() and flush() functions.
     //
@@ -66,12 +64,6 @@ struct QsGraph {
 
     // For the singly linked list of graphs.
     struct QsGraph *next;
-
-    // We keep a list of bootstrap callbacks which get called once
-    // for each block that exists in this graph.  This lets blocks
-    // make some changes to other blocks at block bootstrap time.
-    struct QsBootstrapCallbacks *bootstrapCallbacks;
-
 
     // Blocks that have at least one output and no inputs are sources.
     //

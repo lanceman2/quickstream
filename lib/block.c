@@ -6,6 +6,7 @@
 #include <alloca.h>
 #include <inttypes.h>
 #include <dlfcn.h>
+#include <setjmp.h>
 #include <pthread.h>
 
 #include "../include/quickstream/builder.h"
@@ -38,18 +39,15 @@ static void qsSimpleBlockUnload(struct QsSimpleBlock *b) {
     qsDictionaryDestroy(b->getters); // getters and constants
     qsDictionaryDestroy(b->setters);
 
-    // We will assume that all the triggers are in the triggers list, so
+    // We will assume that all the triggers are in the waiting list, so
     // the jobs list must be empty.
     DASSERT(b->firstJob == 0);
     DASSERT(b->lastJob == 0);
 
     struct QsTrigger *next;
-    for(struct QsTrigger *t = b->triggers; t; t = next) {
+    for(struct QsTrigger *t = b->waiting; t; t = next) {
         next = t->next;
-#ifdef DEBUG
-        memset(t, 0, t->size);
-#endif
-        free(t);
+        FreeTrigger(t);
     }
 
 #ifdef DEBUG

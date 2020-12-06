@@ -206,30 +206,12 @@ extern
 int qsGraphRun(struct QsGraph *graph);
 
 
-/* Call all the block's stop() functions
-
- Call all the block's stop() functions in the reverse order in which the
- blocks were loaded.
-
- The stream must not be a flowing state. qsGraphWait() and qsGraphHalt() can
- be used to wait for the stream to come to a non-flowing state for a flowing
- state.
-
- \param graph a pointer to the graph object that is associated with the stream
- graph that we are waiting to finish flowing.
-
- \return 0 on success, and greater than zero if any of the block stop()
- functions returned greater than zero and none returned less than 0, and
- less than zero if any of the block's stop() functions returned less than
- zero.
- */
-//extern
-//int qsGraphStop(struct QsGraph *graph);
-
-
 /** Halt the flow
 
- Stop calling all flow() functions, even if there is data in the stream.
+ Stop calling all flow() and trigger callback functions, even if there is
+ data in the stream.  The current block callbacks that are in progress
+ will finish.  If you wish to interrupt the current block callbacks that
+ are in progress use a system function or system signal to do that.
 
  \param graph a pointer to the graph object that is associated with the stream
  graph that we want to halt the flow in.

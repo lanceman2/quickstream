@@ -10,7 +10,8 @@ struct QsSignal *sig;
 
 enum QsTriggerKind {
 
-    QsSignal // TODO: add more kinds
+    QsStream,
+    QsSignal
 };
 
 
@@ -49,6 +50,13 @@ struct QsTrigger {
     // For doubly linked lists of triggers in simple blocks.  This list is
     // in the simple block that owns this trigger.
     struct QsTrigger *next, *prev;
+    //
+    // The trigger goes from a waiting list to a job queue in the block.
+    // This is just a flag to let us know which list the trigger is in.
+    bool isInJobQueue;
+
+    // isRunning flag is set at TriggerStart() and unset in TriggerStop():
+    bool isRunning;
 
     // Size of the struct that inherits this base class struct.
     size_t size;
@@ -60,7 +68,7 @@ struct QsTrigger {
     bool (*checkTrigger)(void);
 
     // callback is called after this trigger pops:
-    void (*callback)(void *userData);
+    int (*callback)(void *userData);
 
     void *userData;
 };
@@ -71,14 +79,28 @@ struct QsSignal {
     // inherit QsTrigger
     struct QsTrigger trigger;
 
+    // We need a jump variable so we can sometime jump from a signal
+    // handler.
+    jmp_buf jmpEnv;
+
     // A flag to mark this as triggered.
     //
     // This type is supposed to be able to be atomically set in a signal
     // handler.
     volatile sig_atomic_t triggered;
 
+    // A flag to show we are about to pause in a system blocking call.
+    volatile sig_atomic_t aboutToPause;
+
     // The signal number.  See run in shell: "kill -L".
     int signum;
+};
+
+
+struct QsStream {
+
+    // inherit QsTrigger
+    struct QsTrigger trigger;
 };
 
 
@@ -89,3 +111,11 @@ void TriggerStart(struct QsTrigger *t);
 
 extern
 void TriggerStop(struct QsTrigger *t);
+
+
+extern
+void FreeTrigger(struct QsTrigger *t);
+
+
+extern
+bool CheckAndQueueTrigger(struct QsTrigger *t);

@@ -1,0 +1,6 @@
+\param triggerCallback is a pointer to the trigger callback function that
+is called when the trigger pops.  triggerCallback should return 0 to have
+the trigger callback continued to be called, greater than 0 to have the
+trigger callback removed from the current run, and less than 0 to have the
+trigger and the trigger callback removed from the current graph.  This
+return convention is the same for all block trigger callbacks.

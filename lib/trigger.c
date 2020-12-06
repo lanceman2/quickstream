@@ -3,29 +3,56 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <setjmp.h>
 #include <pthread.h>
 
 #include "../include/quickstream/block.h"
 #include "../include/quickstream/builder.h"
 
-
-
+#include "debug.h"
 #include "parameter.h"
 #include "trigger.h"
-#include "debug.h"
 #include "block.h"
+#include "threadPool.h"
+#include "blockJobsLists.h"
 #include "graph.h"
 
+
+// This checks if the trigger fired and queues up the job for the block.
+//
+// It's an error to call this if the trigger is in the job queue.
+//
+// Returns true if the trigger is turned into a job in the queue and
+// false if not.
+//
+bool CheckAndQueueTrigger(struct QsTrigger *t) {
+
+    DASSERT(t);
+    DASSERT(t->isInJobQueue == false);
+    DASSERT(t->checkTrigger);
+
+    // First check
+    if(!t->checkTrigger()) return false;
+
+    // Now Queue it
+    if(t->kind != QsStream)
+        WaitingToFirstJob(t);
+    else
+        WaitingToLastJob(t);
+
+    return true;
+}
 
 
 
 static
 void *AllocateTrigger(size_t size, struct QsSimpleBlock *b,
-        enum QsTriggerKind kind, void (*callback)(void *userData),
-        void *userData) {
+        enum QsTriggerKind kind, int (*callback)(void *userData),
+        void *userData, bool (*checkTrigger)(void)) {
 
     DASSERT(b);
     DASSERT(b->block.graph);
+    DASSERT(checkTrigger);
 
     // This is freed in block.c.
     struct QsTrigger *t = calloc(1, size);
@@ -33,19 +60,51 @@ void *AllocateTrigger(size_t size, struct QsSimpleBlock *b,
     t->block = b;
     t->kind = kind;
     t->size = size;
-    // Add this to the list of triggers in the block.
-    if(b->triggers) {
-        DASSERT(b->triggers->prev == 0);
-        b->triggers->prev = t;
-        t->next = b->triggers;
+    // Add this to the list of "waiting" in the block.
+    if(b->waiting) {
+        DASSERT(b->waiting->prev == 0);
+        b->waiting->prev = t;
+        t->next = b->waiting;
     }
-    b->triggers = t;
+    b->waiting = t;
 
     t->callback = callback;
     t->userData = userData;
+    t->checkTrigger = checkTrigger;
 
     return (void *) t;
 }
+
+
+void FreeTrigger(struct QsTrigger *t) {
+
+    DASSERT(t);
+    struct QsSimpleBlock *b = t->block;
+    DASSERT(b);
+    DASSERT(!t->isInJobQueue);
+
+    // Stop it if it needs to.
+    TriggerStop(t);
+
+    // remove this trigger from the block waiting queue.
+    if(t->prev) {
+        DASSERT(b->waiting != t);
+        t->prev->next = t->next;
+    } else {
+        DASSERT(b->waiting == t);
+        b->waiting = t->next;
+    }
+    if(t->next)
+        t->next->prev = t->prev;
+
+#ifdef DEBUG
+    memset(t, 0, t->size);
+#endif
+    free(t);
+}
+
+
+
 
 
 // TODO: Do we want the ability to make more of these.
@@ -58,10 +117,37 @@ static
 void SigAction(int signum) {
 
     DASSERT(sig);
-    WARN("CAUGHT signal %d", signum);
+
+    // TODO: This print is not good in this signal catcher.
+    //WARN("CAUGHT signal %d", signum);
 
     // This is an atomic set:
     sig->triggered = 1;
+
+    if(sig->aboutToPause) {
+
+        //WARN("JUMPING");
+
+        // Because AboutToPause is set we are guaranteed that we are in
+        // the void Pause(struct QsThreadPool *tp) function from file
+        // run.c.
+
+        // I knew that this setjmp() and longjmp() shit could be very
+        // handy.  This is so fuck'n coool... Totally fixes a race
+        // condition.
+        //
+        // We may or may not have jumped to this signal handler function
+        // from some kind of pause (blocking) system call, it does not
+        // matter; we just jump out to where we want to be, which is at
+        // the sigsetjmp() from in function Pause() from file run.c.
+        //
+        // We now jump to before the pause function.  So if we got to
+        // running the pause system call (whatever it was) after this call
+        // we will be before the pause system call, and we'll see this
+        // signal "triggered" as it is now.
+        //
+        siglongjmp(sig->jmpEnv, 1/*any non zero value*/);
+    }
 }
 
 
@@ -69,15 +155,32 @@ static bool
 SigCheckTrigger(void) {
 
     DASSERT(sig);
-    return (sig->triggered)?true:false;
+
+    if(sig->triggered) {
+        //
+        // If there is a signal now (after the reading of the triggered
+        // flag and before this writing of it) then we will not respond to
+        // it because the program is running to slowly.  We'll only get
+        // the event from the signal before now.  It's just that the
+        // computer is too slow to run the users code with the current
+        // interval timer setting.  It would be a under-run condition.
+        // There's nothing that can fix that except a faster computer.
+        //
+        sig->triggered = 0;
+        return true;
+    }
+
+    return false;
 }
 
 
 int qsTriggerSignalCreate(int signum,
-        void (*callback)(void *userData),
+        int (*callback)(void *userData),
         void *userData) {
 
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    // TODO: Can we make more than one if they use different signal
+    // numbers?
     ASSERT(sig == 0, "We already have a QsTriggerSignal");
 
     // Get the block module that is calling this function:
@@ -87,9 +190,9 @@ int qsTriggerSignalCreate(int signum,
     ASSERT(b->isSuperBlock == false, "SuperBlocks may not call this");
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
-    sig = AllocateTrigger(sizeof(*sig), smB, QsSignal, callback, userData);
+    sig = AllocateTrigger(sizeof(*sig), smB, QsSignal, callback, userData,
+            SigCheckTrigger);
     sig->signum = signum;
-    sig->trigger.checkTrigger = SigCheckTrigger;
 
     return 0; // success
 }
@@ -101,33 +204,54 @@ void TriggerStart(struct QsTrigger *t) {
 
     DASSERT(t);
 
+    if(t->isRunning) return;
+
     switch(t->kind) {
 
-        case QsSignal: {
+        case QsSignal:
+        {
+            // gcc does not let me format this code block in the form that
+            // is consistent with the rest of this code.  The ":" requires
+            // a newline after it.
             struct sigaction act;
             memset(&act, 0, sizeof(act));
             act.sa_handler = SigAction;
             CHECK(sigaction(((struct QsSignal *) t)->signum, &act, 0));
         }
         break;
+
+        case QsStream:
+        break;
     }
 
+    t->isRunning = true;
 }
 
 
 void TriggerStop(struct QsTrigger *t) {
 
     DASSERT(t);
+    DASSERT(t->isInJobQueue == false);
+
+    if(t->isRunning == false) return;
 
     switch(t->kind) {
 
-        case QsSignal: {
+        case QsSignal:
+        {
+            // gcc does not let me format this code block in the form that
+            // is consistent with the rest of this code.  The ":" requires
+            // a newline after it.
             struct sigaction act;
             memset(&act, 0, sizeof(act));
             act.sa_handler = 0;
             CHECK(sigaction(((struct QsSignal *) t)->signum, &act, 0));
         }
         break;
-    }
-}
 
+        case QsStream:
+        break;
+    }
+
+    t->isRunning = false;
+}
