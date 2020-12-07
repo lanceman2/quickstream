@@ -40,19 +40,34 @@ void MutexUnlock(struct QsThreadPool *tp) {
 }
 
 
-// We have a thread pool mutex lock when calling this.
+// We have a thread pool mutex lock when calling this.  It may unlock
+// inside, if it really pauses, and then lock before returning.
+//
+// Hence this is called with mutex lock and returns with mutex lock.
+//
 static inline
 void Pause(struct QsThreadPool *tp) {
 
-    // Tricky shit with jumps.  Signals are tricky to deal with if you
-    // want robust code, with no race conditions.
+    bool haveSigTrigger =
+        sig // there is one
+        && sig->trigger.isRunning // it's in use now
+        // it's using this thread pool
+        && sig->trigger.block->threadPool == tp;
 
-    if(sig && sig->trigger.isRunning) {
+
+    if(haveSigTrigger) {
+
+        // Tricky shit with jumps.  Signals are tricky to deal with if you
+        // want robust code, with no race conditions.  We can't ever fix
+        // over-run conditions (on slow computers), but we can fix race
+        // conditions.
 
         DASSERT(sig->aboutToPause == 0);
 
+        // Do a check first to avoid the system call below in sigsetjmp().
         if(CheckAndQueueTrigger((struct QsTrigger *) sig))
-            // We have a signal event to respond to.
+            // Okay cool, we got a signal and we have a job to work on.
+            // There is no need to pause/wait.
             return;
 
         // It's important to note: this block of code cannot be made
@@ -61,49 +76,90 @@ void Pause(struct QsThreadPool *tp) {
         // block to exist so long as we have the jump point until the jump
         // flag sig->aboutToPause is unset.
 
+        // I think that sigsetjmp(3) and siglongjmp(3) do not usually
+        // cause system calls; they just muck with the program memory and
+        // the execution pointer, or whatever that crap is called.  The
+        // man # 3 means they are not directly system call wrappers, but
+        // that does not mean they don't necessarily make a system call.
+        // I'll write a test, tests/setjmp.c and see using strace:
+        //
+        //       cd ../tests; make; strace ./setjmp
+        //
+        // and, shit, I see there is a system call:
+        //
+        //    rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
+        //
+        // is called from sigsetjmp() and another test version shows that
+        // setjmp() does not make a system call, which makes sense why
+        // they have the two flavors of *setjmp() and *longjmp().
+        //
+        // Tests show that we need to use sigsetjmp(), and setjmp() will
+        // not work.  Shit happens.
+        //
+
         if(sigsetjmp(sig->jmpEnv, 1/*save sigs*/)) {
 
             // We jumped from the signal handler SigAction() to here.
-            // Therefore we must have caught a signal in SigAction() in
+            // Therefore, we must have caught a signal in SigAction() in
             // file trigger.c.
 
             // Reset the flag to signal handler that we have set the jump
             // point.
             sig->aboutToPause = 0;
 
-            // Here's to hoping that we have the mutex lock at this
-            // point.
+            // Here's to hoping that we have the mutex lock at this point.
+            // ... testing ... Looks like the kernel takes care of making
+            // it so that jumping out of a pthread_cond_wait() call keeps
+            // things consistent.  Wow, it's fuck'n magic.
             //
             DASSERT(sig->triggered);
             ASSERT(CheckAndQueueTrigger((struct QsTrigger *) sig));
             return;
         }
-        // Flag to signal handler that we have set the jump point.
+        // Flag to signal handler that we have set the jump point and we
+        // are ready to use it.
         sig->aboutToPause = 1;
+        //
+        // We need to check if we got a signal just before we where
+        // setting the flag above.  This fixes a race condition.
+        if(CheckAndQueueTrigger((struct QsTrigger *) sig)) {
+            // We have a signal event to respond to.  If we got more than
+            // one signal that's just an over-run condition; the computer
+            // runs to slowly and there's nothing that can fix that but a
+            // faster computer.
+            //
+            // Set flag to disable the siglongjmp() call in function
+            // SigAction() in file trigger.c.
+            sig->aboutToPause = 0;
+            return;
+        }
     }
 
 
-    /////////////////////////////////////////////////////////////////////
-    // This function needs to wait on the correct type of blocking call:
-    /////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////
+    // This next function call needs to be blocking system call:
+    ////////////////////////////////////////////////////////////////////
     //
-    // 1. pthread_cond_wait() if we have no file descriptors to wait on
+    // 0. pause(2) works if there is just one thread running this
     //
-    // 2. epoll_wait() if we have file descriptors to wait on
+    // 1. pthread_cond_wait(3) if we have no file descriptors to wait on
+    //
+    // 2. epoll_wait(2) if we have file descriptors to wait on
     //
 
     // If this call is in error due at the signal that we catch we will
     // not see the error, because our signal catcher jumps out of that
-    // call to a setjmp() in the above.  Without this jumping complexity
-    // there is a terrible race condition, and signals could be ignored
-    // when they should not.
+    // call to a sigsetjmp() above.  Without this jumping complexity there
+    // is a terrible race condition, and signals could be ignored when
+    // they should not, and we could have the program stuck in this next
+    // function call forever.  The fix is a jump in the signal handler.
 
     // pause/wait.  Mutex unlock inside pthread_cond_wait()
-    //CHECK(pthread_cond_wait(&tp->cond, &tp->mutex));
+    CHECK(pthread_cond_wait(&tp->cond, &tp->mutex));
+    //pause();
 
-    pause();
 
-    if(sig && sig->trigger.isRunning) {
+    if(haveSigTrigger) {
         // Flag to signal trigger's signal handler not to jump.
         sig->aboutToPause = 0;
         // Check if we had a signal event for this sig trigger.
@@ -138,9 +194,9 @@ bool CheckForWork(struct QsThreadPool *tp) {
 
 
 // Do not fucking break up this function making it hard to follow what the
-// fuck it is doing.  Code that shows what the fuck it is doing is good
-// code.  Breaking up code into small functions sucks my ass.  That
-// bullshit they teach at Universities is just that, bullshit.
+// it is doing.  Code that shows what the fuck it is doing is good code.
+// Breaking up code into small functions sucks my ass.  That bullshit they
+// teach at Universities is just that, bullshit.
 //
 // We wish to keep this code followable.  Scope-able code.
 //
@@ -175,22 +231,28 @@ void *runWorker(struct QsGraph *g, struct QsThreadPool *tp) {
                 DASSERT(t);
 
                 MutexUnlock(tp);
+                // This is the call of a function in a simple block
+                // module.
                 int ret = t->callback(t->userData);
                 MutexLock(tp);
 
                 // The block can change the trigger from this return
                 // value, ret.
-                if(ret == 0) continue;
+                if(ret == 0)
+                    // No change.  Continue to queue up and call the
+                    // trigger callback.
+                    continue;
 
                 if(ret > 0)
                     // Remove the trigger callback for the rest of the
-                    // run.
+                    // run/flow cycle.
                     //
                     TriggerStop(t);
                 else
                     // ret < 0
                     //
-                    // Remove the trigger from all runs.
+                    // Remove the trigger from all runs in this graph.
+                    // This will destroy the trigger.
                     FreeTrigger(t);
 
                 if(!triggersChanged)
@@ -201,7 +263,7 @@ void *runWorker(struct QsGraph *g, struct QsThreadPool *tp) {
         } while(tp->last); // end loop over simple blocks
 
 
-        // At this point there are no triggered jobs.
+        // At this point there are no triggered jobs in this thread pool.
 
         if(triggersChanged) {
             // Assess what will CheckForWork() should do now.  This is a
