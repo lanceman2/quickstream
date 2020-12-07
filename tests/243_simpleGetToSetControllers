@@ -8,15 +8,16 @@ set -ex
  --block tests/setter setter\
  --block tests/dummy\
  --parameters-connect getter getter setter setter\
- --run\
  --run
 
-
-exec ./success
-
-
-exec ../bin/quickstream\
+../bin/quickstream\
+ --threads 0\
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
  --block tests/dummy\
+ --parameters-connect getter getter setter setter\
+ --run\
  --run
+
+exec ./success
+

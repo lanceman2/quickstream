@@ -14,7 +14,7 @@
 #include "trigger.h"
 #include "block.h"
 #include "threadPool.h"
-#include "blockJobsLists.h"
+#include "triggerJobsLists.h"
 #include "graph.h"
 
 
@@ -44,11 +44,10 @@ bool CheckAndQueueTrigger(struct QsTrigger *t) {
 }
 
 
-
 static
 void *AllocateTrigger(size_t size, struct QsSimpleBlock *b,
         enum QsTriggerKind kind, int (*callback)(void *userData),
-        void *userData, bool (*checkTrigger)(void)) {
+        void *userData, bool (*checkTrigger)(void), bool isSource) {
 
     DASSERT(b);
     DASSERT(b->block.graph);
@@ -71,6 +70,7 @@ void *AllocateTrigger(size_t size, struct QsSimpleBlock *b,
     t->callback = callback;
     t->userData = userData;
     t->checkTrigger = checkTrigger;
+    t->isSource = isSource;
 
     return (void *) t;
 }
@@ -191,7 +191,7 @@ int qsTriggerSignalCreate(int signum,
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     sig = AllocateTrigger(sizeof(*sig), smB, QsSignal, callback, userData,
-            SigCheckTrigger);
+            SigCheckTrigger, true/*isSource*/);
     sig->signum = signum;
 
     return 0; // success

@@ -454,6 +454,14 @@ int qsParameterConnect(struct QsParameter *p0,
 }
 
 
+uint32_t qsParameterGetterPush(struct QsParameter *getter,
+        const void *value) {
+
+
+    return 0;
+}
+
+
 static
 int PrintParameterCB(const char *pname, struct QsParameter *p,
             FILE *file) {

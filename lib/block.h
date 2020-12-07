@@ -104,7 +104,7 @@ struct QsSimpleBlock {
 
     // lists of parameters owned by this block
     struct QsDictionary *getters; // getters and constants
-    struct QsDictionary *setters; // just setters
+    struct QsDictionary *setters; // setters
 
     // A doubly linked list of triggers.  The block is responsible for
     // cleaning up triggers when it is destroyed.  When the stream is

@@ -15,7 +15,7 @@ enum QsTriggerKind {
 };
 
 
-// TODO: Replace the word trigger with work or job???
+// TODO: Replace the word trigger with work, job or event???
 //
 // We trigger work and the job is what we work on with a worker thread
 // from the thread pool that the block is assigned to.
@@ -33,8 +33,8 @@ enum QsTriggerKind {
 struct QsTrigger {
 
     // A trigger is the potential of a block to have a thread call a
-    // block's running callback, be the callback flow(), flush() or
-    // anonymous callback passed in from one of the trigger create
+    // block's running/flowing callback, be the callback flow(), flush()
+    // or anonymous callback passed in from one of the trigger create
     // functions:  qsTriggerSignalCreate(), ... TODO add to this list...
 
     // triggers go pop, and make flow/run events.
@@ -56,7 +56,19 @@ struct QsTrigger {
     bool isInJobQueue;
 
     // isRunning flag is set at TriggerStart() and unset in TriggerStop():
+    //
+    // If isRunning is not set the trigger will not make jobs while the
+    // stream is running.
     bool isRunning;
+
+    // There are source triggers that are triggers that can be triggered
+    // by something that is not another trigger, like the first domino
+    // in a line of dominoes.  Triggers are source triggers or not source
+    // triggers.  This does not mean that a source trigger can't be
+    // triggered by another trigger, like a domino in the middle of a line
+    // of dominoes that you knock over with your finger without knocking
+    // over any of the up stream dominoes.
+    bool isSource;
 
     // Size of the struct that inherits this base class struct.
     size_t size;

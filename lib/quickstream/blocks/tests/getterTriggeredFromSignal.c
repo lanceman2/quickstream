@@ -35,7 +35,7 @@ int triggerCallback(struct QsParameter *p) {
     if(count > 9) {
         stopItimer();
         // Stop using the itimer
-        return 1;
+        return 1; // 1 = stop calling this callback
     }
     return 0;
 }

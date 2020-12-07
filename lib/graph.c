@@ -12,7 +12,7 @@
 #include "graph.h"
 #include "trigger.h"
 #include "threadPool.h"
-#include "blockJobsLists.h"
+#include "triggerJobsLists.h"
 #include "builder.h"
 #include "run.h"
 

@@ -13,7 +13,7 @@
 #include "trigger.h"
 #include "graph.h"
 #include "threadPool.h"
-#include "blockJobsLists.h"
+#include "triggerJobsLists.h"
 #include "builder.h"
 #include "run.h"
 
@@ -201,6 +201,8 @@ void *runWorker(struct QsGraph *g, struct QsThreadPool *tp) {
         } while(tp->last); // end loop over simple blocks
 
 
+        // At this point there are no triggered jobs.
+
         if(triggersChanged) {
             // Assess what will CheckForWork() should do now.  This is a
             // transient case, so the below loops do not happen often.
@@ -220,20 +222,20 @@ void *runWorker(struct QsGraph *g, struct QsThreadPool *tp) {
                 if(smB->threadPool != tp) continue;
                 struct QsTrigger *t = smB->waiting;
                 for(; t; t = t->next)
-                    if(t->isRunning)
-                        // got a usable trigger
+                    if(t->isRunning && t->isSource)
+                        // got a usable source trigger
                         break;
                 if(t)
-                    // got a usable trigger
+                    // got a usable source trigger
                     break;
             }
             if(!b)
-                // Do not have a usable trigger.  Break from the main run
-                // loop.  We are finished running.
+                // Do not have a usable source trigger.  Break from the
+                // main run loop.  We are finished running.
                 break;
 
-            // else got a usable trigger, so we keep looping the main
-            // loop.
+            // else got a usable source trigger, so we keep looping the
+            // main loop.
         }
 
     } // while(CheckForWork(tp)) loop
@@ -250,24 +252,34 @@ void run(struct QsGraph *graph) {
     DASSERT(graph->threadPools);
     DASSERT(graph->flowState == QsGraphFlowing);
 
-    // Find a block with a trigger.
+    // Find a block with a trigger that can be run.
     struct QsBlock *b = graph->firstBlock;
     for(; b; b = b->next) {
         if(b->isSuperBlock) continue;
+        struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
         // There should be no triggered jobs yet.
-        DASSERT(((struct QsSimpleBlock *) b)->firstJob == 0);
-        DASSERT(((struct QsSimpleBlock *) b)->lastJob == 0);
-        if(((struct QsSimpleBlock *) b)->waiting)
-            // We have at least one trigger.
+        DASSERT(smB->firstJob == 0);
+        DASSERT(smB->lastJob == 0);
+        struct QsTrigger *t = smB->waiting;
+        for(; t; t = t->next) {
+            DASSERT(t->block == smB);
+            if(t->isRunning && t->isSource)
+                // We have at least one source trigger to run.
+                break;
+        }
+        if(t)
+            // We have at least one source trigger to run.
             break;
     }
     if(!b) {
-        NOTICE("No stream triggers found");
+        NOTICE("No stream triggers found, nothing to run");
         // There is nothing to run.
         return;
     }
 
-    // First queue up the triggered blocks in the into their thread pool.
+    // First queue up the triggered triggers in the into their thread
+    // pool.  Un-triggered triggers stay in the "waiting" trigger list in
+    // their blocks.
     //
     b = graph->firstBlock;
     for(; b; b = b->next) {
@@ -290,8 +302,6 @@ void run(struct QsGraph *graph) {
             }
         }
     }
-
-    // TODO: Add a "will it run anything" check here.
 
 
     for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {

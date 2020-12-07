@@ -1,3 +1,11 @@
+// 
+//
+// 1. inline functions that move triggers between different linked lists,
+// 
+// 2. and move simple blocks between different linked lists because the
+//    triggers that the block owns moved to different lists
+//
+
 
 // This function should only be used in this file.
 static inline void
@@ -27,6 +35,7 @@ _RemoveFromWaitingList(struct QsSimpleBlock *b, struct QsTrigger *t) {
 }
 
 
+// This function should only be used in this file.
 static inline
 void _FinishQueuingJob(struct QsSimpleBlock *b, struct QsTrigger *t) {
 
