@@ -70,6 +70,15 @@ struct QsTrigger {
     // over any of the up stream dominoes.
     bool isSource;
 
+    // TODO:
+    //
+    // If this trigger has an action that passes data to a block that is
+    // in a different thread pool, then we need MORE INFO LIKE THIS:
+    // But if not this stuff will be 0.
+    //struct QsThreadPool *otherThreadPool;
+    //struct QsSimpleBlock *otherBlock;
+
+
     // Size of the struct that inherits this base class struct.
     size_t size;
 
@@ -131,3 +140,51 @@ void FreeTrigger(struct QsTrigger *t);
 
 extern
 bool CheckAndQueueTrigger(struct QsTrigger *t);
+
+
+// Adding this ifdef can reduce dependences and speed up recompiling,
+// by not defining this function unless it's needed.
+//
+#ifdef define_CallTriggerCallback
+//
+// We will have a thread pool mutex before calling this and after.  When
+// the users trigger callback is called the mutex will be unlocked.
+//
+// Returns true if the trigger changed its' run/call state and it is a
+// source trigger, and false if not.
+//
+static inline
+bool CallTriggerCallback(struct QsTrigger *t, struct QsThreadPool *tp) {
+
+
+    // TODO: The callback() may need to be called more than once,
+    // which is why we made this function.
+
+    CHECK(pthread_mutex_unlock(&tp->mutex));
+    // This is the call of a function in a simple block module.
+    int ret = t->callback(t->userData);
+    CHECK(pthread_mutex_lock(&tp->mutex));
+
+    // The block can change the trigger from this return value, ret.
+    if(ret == 0)
+        // No change.  Continue to queue up and call the trigger
+        // callback.
+        return false; // no trigger change.
+
+    if(ret > 0)
+        // Remove the trigger callback for the rest of the run/flow
+        // cycle.
+        //
+        TriggerStop(t);
+    else
+        // ret < 0
+        //
+        // Remove the trigger from all runs in this graph.  This will
+        // destroy the trigger.
+        FreeTrigger(t);
+
+    // Return that the trigger was removed from play at least for this
+    // run, but only if it's a source trigger.
+    return t->isSource;
+}
+#endif

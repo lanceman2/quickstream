@@ -65,14 +65,6 @@ struct QsGraph {
     // For the singly linked list of graphs.
     struct QsGraph *next;
 
-    // Blocks that have at least one output and no inputs are sources.
-    //
-    // The sources is set when the stream is ready or flowing.
-    //
-    uint32_t numSources;
-    struct QsBlock *sources;
-
-
     // Just the main thread should access this flag.
     enum QsGraphFlowState flowState;
 
@@ -91,10 +83,23 @@ struct QsGraph {
     //
     struct QsThreadPool *threadPools;
 
-    // The main (master) thread waits on this conditional while the worker
-    // threads run the stream flow.
-    pthread_cond_t masterCond;
+    // The main (master) thread waits on this conditional in qsGraphWait()
+    // while the worker threads run the stream flow.
+    //
+    // These 3 variables are not used if the main thread runs the graph
+    // without any worker threads.
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
     bool masterWaiting;
+
+    // numWorkingThreads is the number of launched worker threads running
+    // in all thread pools in this graph be they idle or not.  Need graph
+    // mutex to access.
+    uint32_t numWorkingThreads;
+    // numIdleThreads is the number of paused/idle/waiting worker threads
+    // in all thread pools.  Need graph mutex to access.
+    uint32_t numIdleThreads;
+
 
     // This list of filter block connections is not used while the stream
     // is running (flowing).  It's queried at stream start, and the

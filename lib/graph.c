@@ -108,7 +108,30 @@ int qsGraphStop(struct QsGraph *graph) {
             graph->flowState == QsGraphReady);
 
 
-    // Stop all triggers in all blocks.
+    if(graph->threadPools->maxThreads != 0) {
+        // All the thread pools share these graph resources.
+        CHECK(pthread_mutex_destroy(&graph->mutex));
+        CHECK(pthread_cond_destroy(&graph->cond));
+#ifdef DEBUG
+        memset(&graph->mutex, 0, sizeof(graph->mutex));
+        memset(&graph->cond, 0, sizeof(graph->cond));
+#endif
+        DASSERT(graph->masterWaiting == false);
+    }
+
+    // All the threads should be joined now.  Free the threads array in
+    // all the thread pools.
+    for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
+        if(tp->maxThreads == 0) continue;
+#ifdef DEBUG
+        DASSERT(tp->threads);
+        memset(tp->threads, 0, sizeof(*tp->threads)*tp->maxThreads);
+#endif
+        free(tp->threads);
+    }
+
+    // Stop all triggers in all blocks.  If we did not interupt the
+    // running of the stream this should be done already, but if not ...
     for(struct QsBlock *b = graph->firstBlock; b; b = b->next) {
         if(b->isSuperBlock) continue;
         struct QsSimpleBlock *smB = (struct QsSimpleBlock *)b;
@@ -250,10 +273,28 @@ int qsGraphReady(struct QsGraph *graph) {
         return -1; // error
     }
 
-
     // At this point all simple blocks in this graph should have a thread
     // pool assigned to it.
 
+
+    // The thread pools need an array of pthread_t so they can
+    // pthread_join() later.  Since the maximum number of threads is a
+    // configuration thing we need to allocate this array separate from
+    // allocating the thread pool.
+    for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
+        if(tp->maxThreads == 0) continue;
+        DASSERT(tp->threads == 0);
+        tp->threads = calloc(tp->maxThreads, sizeof(*tp->threads));
+        ASSERT(tp->threads, "calloc(%" PRIu32 ",%zu) failed",
+                tp->maxThreads, sizeof(*tp->threads));
+    }
+
+    if(graph->threadPools->maxThreads != 0) {
+
+        CHECK(pthread_mutex_init(&graph->mutex, 0));
+        CHECK(pthread_cond_init(&graph->cond, 0));
+        DASSERT(graph->masterWaiting == false);
+    }
 
     // TODO: HERE Allocate stream buffers
 
@@ -311,9 +352,13 @@ int qsGraphRun(struct QsGraph *graph) {
 
     graph->flowState = QsGraphFlowing;
 
-    run(graph);
+    ret = run(graph);
 
-    qsGraphStop(graph);
+    if(graph->threadPools->maxThreads == 0 || ret)
+        // The user does not necessarily need to call qsGraphWait() if the
+        // main thread runs the graph, so we must do this now.
+        qsGraphStop(graph);
+
 
     return 0;
 }
@@ -327,16 +372,61 @@ int qsGraphWait(struct QsGraph *graph) {
             graph->flowState == QsGraphPaused);
     DASSERT(graph->threadPools);
 
-    if(graph->flowState == QsGraphPaused)
+
+    if(graph->flowState == QsGraphPaused) {
         // We are already paused.
         return 0;
+    }
+
+    DASSERT(graph->threadPools);
+    // This is not the case of the main thread running the graph without
+    // any worker threads.
+    DASSERT(graph->threadPools->maxThreads != 0);
 
 
-    // TODO: MORE CODE HERE
+    CHECK(pthread_mutex_lock(&graph->mutex));
+    DASSERT(graph->masterWaiting == false);
+    graph->masterWaiting = true;
+
+    CHECK(pthread_cond_wait(&graph->cond, &graph->mutex));
+
+    graph->masterWaiting = false;
+
+    CHECK(pthread_mutex_unlock(&graph->mutex));
+
+    // In order to know that all the threads are terminated we must join
+    // all of them.  We do know, since we wrote this code, that all the
+    // worker threads are at the end of their thread work function, but the
+    // only way to know that the worker thread are cleaned up is to call
+    // pthread_join().  If you don't call pthread_join() for all worker
+    // threads than a user doing a quick restart can fail if the threads
+    // still exist in the system.  I've seen it fail because of that, like
+    // in test code that runs many threads and restarts very quickly.
+    //
+    // We could not use pthread_join() as a replacement for the waiting
+    // call above because we needed to be able to launch threads from the
+    // worker threads, and so we needed to sync more, or protect memory
+    // more; and that's what the above code does.
+    //
+    // Because we got the condition signal above we can be sure that no
+    // other thread will access this data here:
+    for(struct QsThreadPool *tp=graph->threadPools; tp; tp=tp->next) {
+        DASSERT(tp->threads);
+        DASSERT(tp->maxThreads);
+        DASSERT(tp->numThreads != 0);
+        // looping backwards on i
+        for(uint32_t i = tp->numThreads - 1; i != -1; --i) {
+            if(!tp->threads[i].hasLaunched) break;
+            // Join a worker thread:
+            CHECK(pthread_join(tp->threads[i].thread, 0));
+        }
+    }
 
 
-    // success.
-    graph->flowState = QsGraphPaused;
+    // At this point there should be no more worker threads for this
+    // graph.
+
+    qsGraphStop(graph);
 
 
     return 0; // success

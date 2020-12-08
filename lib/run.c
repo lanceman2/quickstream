@@ -1,3 +1,4 @@
+#include <string.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -10,43 +11,33 @@
 #include "debug.h"
 #include "Dictionary.h"
 #include "block.h"
-#include "trigger.h"
 #include "graph.h"
 #include "threadPool.h"
-#include "triggerJobsLists.h"
 #include "builder.h"
+#define define_CallTriggerCallback
+#include "trigger.h"
+#undef define_CallTriggerCallback
+#include "triggerJobsLists.h"
 #include "run.h"
 
 
-#if 0
-static inline
-bool IfNeedMutex(struct QsThreadPool *tp) {
-    return (tp->maxThreads > 1);
-}
-#endif
 
 
-static inline
-void MutexLock(struct QsThreadPool *tp) {
-
-    CHECK(pthread_mutex_lock(&tp->mutex));
-}
-
-
-static inline
-void MutexUnlock(struct QsThreadPool *tp) {
-
-    CHECK(pthread_mutex_unlock(&tp->mutex));
-}
-
-
+// TODO: we may want to optimize this by having different versions of this
+// Pause function that are selected before now.  For now this in fine
+// until we learn all the Pause() cases that are needed.  Cases so far are
+// with signal trigger and without, and with one thread and with more than
+// one thread.
+//
 // We have a thread pool mutex lock when calling this.  It may unlock
 // inside, if it really pauses, and then lock before returning.
 //
-// Hence this is called with mutex lock and returns with mutex lock.
+// Hence this is called with a thread pool mutex lock and returns with a
+// thread pool mutex lock.
 //
 static inline
-void Pause(struct QsThreadPool *tp) {
+bool WaitForWork(struct QsThreadPool *tp) {
+
 
     bool haveSigTrigger =
         sig // there is one
@@ -68,7 +59,7 @@ void Pause(struct QsThreadPool *tp) {
         if(CheckAndQueueTrigger((struct QsTrigger *) sig))
             // Okay cool, we got a signal and we have a job to work on.
             // There is no need to pause/wait.
-            return;
+            return tp->first;
 
         // It's important to note: this block of code cannot be made
         // into a separate function because we cannot let said function to
@@ -114,7 +105,7 @@ void Pause(struct QsThreadPool *tp) {
             //
             DASSERT(sig->triggered);
             ASSERT(CheckAndQueueTrigger((struct QsTrigger *) sig));
-            return;
+            return tp->first;
         }
         // Flag to signal handler that we have set the jump point and we
         // are ready to use it.
@@ -131,7 +122,7 @@ void Pause(struct QsThreadPool *tp) {
             // Set flag to disable the siglongjmp() call in function
             // SigAction() in file trigger.c.
             sig->aboutToPause = 0;
-            return;
+            return tp->first;
         }
     }
 
@@ -165,55 +156,27 @@ void Pause(struct QsThreadPool *tp) {
         // Check if we had a signal event for this sig trigger.
         CheckAndQueueTrigger((struct QsTrigger *) sig);
     }
-}
-
-
-// We need the threadPool mutex lock before calling this.
-//
-// This is the blocking call for the worker threads when there is only a
-// system signal trigger, and no other triggers.  So there is only
-// one simple block with just one trigger, this signal trigger, sig.
-// Otherwise we could use a different blocking call than pause(2) which we
-// use here.
-//
-// Return true if we have work or false if the graph is done running.
-//
-static inline
-bool CheckForWork(struct QsThreadPool *tp) {
-
-    DASSERT(tp);
-
-    if(tp->first)
-        // We already have work.
-        return true;
-
-    Pause(tp);
 
     return tp->first;
 }
 
 
-// Do not fucking break up this function making it hard to follow what the
-// it is doing.  Code that shows what the fuck it is doing is good code.
-// Breaking up code into small functions sucks my ass.  That bullshit they
-// teach at Universities is just that, bullshit.
-//
-// We wish to keep this code followable.  Scope-able code.
-//
 // Each worker thread will call this:
 //
 static
-void *runWorker(struct QsGraph *g, struct QsThreadPool *tp) {
+void *runWorker(struct QsThreadPool *tp) {
 
-    MutexLock(tp);
 
-    while(CheckForWork(tp)) {
+    CHECK(pthread_mutex_lock(&tp->mutex));
+
+
+    while(WaitForWork(tp)) {
         struct QsSimpleBlock *b;
-        // If CheckForWork() kept us here, then there must be work
+        // If WaitForWork() kept us here, then there must be work
         // in the thread pool queue of blocks:
         DASSERT(tp->first);
         DASSERT(tp->last);
-        bool triggersChanged = false;
+        bool sourceTriggersChanged = false;
 
         do {
             // Loop over blocks:
@@ -230,44 +193,22 @@ void *runWorker(struct QsGraph *g, struct QsThreadPool *tp) {
                 struct QsTrigger *t = PopJobBackToTriggers(b);
                 DASSERT(t);
 
-                MutexUnlock(tp);
-                // This is the call of a function in a simple block
-                // module.
-                int ret = t->callback(t->userData);
-                MutexLock(tp);
+                if(CallTriggerCallback(t, tp))
+                    sourceTriggersChanged = true;
 
-                // The block can change the trigger from this return
-                // value, ret.
-                if(ret == 0)
-                    // No change.  Continue to queue up and call the
-                    // trigger callback.
-                    continue;
+            } while(b->firstJob); // end loop over triggers in block
 
-                if(ret > 0)
-                    // Remove the trigger callback for the rest of the
-                    // run/flow cycle.
-                    //
-                    TriggerStop(t);
-                else
-                    // ret < 0
-                    //
-                    // Remove the trigger from all runs in this graph.
-                    // This will destroy the trigger.
-                    FreeTrigger(t);
-
-                if(!triggersChanged)
-                    triggersChanged = true;
-
-            } while(b->firstJob); // end loop over triggers
-
-        } while(tp->last); // end loop over simple blocks
+        } while(tp->first); // end loop over simple blocks in thread pool
 
 
         // At this point there are no triggered jobs in this thread pool.
 
-        if(triggersChanged) {
-            // Assess what will CheckForWork() should do now.  This is a
+        if(sourceTriggersChanged) {
+            // Assess what will WaitForWork() should do now.  This is a
             // transient case, so the below loops do not happen often.
+            //
+            // Hence, check if we have any running source triggers in this
+            // pool.
             //
             // TODO: If triggers every have the ability to be "turned on"
             // by setting QsTrigger::isRunning at run/flow time then we'll
@@ -291,24 +232,46 @@ void *runWorker(struct QsGraph *g, struct QsThreadPool *tp) {
                     // got a usable source trigger
                     break;
             }
-            if(!b)
-                // Do not have a usable source trigger.  Break from the
-                // main run loop.  We are finished running.
-                break;
+            if(!b) {
+                if(tp->maxThreads == 0 || tp->graph->threadPools->next == 0)
+                    // Do not have a usable source trigger in this thread
+                    // pool and we have no queued jobs, and we only have
+                    // the main thread running this.
+                    //
+                    break;
 
-            // else got a usable source trigger, so we keep looping the
-            // main loop.
+                // TODO:  More CODE HEREEEEEEEEE
+
+            }
+
         }
 
-    } // while(CheckForWork(tp)) loop
+    } // while(WaitForWork(tp)) loop
 
-    MutexUnlock(tp);
+
+    CHECK(pthread_mutex_unlock(&tp->mutex));
+
+
+    if(tp->maxThreads == 0) return 0;
+
+
+
+    CHECK(pthread_mutex_lock(&tp->graph->mutex));
+
+
+    //--tp->graph->numWorkingThreads
+
+
+    CHECK(pthread_mutex_unlock(&tp->graph->mutex));
+
 
     return 0;
 }
 
 
-void run(struct QsGraph *graph) {
+// Returns 0 if it runs and 1 if not.
+//
+int run(struct QsGraph *graph) {
 
     DASSERT(mainThread == pthread_self(), "Not graph main thread");
     DASSERT(graph->threadPools);
@@ -334,9 +297,9 @@ void run(struct QsGraph *graph) {
             break;
     }
     if(!b) {
-        NOTICE("No stream triggers found, nothing to run");
+        NOTICE("No source triggers found, nothing to run");
         // There is nothing to run.
-        return;
+        return 1;
     }
 
     // First queue up the triggered triggers in the into their thread
@@ -365,6 +328,8 @@ void run(struct QsGraph *graph) {
         }
     }
 
+    // TODO: We could not initialize and use the mutex and conditionals
+    // when we run with the main thread.
 
     for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
         CHECK(pthread_mutex_init(&tp->mutex, 0));
@@ -378,21 +343,36 @@ void run(struct QsGraph *graph) {
         DASSERT(graph->threadPools->next == 0);
 
         // The main thread will run the stream.
-        runWorker(graph, graph->threadPools);
+        runWorker(graph->threadPools);
 
     } else {
 
-        // TODO: HERE initialize each threadPool mutexs and conditionals.
-
-
-        // TODO: HERE We will have worker threads.
-
-
-        ERROR("Write MORE CODE HERE");
+        CHECK(pthread_mutex_lock(&graph->mutex));
+        // We start by launching one worker thread per thread pool.  The
+        // worker threads will add more worker threads as they are needed
+        // up to tp->maxThreads threads per thread pool.
+        for(struct QsThreadPool *tp = graph->threadPools; tp;
+                tp = tp->next) {
+            DASSERT(tp->threads);
+            DASSERT(tp->maxThreads);
+            DASSERT(tp->numThreads == 0);
+            tp->numThreads = 1;
+            // Launch a worker thread:
+            CHECK(pthread_create(&tp->threads->thread, 0,
+                        (void* (*)(void *)) runWorker, tp));
+            tp->threads->hasLaunched = true;
+        }
+        CHECK(pthread_mutex_unlock(&graph->mutex));
     }
 
     for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
         CHECK(pthread_mutex_destroy(&tp->mutex));
         CHECK(pthread_cond_destroy(&tp->cond));
+#ifdef DEBUG
+        memset(&tp->mutex, 0, sizeof(tp->mutex));
+        memset(&tp->cond, 0, sizeof(tp->cond));
+#endif
     }
+
+    return 0;
 }

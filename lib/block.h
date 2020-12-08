@@ -130,9 +130,9 @@ struct QsSimpleBlock {
     // The threadPool that can run this block's trigger actions.
     struct QsThreadPool *threadPool;
 
-
     // We keep a doubly linked list of blocks queued in the threadPool
-    // using this "next" and "prev".
+    // using this "next" and "prev".  This said list changes as the stream
+    // runs/flows.
     struct QsSimpleBlock *next, *prev;
     //
     // Is this simple block in the thread pool job queue?

@@ -8,23 +8,35 @@ struct QsThreadPool {
     // associated graph for this threadPool
     struct QsGraph *graph;
 
+    // Allocated pthread_t array that is of length maxThreads.
+    struct QsThread {
+        pthread_t thread;
+        bool hasLaunched;
+    } * threads;
+    //
     // maxThreads does not change at flow/run time, so we need no mutex to
     // access it.
     uint32_t maxThreads;
 
-    // We use "next" to make a list of threadPools in graph.
-    struct QsThreadPool *next;
-
-    pthread_mutex_t mutex;
-    // cond is paired with mutex.
-    pthread_cond_t cond;  // idle threads just wait with this cond.
-
+    // For multithreaded cases graph->mutex lock is needed to access
+    // numThreads and threads.
+    //
     // numThreads is the number of pthreads that exist from this
     // threadPool, be they idle or in the process of calling flow().  We
     // must have a ThreadPool mutex lock to access numThreads.
     //
     // numThreads <= maxThreads
     uint32_t numThreads;
+
+
+    // We use "next" to make a list of threadPools in graph.
+    struct QsThreadPool *next;
+
+
+    pthread_mutex_t mutex;
+    // cond is paired with mutex.
+    pthread_cond_t cond;  // idle threads just wait with this cond.
+
 
     // We do not need to keep list of idle threads.  We just have all idle
     // threads call pthread_cond_wait() with the above mutex and cond.
