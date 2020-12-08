@@ -131,8 +131,11 @@ int qsGraphStop(struct QsGraph *graph) {
         } else
             ASSERT(tp->threads == 0);
 #endif
-        if(tp->maxThreads)
+        if(tp->maxThreads) {
             free(tp->threads);
+            tp->threads = 0;
+            tp->numThreads = 0;
+        }
     }
 
     // Stop all triggers in all blocks.  If we did not interupt the
@@ -391,11 +394,16 @@ int qsGraphWait(struct QsGraph *graph) {
 
     CHECK(pthread_mutex_lock(&graph->mutex));
     DASSERT(graph->masterWaiting == false);
-    graph->masterWaiting = true;
 
-    CHECK(pthread_cond_wait(&graph->cond, &graph->mutex));
-
-    graph->masterWaiting = false;
+    if(graph->numWorkingThreads) {
+        // The last worker thread to finish will signal this thread on the
+        // way out, but we don't need to wait if there are no worker
+        // threads any more.
+        graph->masterWaiting = true;
+        CHECK(pthread_cond_wait(&graph->cond, &graph->mutex));
+        graph->masterWaiting = false;
+        DASSERT(graph->numWorkingThreads == 0);
+    }
 
     CHECK(pthread_mutex_unlock(&graph->mutex));
 
@@ -427,6 +435,8 @@ int qsGraphWait(struct QsGraph *graph) {
         }
     }
 
+    graph->numWorkingThreads = 0;
+    graph->numIdleThreads = 0;
 
     // At this point there should be no more worker threads for this
     // graph.

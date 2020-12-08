@@ -118,6 +118,16 @@ void SigAction(int signum) {
 
     DASSERT(sig);
 
+    if(sig->aboutToPause && sig->thread != pthread_self()) {
+        // This thread is not the thread that should act on this trigger
+        // event.  Send the signal to a particular thread.
+        // The thread sig->thread is waiting on a blocking call
+        // to get this signal and jump it to acting on it.
+//ERROR("signaling thread");
+        CHECK(pthread_kill(sig->thread, sig->signum));
+        return;
+    }
+
     // TODO: This print is not good in this signal catcher.
     //WARN("CAUGHT signal %d", signum);
 

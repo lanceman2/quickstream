@@ -2,6 +2,8 @@
 
 set -ex
 
+# We run a few variations of threads and number of runs.
+
 ../bin/quickstream\
  --threads 0\
  --block tests/getterTriggeredFromSignal getter\
@@ -19,5 +21,39 @@ set -ex
  --run\
  --run
 
-exec ./success
+../bin/quickstream\
+ --threads 1\
+ --block tests/getterTriggeredFromSignal getter\
+ --block tests/setter setter\
+ --block tests/dummy\
+ --parameters-connect getter getter setter setter\
+ --run
 
+../bin/quickstream\
+ --threads 1\
+ --block tests/getterTriggeredFromSignal getter\
+ --block tests/setter setter\
+ --block tests/dummy\
+ --parameters-connect getter getter setter setter\
+ --run\
+ --run
+
+../bin/quickstream\
+ --threads 4\
+ --block tests/getterTriggeredFromSignal getter\
+ --block tests/setter setter\
+ --block tests/dummy\
+ --parameters-connect getter getter setter setter\
+ --run
+
+../bin/quickstream\
+ --threads 4\
+ --block tests/getterTriggeredFromSignal getter\
+ --block tests/setter setter\
+ --block tests/dummy\
+ --parameters-connect getter getter setter setter\
+ --run\
+ --run
+
+
+exec ./success

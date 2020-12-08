@@ -20,8 +20,8 @@
 
 
 
-// We will have a thread pool mutex before calling this and after.  When
-// the users trigger callback is called the mutex will be unlocked.
+// We will have a thread pool (graph) mutex before calling this and after.
+// When the users trigger callback is called the mutex will be unlocked.
 //
 // Returns true if the trigger changed its' run/call state and it is a
 // source trigger, and false if not.
@@ -44,6 +44,9 @@ bool CallTriggerCallback(struct QsTrigger *t, struct QsThreadPool *tp) {
         // callback.
         return false; // no trigger change.
 
+
+    // This trigger did change it's running state.
+
     if(ret > 0)
         // Remove the trigger callback for the rest of the run/flow
         // cycle.
@@ -56,8 +59,8 @@ bool CallTriggerCallback(struct QsTrigger *t, struct QsThreadPool *tp) {
         // destroy the trigger.
         FreeTrigger(t);
 
-    // Return that the trigger was removed from play at least for this
-    // run, but only if it's a source trigger.
+    // Return the answer to the question: Was the trigger was removed from
+    // play, at least for this run, and is the trigger a source trigger?
     return t->isSource;
 }
 
@@ -78,22 +81,27 @@ bool CallTriggerCallback(struct QsTrigger *t, struct QsThreadPool *tp) {
 static inline
 bool WaitForWork(struct QsThreadPool *tp) {
 
+    DASSERT(tp);
+    struct QsGraph *graph = tp->graph;
+    DASSERT(graph);
 
     bool haveSigTrigger =
         sig // there is one
         && sig->trigger.isRunning // it's in use now
-        // it's using this thread pool
-        && sig->trigger.block->threadPool == tp;
+        // It's using this thread pool
+        && sig->trigger.block->threadPool == tp
+        // Another worker thread does not have the job to
+        // handle the signal trigger
+        && sig->aboutToPause == 0;
 
 
     if(haveSigTrigger) {
 
-        // Tricky shit with jumps.  Signals are tricky to deal with if you
-        // want robust code, with no race conditions.  We can't ever fix
-        // over-run conditions (on slow computers), but we can fix race
-        // conditions.
-
-        DASSERT(sig->aboutToPause == 0);
+        // This is major tricky shit with jumps.  Signals are tricky to
+        // deal with if you want robust code, with no race conditions.  We
+        // can't ever fix over-run conditions (on slow computers), but we
+        // can fix race conditions.  There is a difference between an
+        // over-run condition and a race condition.
 
         // Do a check first to avoid the system call below in sigsetjmp().
         if(CheckAndQueueTrigger((struct QsTrigger *) sig))
@@ -101,11 +109,11 @@ bool WaitForWork(struct QsThreadPool *tp) {
             // There is no need to pause/wait.
             return tp->first;
 
-        // It's important to note: this block of code cannot be made
-        // into a separate function because we cannot let said function to
-        // get popped from the current function stack.  We need this code
-        // block to exist so long as we have the jump point until the jump
-        // flag sig->aboutToPause is unset.
+        // It's important to note: this block of code cannot be made into
+        // a separate function because we cannot let said function to get
+        // popped from the current function call stack.  We need this code
+        // block to exist so long as we have the jump point until the
+        // jump flag sig->aboutToPause is unset.
 
         // I think that sigsetjmp(3) and siglongjmp(3) do not usually
         // cause system calls; they just muck with the program memory and
@@ -126,9 +134,11 @@ bool WaitForWork(struct QsThreadPool *tp) {
         //
         // Tests show that we need to use sigsetjmp(), and setjmp() will
         // not work.  Shit happens.
-        //
-
+        
         if(sigsetjmp(sig->jmpEnv, 1/*save sigs*/)) {
+
+            // CAUTION: this is a "jump to" point in the code.  The
+            // execution flow has a jump in it.
 
             // We jumped from the signal handler SigAction() to here.
             // Therefore, we must have caught a signal in SigAction() in
@@ -139,16 +149,29 @@ bool WaitForWork(struct QsThreadPool *tp) {
             sig->aboutToPause = 0;
 
             // Here's to hoping that we have the mutex lock at this point.
-            // ... testing ... Looks like the kernel takes care of making
-            // it so that jumping out of a pthread_cond_wait() call keeps
-            // things consistent.  Wow, it's fuck'n magic.
+            // ... testing ... Looks like the pthreads, (NPTL) Native
+            // POSIX Threads Library, takes care of making it so that
+            // jumping out of a pthread_cond_wait() call keeps things
+            // consistent.  Wow, it's fuck'n magic.
             //
             DASSERT(sig->triggered);
             ASSERT(CheckAndQueueTrigger((struct QsTrigger *) sig));
+            --graph->numIdleThreads;
             return tp->first;
         }
+
+        // Now we can incremented the numIdleThreads counter because we
+        // will not, and can not, jump until the sig->aboutToPause flag is
+        // set just below.  Incrementing the numIdleThreads counter after
+        // sig->aboutToPause is set would be a disaster.
+        ++graph->numIdleThreads;
+        // What thread may do this jump.
+        sig->thread = pthread_self();
+
         // Flag to signal handler that we have set the jump point and we
-        // are ready to use it.
+        // are ready to use it.  This is the only point in all the code
+        // where this flag is set.  This must be set with care at the
+        // correct line of code, after some stuff and before other stuff.
         sig->aboutToPause = 1;
         //
         // We need to check if we got a signal just before we where
@@ -162,9 +185,22 @@ bool WaitForWork(struct QsThreadPool *tp) {
             // Set flag to disable the siglongjmp() call in function
             // SigAction() in file trigger.c.
             sig->aboutToPause = 0;
+            // We still have the mutex lock, so no one will know that we
+            // falsely incremented the numIdleThreads counter.  So it
+            // looks like we never were idle.
+            --graph->numIdleThreads;
             return tp->first;
         }
-    }
+    } else
+        // There is no jump set, hence this will not get fucked by
+        // incrementing this counter.
+        ++graph->numIdleThreads;
+
+
+    // We cannot set --graph->numIdleThreads in this "jump from zone";
+    // that would make it not possible to know if it was decremented,
+    // because we will not know if we jumped from before or after the time
+    // it jumps.
 
 
     ////////////////////////////////////////////////////////////////////
@@ -197,6 +233,8 @@ bool WaitForWork(struct QsThreadPool *tp) {
         CheckAndQueueTrigger((struct QsTrigger *) sig);
     }
 
+    --graph->numIdleThreads;
+
     return tp->first;
 }
 
@@ -206,6 +244,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
 static
 void *runWorker(struct QsThreadPool *tp) {
 
+    struct QsGraph *graph = tp->graph;
 
     CHECK(pthread_mutex_lock(tp->mutex));
 
@@ -273,13 +312,14 @@ void *runWorker(struct QsThreadPool *tp) {
                     break;
             }
             if(!b) {
-                if(tp->maxThreads == 0 || tp->graph->threadPools->next == 0)
+                if(tp->maxThreads == 0 || tp->graph->threadPools->next == 0) {
                     // Do not have a usable source trigger in this thread
                     // pool and we have no queued jobs, and we only have
                     // the main thread running this or just one thread
                     // pool.
                     //
                     break;
+                }
 
                 // TODO:  More CODE HEREEEEEEEEE
 
@@ -290,14 +330,19 @@ void *runWorker(struct QsThreadPool *tp) {
     } // while(WaitForWork(tp)) loop
 
 
-    if(tp->maxThreads == 0)
+    if(tp->maxThreads == 0) {
+        // this is the case of the main thread running the flow stream.
+        // And so in a sense there are no worker threads.
         CHECK(pthread_mutex_unlock(tp->mutex));
         return 0;
+    }
 
+    // This thread is no longer a working thread so un-count it.
+    --graph->numWorkingThreads;
 
-
-    //--tp->graph->numWorkingThreads
-
+    if(graph->numWorkingThreads == 0 && graph->masterWaiting)
+        // Last one out signal the main thread.
+        CHECK(pthread_cond_signal(&graph->cond));
 
     CHECK(pthread_mutex_unlock(tp->mutex));
 
@@ -365,8 +410,6 @@ int run(struct QsGraph *graph) {
         }
     }
 
-    // TODO: We could not initialize and use the mutex and conditionals
-    // when we run with the main thread.
 
     for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
         tp->mutex = &graph->mutex;
@@ -385,6 +428,8 @@ int run(struct QsGraph *graph) {
     } else {
 
         CHECK(pthread_mutex_lock(&graph->mutex));
+        DASSERT(graph->numWorkingThreads == 0);
+        DASSERT(graph->numIdleThreads == 0);
         // We start by launching one worker thread per thread pool.  The
         // worker threads will add more worker threads as they are needed
         // up to tp->maxThreads threads per thread pool.
@@ -397,6 +442,7 @@ int run(struct QsGraph *graph) {
             // Launch a worker thread:
             CHECK(pthread_create(&tp->threads->thread, 0,
                         (void* (*)(void *)) runWorker, tp));
+            ++graph->numWorkingThreads;
             tp->threads->hasLaunched = true;
         }
         CHECK(pthread_mutex_unlock(&graph->mutex));

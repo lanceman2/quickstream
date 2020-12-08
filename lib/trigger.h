@@ -113,6 +113,11 @@ struct QsSignal {
     // A flag to show we are about to pause in a system blocking call.
     volatile sig_atomic_t aboutToPause;
 
+    // This gets set to the thread that has set the aboutToPause flags.
+    // This thread will be the thread that is waiting and can jump to
+    // try to take the action for this signal trigger.
+    pthread_t thread;
+
     // The signal number.  See run in shell: "kill -L".
     int signum;
 };
