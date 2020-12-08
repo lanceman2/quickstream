@@ -32,8 +32,8 @@ struct QsThreadPool {
     // We use "next" to make a list of threadPools in graph.
     struct QsThreadPool *next;
 
-
-    pthread_mutex_t mutex;
+    // This mutex points to the mutex in the graph
+    pthread_mutex_t *mutex;
     // cond is paired with mutex.
     pthread_cond_t cond;  // idle threads just wait with this cond.
 

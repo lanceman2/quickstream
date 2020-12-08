@@ -122,12 +122,17 @@ int qsGraphStop(struct QsGraph *graph) {
     // All the threads should be joined now.  Free the threads array in
     // all the thread pools.
     for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
-        if(tp->maxThreads == 0) continue;
+        CHECK(pthread_cond_destroy(&tp->cond));
 #ifdef DEBUG
-        DASSERT(tp->threads);
-        memset(tp->threads, 0, sizeof(*tp->threads)*tp->maxThreads);
+        tp->mutex = 0;
+        if(tp->maxThreads) {
+            DASSERT(tp->threads);
+            memset(tp->threads, 0, sizeof(*tp->threads)*tp->maxThreads);
+        } else
+            ASSERT(tp->threads == 0);
 #endif
-        free(tp->threads);
+        if(tp->maxThreads)
+            free(tp->threads);
     }
 
     // Stop all triggers in all blocks.  If we did not interupt the

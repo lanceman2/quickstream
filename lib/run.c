@@ -9,17 +9,57 @@
 #include "../include/quickstream/app.h" // public interfaces
 
 #include "debug.h"
-#include "Dictionary.h"
 #include "block.h"
 #include "graph.h"
 #include "threadPool.h"
 #include "builder.h"
-#define define_CallTriggerCallback
 #include "trigger.h"
-#undef define_CallTriggerCallback
 #include "triggerJobsLists.h"
 #include "run.h"
 
+
+
+
+// We will have a thread pool mutex before calling this and after.  When
+// the users trigger callback is called the mutex will be unlocked.
+//
+// Returns true if the trigger changed its' run/call state and it is a
+// source trigger, and false if not.
+//
+static inline
+bool CallTriggerCallback(struct QsTrigger *t, struct QsThreadPool *tp) {
+
+
+    // TODO: The callback() may need to be called more than once,
+    // which is why we made this function.
+
+    CHECK(pthread_mutex_unlock(tp->mutex));
+    // This is the call of a function in a simple block module.
+    int ret = t->callback(t->userData);
+    CHECK(pthread_mutex_lock(tp->mutex));
+
+    // The block can change the trigger from this return value, ret.
+    if(ret == 0)
+        // No change.  Continue to queue up and call the trigger
+        // callback.
+        return false; // no trigger change.
+
+    if(ret > 0)
+        // Remove the trigger callback for the rest of the run/flow
+        // cycle.
+        //
+        TriggerStop(t);
+    else
+        // ret < 0
+        //
+        // Remove the trigger from all runs in this graph.  This will
+        // destroy the trigger.
+        FreeTrigger(t);
+
+    // Return that the trigger was removed from play at least for this
+    // run, but only if it's a source trigger.
+    return t->isSource;
+}
 
 
 
@@ -146,7 +186,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
     // function call forever.  The fix is a jump in the signal handler.
 
     // pause/wait.  Mutex unlock inside pthread_cond_wait()
-    CHECK(pthread_cond_wait(&tp->cond, &tp->mutex));
+    CHECK(pthread_cond_wait(&tp->cond, tp->mutex));
     //pause();
 
 
@@ -167,7 +207,7 @@ static
 void *runWorker(struct QsThreadPool *tp) {
 
 
-    CHECK(pthread_mutex_lock(&tp->mutex));
+    CHECK(pthread_mutex_lock(tp->mutex));
 
 
     while(WaitForWork(tp)) {
@@ -236,7 +276,8 @@ void *runWorker(struct QsThreadPool *tp) {
                 if(tp->maxThreads == 0 || tp->graph->threadPools->next == 0)
                     // Do not have a usable source trigger in this thread
                     // pool and we have no queued jobs, and we only have
-                    // the main thread running this.
+                    // the main thread running this or just one thread
+                    // pool.
                     //
                     break;
 
@@ -249,20 +290,16 @@ void *runWorker(struct QsThreadPool *tp) {
     } // while(WaitForWork(tp)) loop
 
 
-    CHECK(pthread_mutex_unlock(&tp->mutex));
+    if(tp->maxThreads == 0)
+        CHECK(pthread_mutex_unlock(tp->mutex));
+        return 0;
 
-
-    if(tp->maxThreads == 0) return 0;
-
-
-
-    CHECK(pthread_mutex_lock(&tp->graph->mutex));
 
 
     //--tp->graph->numWorkingThreads
 
 
-    CHECK(pthread_mutex_unlock(&tp->graph->mutex));
+    CHECK(pthread_mutex_unlock(tp->mutex));
 
 
     return 0;
@@ -332,7 +369,7 @@ int run(struct QsGraph *graph) {
     // when we run with the main thread.
 
     for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
-        CHECK(pthread_mutex_init(&tp->mutex, 0));
+        tp->mutex = &graph->mutex;
         CHECK(pthread_cond_init(&tp->cond, 0));
     }
 
@@ -363,15 +400,6 @@ int run(struct QsGraph *graph) {
             tp->threads->hasLaunched = true;
         }
         CHECK(pthread_mutex_unlock(&graph->mutex));
-    }
-
-    for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
-        CHECK(pthread_mutex_destroy(&tp->mutex));
-        CHECK(pthread_cond_destroy(&tp->cond));
-#ifdef DEBUG
-        memset(&tp->mutex, 0, sizeof(tp->mutex));
-        memset(&tp->cond, 0, sizeof(tp->cond));
-#endif
     }
 
     return 0;
