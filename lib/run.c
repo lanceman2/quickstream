@@ -277,10 +277,12 @@ void *runWorker(struct QsThreadPool *tp) {
 
             } while(b->firstJob); // end loop over triggers in block
 
-        } while(tp->first); // end loop over simple blocks in thread pool
+        } while(tp->first);// end loop over blocks in thread pool
 
 
-        // At this point there are no triggered jobs in this thread pool.
+        // At this point there are no triggered jobs in this thread pool
+        // queue.  So for whatever reason this thread pool needs to wait
+        // for work.
 
         if(sourceTriggersChanged) {
             // Assess what will WaitForWork() should do now.  This is a

@@ -44,6 +44,8 @@ static void qsSimpleBlockUnload(struct QsSimpleBlock *b) {
     DASSERT(b->firstJob == 0);
     DASSERT(b->lastJob == 0);
 
+    CHECK(pthread_mutex_destroy(&b->mutex));
+
     struct QsTrigger *next;
     for(struct QsTrigger *t = b->waiting; t; t = next) {
         next = t->next;
@@ -293,6 +295,8 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         // Add parameter dictionaries.
         smB->getters = qsDictionaryCreate(); // getters and constants
         smB->setters = qsDictionaryCreate();
+
+        CHECK(pthread_mutex_init(&smB->mutex, 0));
 
         // Add this simple block to the default thread pool if there is
         // one.

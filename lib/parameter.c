@@ -1,7 +1,9 @@
 #include <stdint.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <setjmp.h>
 #include <pthread.h>
 
 #include "../include/quickstream/block.h"
@@ -13,12 +15,14 @@
 #include "parameter.h"
 #include "block.h"
 #include "graph.h"
+#include "trigger.h"
 
 
 
 // A terrible CPP macro that sets b to the current block if it is not set
 // already.  Also checks that we are in a block bootstrap() call.
 // Also checks that this is the main thread that creates graphs.
+// Also checks that b is a simple block.
 //
 // Note: blocks can create parameters for other blocks.  That's why
 // this macro is important.
@@ -128,7 +132,7 @@ void FreeParameter(struct QsParameter *p) {
 
 static inline
 void *AllocateParameter(const char *parameterKind,
-        struct QsBlock *b,
+        struct QsSimpleBlock *b,
         struct QsDictionary *pdict,
         size_t psize, enum QsParameterType type,
         const char *bname,
@@ -138,7 +142,7 @@ void *AllocateParameter(const char *parameterKind,
     DASSERT(pdict);
     DASSERT(psize);
     DASSERT(structSize > sizeof(struct QsParameter));
-    DASSERT(b->isSuperBlock == false);
+    DASSERT(((struct QsBlock *)b)->isSuperBlock == false);
 
     // Check that parameter name is not already present in blocks
     // list of this kind of parameter.
@@ -163,7 +167,7 @@ void *AllocateParameter(const char *parameterKind,
         // 1. This is a setter and we can't have a constant with that name:
         struct QsParameter *p =
             // block->getters contains getters and constants.
-            qsDictionaryFind(((struct QsSimpleBlock *)b)->getters, pname);
+            qsDictionaryFind(b->getters, pname);
         if(p && p->kind == QsConstant) {
             ERROR("Constant parameter named \"%s\" is already"
                     " in block \"%s\"; setter and constant "
@@ -174,7 +178,7 @@ void *AllocateParameter(const char *parameterKind,
     } else if(kind == QsConstant) {
         // 2. This is a constant and we can't have a setter with that name:
         struct QsParameter *p =
-            qsDictionaryFind(((struct QsSimpleBlock *)b)->setters, pname);
+            qsDictionaryFind(b->setters, pname);
         if(p) {
             DASSERT(p->kind == QsSetter);
             ERROR("Setter parameter named \"%s\" is already"
@@ -215,12 +219,13 @@ qsParameterSetterCreate(struct QsBlock *b, const char *pname,
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsSetter *p = AllocateParameter("Setter",
-        b,
+        smB,
         smB->setters, psize, type, b->name, pname,
         QsSetter, sizeof(*p));
     if(!p) return 0;
     p->userData = userData;
     p->setCallback = setCallback;
+    p->mutex = &smB->mutex;
     p->value = calloc(1, psize);
     ASSERT(p->value, "calloc(1,%zu) failed", psize);
 
@@ -236,7 +241,7 @@ qsParameterGetterCreate(struct QsBlock *b, const char *pname,
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsGetter *p = AllocateParameter("Getter",
-        b,
+        smB,
         smB->getters, psize, type, b->name, pname,
         QsGetter, sizeof(*p));
     if(!p) return 0;
@@ -253,7 +258,7 @@ qsParameterConstantCreate(struct QsBlock *b, const char *pname,
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsConstant *p = AllocateParameter("Constant",
-        b,
+        smB,
         smB->getters, psize, type, b->name, pname,
         QsConstant, sizeof(*p));
     if(!p) return 0;
@@ -274,8 +279,8 @@ uint32_t qsParameterNumConnections(struct QsParameter *p) {
     // This can only be called in start or stop, and TODO maybe in the
     // stream runner code.
     DASSERT(p->block);
-    ASSERT(p->block->inWhichCallback == _QS_IN_START ||
-            p->block->inWhichCallback == _QS_IN_STOP); 
+    ASSERT(((struct QsBlock *)p->block)->inWhichCallback == _QS_IN_START ||
+            ((struct QsBlock *)p->block)->inWhichCallback == _QS_IN_STOP); 
 
     if(p->kind == QsSetter)
         // A setter parameter may only have one connection to it.
@@ -353,6 +358,24 @@ void AddToGetterConnections(struct QsGetter *g,
 }
 
 
+static
+int SetterTriggerCB(struct QsSetter *setter) {
+
+
+    return 0;
+}
+
+
+static
+bool SetterCheckTriggerCB(struct QsSetter *setter) {
+
+    return true;
+}
+
+
+
+
+
 // TODO: We should consider ways to engineer out all the wrong modes in
 // the input parameters of this function, instead of adding all these
 // stupid failure if() checks in this function.
@@ -397,7 +420,7 @@ int qsParameterConnect(struct QsParameter *p0,
 
     if(p0->block == p1->block) {
         ERROR("Block \"%s\" cannot connect parameters in itself",
-                p0->block->name);
+                ((struct QsBlock *)p0->block)->name);
         DASSERT(0);
         return -1;
     }
@@ -406,16 +429,21 @@ int qsParameterConnect(struct QsParameter *p0,
     if(p0->type != p1->type || p0->size != p1->size) {
         ERROR("Parameter \"%s:%s\" is size %zu and type %d; and "
                 "parameter \"%s:%s\" is size %zu and type %d",
-                p0->block->name, p0->name, p0->size, p0->type,
-                p1->block->name, p1->name, p1->size, p1->type);
+                ((struct QsBlock *)p0->block)->name,
+                p0->name, p0->size, p0->type,
+                ((struct QsBlock *)p1->block)->name,
+                p1->name, p1->size, p1->type);
         return -1;
     }
 
 
     if(p1->kind == QsSetter) {
+        // We are connecting to a setter.
+        // // A setter cannot be connected to twice.
         if(((struct QsSetter *)p1)->feeder) {
             ERROR("Setter \"%s:%s\" already has a connection",
-                    p1->block->name, p1->name);
+                    ((struct QsBlock *)p1->block)->name, p1->name);
+            // User is a dumb shit.
             DASSERT(0);
             return 1;
         }
@@ -429,6 +457,13 @@ int qsParameterConnect(struct QsParameter *p0,
             // before the flow starts and there can only be one thread.
             memcpy(setter->value,
                     ((struct QsConstant *)p0)->value, p0->size);
+        } else {
+            // We are connecting from getter to setter.
+            setter->trigger = AllocateTrigger(sizeof(*setter->trigger),
+                    p1->block,
+                    QsSetterT, (int (*)(void *)) SetterTriggerCB,
+                    setter, (bool (*)(void *)) SetterCheckTriggerCB,
+                    false/*isSource*/);
         }
     } else {
         // p0 and p1 are a constant parameters
@@ -454,11 +489,40 @@ int qsParameterConnect(struct QsParameter *p0,
 }
 
 
-uint32_t qsParameterGetterPush(struct QsParameter *getter,
+
+uint32_t qsParameterGetterPush(struct QsParameter *p,
         const void *value) {
 
+    // Getters only connect to 0 to N setters.
 
-    return 0;
+    struct QsGetter *g = (struct QsGetter *) p;
+
+    for(uint32_t i = g->numSetters - 1; i != -1; --i) {
+
+        struct QsSetter *s = g->setters[i];
+        DASSERT(s);
+        DASSERT(s->feeder == p);
+        DASSERT(((struct QsParameter *)s)->type == p->type);
+        DASSERT(((struct QsParameter *)s)->size == p->size);
+
+        CHECK(pthread_mutex_lock(s->mutex));
+        memcpy(s->value, value, p->size);
+
+        // queue up this event.
+        CHECK(pthread_mutex_lock(&
+                    ((struct QsBlock *)p->block)->graph->mutex));
+
+
+
+
+        CHECK(pthread_mutex_unlock(&
+                    ((struct QsBlock *)p->block)->graph->mutex));
+
+
+        CHECK(pthread_mutex_unlock(s->mutex)); 
+    }
+
+    return g->numSetters;
 }
 
 
@@ -488,7 +552,7 @@ int PrintParameterCB(const char *pname, struct QsParameter *p,
             break;
     }
 
-    fprintf(file, "%s %s\n", p->block->name, pname);
+    fprintf(file, "%s %s\n", ((struct QsBlock *)p->block)->name, pname);
     return 0; // keep going.
 }
 

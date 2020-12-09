@@ -26,11 +26,21 @@ int stopItimer(void) {
     return 0; // success
 }
 
+static
+double val = -0.034;
+
+
 
 static
 int triggerCallback(struct QsParameter *p) {
 
     DSPEW("                      TIMER %d", ++count);
+
+
+    qsParameterGetterPush(getter, &val);
+
+    val += 2.0;
+
 
     if(count > 9) {
         stopItimer();
@@ -43,7 +53,8 @@ int triggerCallback(struct QsParameter *p) {
 
 int bootstrap(void) {
 
-    getter = qsParameterGetterCreate(0, "getter", QS_DOUBLE, sizeof(double));
+
+    getter = qsParameterGetterCreate(0, "getter", QS_DOUBLE, sizeof(val));
     DASSERT(getter);
 
     qsTriggerSignalCreate(SIGALRM, (int (*)(void *)) triggerCallback,

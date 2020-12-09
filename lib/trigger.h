@@ -10,8 +10,9 @@ struct QsSignal *sig;
 
 enum QsTriggerKind {
 
-    QsStream,
-    QsSignal
+    QsSetterT, // for calling setter parameter callback
+    QsStream,  // for calling flow() and flush() block functions
+    QsSignal   // OS signal trigger callback
 };
 
 
@@ -86,7 +87,7 @@ struct QsTrigger {
     enum QsTriggerKind kind;
 
     // All triggers need this function to be defined.
-    bool (*checkTrigger)(void);
+    bool (*checkTrigger)(void *userData);
 
     // callback is called after this trigger pops:
     int (*callback)(void *userData);
@@ -145,3 +146,9 @@ void FreeTrigger(struct QsTrigger *t);
 
 extern
 bool CheckAndQueueTrigger(struct QsTrigger *t);
+
+extern
+void *AllocateTrigger(size_t size, struct QsSimpleBlock *b,
+        enum QsTriggerKind kind, int (*callback)(void *userData),
+        void *userData, bool (*checkTrigger)(void *userData),
+        bool isSource);

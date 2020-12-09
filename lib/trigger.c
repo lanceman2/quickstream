@@ -29,10 +29,10 @@ bool CheckAndQueueTrigger(struct QsTrigger *t) {
 
     DASSERT(t);
     DASSERT(t->isInJobQueue == false);
-    DASSERT(t->checkTrigger);
+    //DASSERT(t->checkTrigger);
 
     // First check
-    if(!t->checkTrigger()) return false;
+    if(t->checkTrigger && !t->checkTrigger(t->userData)) return false;
 
     // Now Queue it
     if(t->kind != QsStream)
@@ -44,14 +44,14 @@ bool CheckAndQueueTrigger(struct QsTrigger *t) {
 }
 
 
-static
 void *AllocateTrigger(size_t size, struct QsSimpleBlock *b,
         enum QsTriggerKind kind, int (*callback)(void *userData),
-        void *userData, bool (*checkTrigger)(void), bool isSource) {
+        void *userData, bool (*checkTrigger)(void *userData),
+        bool isSource) {
 
     DASSERT(b);
     DASSERT(b->block.graph);
-    DASSERT(checkTrigger);
+    //DASSERT(checkTrigger);
 
     // This is freed in block.c.
     struct QsTrigger *t = calloc(1, size);
@@ -162,7 +162,7 @@ void SigAction(int signum) {
 
 
 static bool
-SigCheckTrigger(void) {
+SigCheckTrigger(void *data) {
 
     DASSERT(sig);
 
@@ -231,6 +231,7 @@ void TriggerStart(struct QsTrigger *t) {
         break;
 
         case QsStream:
+        case QsSetterT:
         break;
     }
 
@@ -260,6 +261,7 @@ void TriggerStop(struct QsTrigger *t) {
         break;
 
         case QsStream:
+        case QsSetterT:
         break;
     }
 

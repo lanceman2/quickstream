@@ -12,13 +12,16 @@ struct QsParameter {
 
     // The block that owns this parameter.  Super blocks do not
     // own parameters.
-    struct QsBlock *block;
+    struct QsSimpleBlock *block;
 
     // name of the parameter.  Unique for each block for all setters
     // and unique for each block for all getters.
     const char *name;
 
-    // size in bytes of the parameter data that is copied for each 
+    // size in bytes of the parameter data that is copied for each.
+    // If the value passed is a double array[5]; then size =
+    // 5*sizeof(double) or sizeof(array).
+    //
     size_t size;
 
     // Bit-wise or-ed flag
@@ -29,9 +32,10 @@ struct QsParameter {
     //
     uint32_t flags;
 
-    // Kind of parameter
+    // Kind of parameter: QsConstant, QsGetter, or QsSetter
     enum QsParameterKind kind;
 
+    // double, float, uint64_t and shit like that.
     enum QsParameterType type;
 
 };
@@ -69,14 +73,23 @@ struct QsSetter {
     // We inherit a parameter.
     struct QsParameter parameter;
 
+    // This trigger will be owned by the block that owns this parameter.
+    // This trigger is not created unless this setter is connected to from
+    // a getter parameter.
+    struct QsTrigger *trigger;
+
     // TODO: Is this needed:
     //
     // Zero or one getter or constant may connect to this setter.
     //
-    // 0 if not connected.
+    // 0 if not connected.  It's a flag too.
     //
     struct QsParameter *feeder;
 
+    // Setters can be read while the stream is flowing and the value
+    // is passed from one block's thread to another block's thread.
+    // We lock this mutex when 
+    pthread_mutex_t *mutex;
 
     // This is a flow-time constant.  Passed to the setCallback().
     void *userData;
