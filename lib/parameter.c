@@ -548,9 +548,15 @@ uint32_t qsParameterGetterPush(struct QsParameter *p,
                     ((struct QsBlock *)p->block)->graph->mutex));
 
             if(!s->trigger) {
-ERROR("FUCK");
-                // We let triggers be freed at flow time.
-                // We also let triggers be stopped at flow time.
+                // The trigger is off for one of two reasons:
+                //   1. We let triggers be freed at flow time.
+                //   2. We also let triggers be stopped at flow time.
+                //
+                // We argue that this wasted mutexing is better than not
+                // having this feature.  Dummying this code here is more
+                // performant then letting the callback dummy it's self.
+                //
+                // Unlock mutexes and continue looping to the next setter.
                 CHECK(pthread_mutex_unlock(&
                     ((struct QsBlock *)p->block)->graph->mutex));
                 CHECK(pthread_mutex_unlock(s->mutex));
