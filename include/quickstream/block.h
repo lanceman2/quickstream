@@ -83,18 +83,30 @@ enum QsParameterType {
  If this value is an array the \p psize is the total size in bytes of
  the array.
 
- \param setCallback is the callback function that will be called before
+ \verbinclude triggerCallback.dox
+ 
+ \p triggerCallback is the callback function that will be called before
  or after the block flow() function, after each time a connected getter
- parameter changes.
+ parameter changes.  The parameter \p value that is passed to triggerCallback
+ points to memory that only exists while the triggerCallback function is being
+ called; the triggerCallback function may change the contents of this memory,
+ but if the contents is needed after the triggerCallback function is called
+ then the contents must be copied.
 
- The \p setCallback function may call qsParameterGetterPush().
-
- The \p setCallback function should avoid making long time blocking calls.
+ The \p triggerCallback function may call qsParameterGetterPush().
+ 
+ The \p triggerCallback function should avoid making long time blocking calls.
  The intent of this parameter mechanism is to just think of it a way to
- quickly pass small chunks of data asynchronously.  The setCallback()
+ quickly pass small chunks of data asynchronously.  The triggerCallback()
  function should just qsParameterGetterPush() to any getter parameters
  that may be related, copy the data in what ever form the block needs, and
  return.
+
+\param cleanup
+
+\param userData
+
+\param flags
 
  \return a setter parameter pointer on success, and 0 is returned if
  the parameter already exists and the QS_GET flag was not used, or the
@@ -105,8 +117,8 @@ extern
 struct QsParameter *
 qsParameterSetterCreate(struct QsBlock *block, const char *pname,
         enum QsParameterType type, size_t psize,
-        void (*setCallback)(struct QsParameter *p,
-            const void *value, size_t size, void *userData),
+        int (*triggerCallback)(struct QsParameter *p,
+            void *value, size_t size, void *userData),
         void (*cleanup)(struct QsParameter *, void *userData),
         void *userData, uint32_t flags);
 

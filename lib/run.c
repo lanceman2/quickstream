@@ -386,32 +386,6 @@ int run(struct QsGraph *graph) {
         return 1;
     }
 
-    // First queue up the triggered triggers in the into their thread
-    // pool.  Un-triggered triggers stay in the "waiting" trigger list in
-    // their blocks.
-    //
-    b = graph->firstBlock;
-    for(; b; b = b->next) {
-        if(b->isSuperBlock) continue;
-        struct QsTrigger *t = ((struct QsSimpleBlock *) b)->waiting;
-        if(t) {
-            // This simple block, b, has at least one trigger:
-            //
-            struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
-            DASSERT(t->block == smB);
-            while(t) {
-                // We are editing the trigger lists as we iterate through
-                // them, hence we get the next before we move the current
-                // "t" to the queue.
-                struct QsTrigger *nextT = t->next;
-                if(t->isRunning)
-                    // This will do queue a job if the trigger triggered.
-                    CheckAndQueueTrigger(t);
-                t = nextT;
-            }
-        }
-    }
-
 
     for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
         tp->mutex = &graph->mutex;

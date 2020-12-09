@@ -105,8 +105,6 @@ void FreeTrigger(struct QsTrigger *t) {
 
 
 
-
-
 // TODO: Do we want the ability to make more of these.
 //
 // We may have just one of these:
@@ -210,6 +208,10 @@ int qsTriggerSignalCreate(int signum,
 
 // Called in qsGraphRun() before running the flow.
 //
+// TODO: These TriggerStart() and TriggerStop() functions could be made to
+// call start and stop callbacks in the trigger struct.  This makes making
+// new triggers have kind-of an inconsistent interface.
+//
 void TriggerStart(struct QsTrigger *t) {
 
     DASSERT(t);
@@ -229,9 +231,15 @@ void TriggerStart(struct QsTrigger *t) {
             CHECK(sigaction(((struct QsSignal *) t)->signum, &act, 0));
         }
         break;
-
-        case QsStream:
         case QsSetterT:
+        {
+            ((struct QsSetter *)t->userData)->trigger = t;
+        }
+        break;
+        case QsStream:
+        {
+            ASSERT(0, "WRITE THIS CODE");
+        }
         break;
     }
 
@@ -259,9 +267,13 @@ void TriggerStop(struct QsTrigger *t) {
             CHECK(sigaction(((struct QsSignal *) t)->signum, &act, 0));
         }
         break;
-
-        case QsStream:
         case QsSetterT:
+            ((struct QsSetter *)t->userData)->trigger = 0;
+        break;
+        case QsStream:
+        {
+            ASSERT(0, "WRITE THIS CODE");
+        }
         break;
     }
 

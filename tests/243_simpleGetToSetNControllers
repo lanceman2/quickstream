@@ -1,0 +1,33 @@
+#!/bin/bash
+
+set -ex
+
+# We run a few variations of threads and number of runs.
+
+../bin/quickstream\
+ -v 3\
+ --threads 0\
+ --block tests/getterTriggeredFromSignal getter\
+ --block tests/setter setter\
+ --block tests/setter setter2\
+  --block tests/dummy\
+ --parameters-connect getter getter setter setter\
+ --parameters-connect getter getter setter2 setter\
+ --run
+
+../bin/quickstream\
+ -v 3\
+ --threads 5\
+ --block tests/getterTriggeredFromSignal getter\
+ --block tests/setter setter\
+ --block tests/setter setter2\
+ --block tests/setter setter3\
+  --block tests/dummy\
+ --parameters-connect getter getter setter setter\
+ --parameters-connect getter getter setter2 setter\
+ --parameters-connect getter getter setter3 setter\
+ --run\
+ --run\
+ --run
+
+exec ./success

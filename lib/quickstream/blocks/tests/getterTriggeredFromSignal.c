@@ -1,4 +1,7 @@
-// This is used in test ../../../../tests/243_simpleGetToSetControllers
+// This is used in test ../../../../tests/233_simpleGetToSetControllers
+// and ../../../../tests/243_simpleGetToSetNControllers
+//
+// Editing this file will likely break these tests.
 
 #include <signal.h>
 #include <sys/time.h>
@@ -27,7 +30,7 @@ int stopItimer(void) {
 }
 
 static
-double val = -0.034;
+double val = 0.034;
 
 
 

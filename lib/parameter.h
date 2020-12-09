@@ -94,19 +94,26 @@ struct QsSetter {
     // This is a flow-time constant.  Passed to the setCallback().
     void *userData;
 
-    // Next setter in the blocks queue of setters to act on.
+    // TODO: remove this?
+    //
+    //Next setter in the blocks queue of setters to act on.
     //
     // This will change at flow-time.  The block that owns this setter
     // parameter provides a mutex to w/r next and value.
-    struct QsSetter *next;
+    //struct QsSetter *next;
 
     // This points to allocated memory that is written to before each
     // setcallback() call.  We need the mutex lock to read or write to the
     // memory that this points to.
     void *value;
 
-    void (*setCallback)(struct QsParameter *p,
-            const void *value, size_t size, void *userData);
+    // Flag that says we have a value loaded and it has not been read yet
+    // and the trigger is queued.
+    bool haveValueQueued;
+
+
+    int (*setCallback)(struct QsParameter *p,
+            void *value, size_t size, void *userData);
 
     // Set if the feeder parameter is constant.
     //

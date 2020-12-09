@@ -1,4 +1,8 @@
-// This is used in test ../../../../tests/243_simpleGetToSetControllers
+// This is used in test ../../../../tests/233_simpleGetToSetControllers
+// and ../../../../tests/243_simpleGetToSetNControllers
+//
+// Editing this file will likely break these tests.
+
 
 #include <stdio.h>
 
@@ -10,12 +14,16 @@
 static int count = 0;
 
 
-void set_CB(struct QsParameter *p,
-            const void *value, size_t size, void *userData) {
+int set_CB(struct QsParameter *p,
+            void *value, size_t size, void *userData) {
 
     DASSERT(size == sizeof(double));
 
-    fprintf(stderr, "                     value=%lg", *((double *) value));
+    WARN("         SETTING value = %lg", *((double *) value));
+
+    //if(*(double*)value > 10.0) return 1;
+
+    return 0;
 }
 
 

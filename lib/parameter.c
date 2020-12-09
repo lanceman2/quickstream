@@ -210,8 +210,8 @@ void *AllocateParameter(const char *parameterKind,
 struct QsParameter *
 qsParameterSetterCreate(struct QsBlock *b, const char *pname,
         enum QsParameterType type, size_t psize,
-        void (*setCallback)(struct QsParameter *p,
-            const void *value, size_t size, void *userData),
+        int (*setCallback)(struct QsParameter *p,
+            void *value, size_t size, void *userData),
         void (*cleanup)(struct QsParameter *, void *userData),
         void *userData, uint32_t flags) {
 
@@ -267,7 +267,8 @@ qsParameterConstantCreate(struct QsBlock *b, const char *pname,
     p->value = malloc(psize);
     ASSERT(p->value, "malloc(%zu) failed", psize);
 
-    memcpy(p->value, initialVal, psize);
+    if(initialVal)
+        memcpy(p->value, initialVal, psize);
 
     return (struct QsParameter *) p;
 }
@@ -358,22 +359,49 @@ void AddToGetterConnections(struct QsGetter *g,
 }
 
 
+// Is called when not holding a mutex lock.
+//
+// This ends up being a trigger callback called in run.c in
+// CallTriggerCallback().  The thread calling this is from the block that
+// owns this Setter parameter.
+//
 static
-int SetterTriggerCB(struct QsSetter *setter) {
+int SetterTriggerCB(struct QsSetter *s) {
 
+    // TODO: We decided to shorten the time that the block mutex lock is
+    // held and call the setter callback() from outside the mutex lock
+    // using a stack memory copy of the value.  We thought that since we
+    // do not know how long the users callback will take to be called,
+    // this is best.  Clearly this is nothing like how stream data is
+    // passed between blocks.  Stream data passing uses larger lock-less
+    // inter-thread shared circular buffers.
 
-    return 0;
+    // Allocate a value buffer on the stack.  It's assumed to be small
+    // like the size of a pointer, or a little larger.  There is no limit,
+    // but performance is something to consider.
+    uint8_t value[s->parameter.size];
+
+    // This needs to be quick: lock, copy, and unlock.
+    CHECK(pthread_mutex_lock(s->mutex));
+
+    // Note: before this lock was set we do not know how many times the
+    // value has changed.  This currently queues/saves the last value set.
+    s->haveValueQueued = false;
+
+    // copy the data to the value on to the stack memory in value[].
+    memcpy(value, s->value, s->parameter.size);
+    
+
+    CHECK(pthread_mutex_unlock(s->mutex));
+
+    // Now we do not know how long this will take.  The users setCallback
+    // may change the contents of value, but the value memory will only be
+    // valid while the function is being called.  They may copy the value
+    // yet again.  Note: again, nothing like stream data...
+    //
+    return s->setCallback(&s->parameter, value,
+            s->parameter.size, s->userData);
 }
-
-
-static
-bool SetterCheckTriggerCB(struct QsSetter *setter) {
-
-    return true;
-}
-
-
-
 
 
 // TODO: We should consider ways to engineer out all the wrong modes in
@@ -459,11 +487,17 @@ int qsParameterConnect(struct QsParameter *p0,
                     ((struct QsConstant *)p0)->value, p0->size);
         } else {
             // We are connecting from getter to setter.
-            setter->trigger = AllocateTrigger(sizeof(*setter->trigger),
+            AllocateTrigger(sizeof(*setter->trigger),
                     p1->block,
                     QsSetterT, (int (*)(void *)) SetterTriggerCB,
-                    setter, (bool (*)(void *)) SetterCheckTriggerCB,
+                    setter/*userData*/, (bool (*)(void *)) 0,
                     false/*isSource*/);
+            // Triggers are managed by the block so we do not need the
+            // pointer at this time.  The block will have it.
+            //
+            // setter->trigger gets set later at TriggerStart().
+            // We use setter->trigger as a flag to know that the
+            // setter is triggering or not.
         }
     } else {
         // p0 and p1 are a constant parameters
@@ -489,7 +523,6 @@ int qsParameterConnect(struct QsParameter *p0,
 }
 
 
-
 uint32_t qsParameterGetterPush(struct QsParameter *p,
         const void *value) {
 
@@ -502,23 +535,38 @@ uint32_t qsParameterGetterPush(struct QsParameter *p,
         struct QsSetter *s = g->setters[i];
         DASSERT(s);
         DASSERT(s->feeder == p);
-        DASSERT(((struct QsParameter *)s)->type == p->type);
-        DASSERT(((struct QsParameter *)s)->size == p->size);
+        DASSERT(s->parameter.type == p->type);
+        DASSERT(s->parameter.size == p->size);
 
         CHECK(pthread_mutex_lock(s->mutex));
+
+        if(!s->haveValueQueued) {
+            // queue up this event.
+            //
+            // We need an inner mutex lock.  Kind of scary.
+            CHECK(pthread_mutex_lock(&
+                    ((struct QsBlock *)p->block)->graph->mutex));
+
+            if(!s->trigger) {
+ERROR("FUCK");
+                // We let triggers be freed at flow time.
+                // We also let triggers be stopped at flow time.
+                CHECK(pthread_mutex_unlock(&
+                    ((struct QsBlock *)p->block)->graph->mutex));
+                CHECK(pthread_mutex_unlock(s->mutex));
+                continue;
+            }
+
+            // Queue a job for this trigger.
+            CheckAndQueueTrigger(s->trigger);
+
+            CHECK(pthread_mutex_unlock(&
+                    ((struct QsBlock *)p->block)->graph->mutex));
+            s->haveValueQueued = true;
+        }
+
         memcpy(s->value, value, p->size);
-
-        // queue up this event.
-        CHECK(pthread_mutex_lock(&
-                    ((struct QsBlock *)p->block)->graph->mutex));
-
-
-
-
-        CHECK(pthread_mutex_unlock(&
-                    ((struct QsBlock *)p->block)->graph->mutex));
-
-
+        
         CHECK(pthread_mutex_unlock(s->mutex)); 
     }
 
