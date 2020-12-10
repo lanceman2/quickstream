@@ -88,6 +88,15 @@ void FreeParameter(struct QsParameter *p) {
 
         struct QsGetter *g = (struct QsGetter *) p;
 
+        if(g->value) {
+            // The getter value is not set unless qsParameterSet() was
+            // called for it.
+#ifdef DEBUG
+            memset(g->value, 0, p->size);
+#endif
+            free(g->value);
+        }
+
         if(g->setters) {
             DASSERT(g->numSetters);
 #ifdef DEBUG
@@ -519,12 +528,146 @@ int qsParameterConnect(struct QsParameter *p0,
                 (struct QsSetter *) p1);
     }
 
+    // TODO: push values across connections, if we can.
+
     return 0;
 }
 
 
+// These are the only possible connections pairs.  Though very limited,
+// can effectively make very complex parameter passing topologies.
+//
+//
+//     Connection types              action
+//    ----------------------  ------------------------------------------
+//
+//    Getter    --> Setter    values pushed repeatedly after graph start
+//
+//    Constant <--> Constant  values set to all while graph is paused
+//                            and before start
+//
+//    Constant  --> Setter    OPTIONAL, setCallback() is called before
+//                            start
+//                            
+//
+//
+//
+//    Getter is always a source point.
+//    Setter is always a sink point.
+//    Setter is only connected to once or none.
+//
+//    Setters have no intrinsic value state.  They just have callbacks in
+//    the block that receive values.
+//
+//    Getters have no intrinsic value state, they just spits out values
+//    when the owner block tells it to.
+//
+//    Constant has intrinsic value state, which can only be changed when
+//    the graph is paused.  The value when changed is pushed to all
+//    parameters that are connected.  The topology of the Constant
+//    connections is always a fully connected topological graph for all
+//    Constants in the connection group.
+//
+//    Implementing: Constant --> Setter led to an unobvious interruption,
+//    so we made it optional with default being opt out, or not allowed.
+//    If the setter is connected to a Constant then the Setter's
+//    setCallback() will be called each time the Constant is connected or
+//    the connected Constants change as a group.  In some sense the nature
+//    of the setCallback() function as a stream graph flow time callback
+//    changes depending on if it is connected from a Constant or a
+//    Getter.  If the block writer does not understand this there may be
+//    bugs in the block.
+//
+//    The benefit of having the Getter and Setter, be a super class of
+//    parameter like Constant the blocks can more easily compare and share
+//    values between these objects, automatically finding
+//    incompatibilities.
+//
+
+
+// Called when graph is paused.  Parameter, p, must be a constant or a
+// getter.
+//
+void qsParameterSet(struct QsParameter *p, const void *value) {
+
+    // Catch API user coding errors.
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    ASSERT(p->block->block.graph->flowState == QsGraphPaused);
+    ASSERT(p->kind != QsSetter, "Parameter cannot be a setter");
+
+    DASSERT(p);
+    DASSERT(value);
+
+    // Constant parameters keep an internal value.
+    // Getter parameter just push values to setters but can be initialize
+    // here.
+
+    void *val;
+
+    if(p->kind == QsGetter) {
+        if(((struct QsGetter *)p)->value == 0) {
+            val = ((struct QsGetter *)p)->value = calloc(1, p->size);
+            ASSERT(val, "calloc(1,%zu) failed", p->size);
+        } else
+            val = ((struct QsGetter *)p)->value;
+    } else {
+        // kind == QsConstant
+        val = ((struct QsConstant *)p)->value;
+        DASSERT(val);
+    }
+    memcpy(val, value, p->size);
+}
+
+#if 0
+static int
+InitGetters(const char *name, struct QsParameter *p, void *userData) {
+
+    
+
+
+    return 0; // keep looping
+}
+
+
+// This is called just after the graph flow starts, in the main thread,
+// just after the block start()'s are called.
+//
+// Do the initial push to the setters if there is a getter value.
+//
+void GettersStart(struct QsGraph *g) {
+
+    DASSERT(g);
+    ASSERT(g->flowState == QsGraphPaused);
+    DASSERT(mainThread == pthread_self(), "Not graph main thread");
+
+    for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
+            if(b->isSuperBlock) continue;
+            struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
+            qsDictionaryForEach(smB->getters, 
+
+    }
+
+    DASSERT(p->kind != QsSetter, "Parameter cannot be a setter");
+
+
+
+
+}
+#endif
+
+
+// Called at flow-time.
+//
 uint32_t qsParameterGetterPush(struct QsParameter *p,
         const void *value) {
+
+    DASSERT(p);
+    DASSERT(p->block);
+    DASSERT(p->kind == QsGetter);
+    DASSERT(value);
+    DASSERT(p->block->block.graph);
+    ASSERT(p->block->block.graph->flowState == QsGraphFlowing);
+
 
     // Getters only connect to 0 to N setters.
 

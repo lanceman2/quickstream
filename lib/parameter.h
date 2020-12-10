@@ -48,9 +48,10 @@ struct QsConstant {
 
     void *value;
 
-    // Array of setter or constant parameters in other blocks that this
-    // constant parameter connects to.  This is constant at flow-time.
-    // Note: these connections can form a loop.
+    // Array of constant parameters in other blocks that this constant
+    // parameter connects to.  Constant parameters form a fully connected
+    // topological graph with all constants parameters that they connect
+    // with.
     uint32_t numConnections;
     struct QsParameter **connections;
 };
@@ -61,10 +62,15 @@ struct QsGetter {
     // We inherit a parameter
     struct QsParameter parameter;
 
+    // If set is from qsParameterSet(getter) call before the graph runs.
+    // We push it to Setters at the start of the graph run.
+    void *value;
+
     // Array of setter parameters in other blocks that this getter
     // parameter connects to.  This is constant at flow-time.
-    uint32_t numSetters;
     struct QsSetter **setters;
+    uint32_t numSetters;
+
 };
 
 
@@ -91,32 +97,30 @@ struct QsSetter {
     // We lock this mutex when 
     pthread_mutex_t *mutex;
 
+    // We need a mutex lock to access value.
+    //
+    // The current queued up value to be passed to setCallback() next
+    // time.
+    void *value;
+
     // This is a flow-time constant.  Passed to the setCallback().
     void *userData;
 
-    // TODO: remove this?
-    //
-    //Next setter in the blocks queue of setters to act on.
-    //
-    // This will change at flow-time.  The block that owns this setter
-    // parameter provides a mutex to w/r next and value.
-    //struct QsSetter *next;
+    int (*setCallback)(struct QsParameter *p,
+            void *value, size_t size, void *userData);
 
-    // This points to allocated memory that is written to before each
-    // setcallback() call.  We need the mutex lock to read or write to the
-    // memory that this points to.
-    void *value;
 
     // Flag that says we have a value loaded and it has not been read yet
     // and the trigger is queued.
     bool haveValueQueued;
 
-
-    int (*setCallback)(struct QsParameter *p,
-            void *value, size_t size, void *userData);
-
-    // Set if the feeder parameter is constant.
+    // Set if the feeder parameter can be constant or getter.
     //
-    // Feeders can be either constant or getters.
-    //bool feederIsConstant;
+    bool feederCanBeConstant;
+
+    bool feederIsConstant;
 };
+
+
+extern
+void GettersStart(struct QsGraph *g);

@@ -17,6 +17,7 @@ enum QsGraphFlowState {
     QsGraphPaused = 0,
     // start() callbacks have been called and stream buffers allocated
     // and superBlocks have been flattened (if that means anything).
+    // The API user should not see this graph state.
     QsGraphReady,
     // flowing or flushing
     QsGraphFlowing,
@@ -36,7 +37,11 @@ extern pthread_t mainThread;
 extern pthread_key_t _qsGraphKey;
 
 
+
 // Get the current block while in a block callback.
+//
+// TODO: more this to block.h
+//
 static inline
 struct QsBlock *GetBlock(void) {
     struct QsBlock *b = pthread_getspecific(_qsGraphKey);
@@ -59,6 +64,8 @@ struct QsGraph {
     // contains both simple blocks and super blocks.
     //
     // Note: super blocks do not have flow() and flush() functions.
+    // Super blocks basically do not run the flow, they are just for
+    // building the graph.
     //
     struct QsBlock *firstBlock, *lastBlock;
 

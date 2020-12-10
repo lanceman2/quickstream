@@ -5,14 +5,14 @@ set -ex
 # We run a few variations of threads and number of runs.
 
 ../bin/quickstream\
- -v 3\
+ -v 4\
  --threads 0\
- --block tests/getterTriggeredFromSignal getter\
+ --block tests/constant constant\
  --block tests/setter setter\
- --block tests/setter setter2\
- --parameters-connect getter getter setter setter\
- --parameters-connect getter getter setter2 setter\
+ --parameters-connect constant constant setter setter\
  --run
+
+exec ./success
 
 ../bin/quickstream\
  -v 3\

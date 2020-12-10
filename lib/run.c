@@ -204,7 +204,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
 
 
     ////////////////////////////////////////////////////////////////////
-    // This next function call needs to be blocking system call:
+    // This next function call needs to be a blocking system call:
     ////////////////////////////////////////////////////////////////////
     //
     // 0. pause(2) works if there is just one thread running this
@@ -227,7 +227,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
 
 
     if(haveSigTrigger) {
-        // Flag to signal trigger's signal handler not to jump.
+        // Flag to signal trigger's signal handler not to jump now.
         sig->aboutToPause = 0;
         // Check if we had a signal event for this sig trigger.
         CheckAndQueueTrigger((struct QsTrigger *) sig);

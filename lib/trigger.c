@@ -232,9 +232,7 @@ void TriggerStart(struct QsTrigger *t) {
         }
         break;
         case QsSetterT:
-        {
             ((struct QsSetter *)t->userData)->trigger = t;
-        }
         break;
         case QsStream:
         {

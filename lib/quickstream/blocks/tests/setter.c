@@ -19,7 +19,7 @@ int set_CB(struct QsParameter *p,
 
     DASSERT(size == sizeof(double));
 
-    WARN("         SETTING value = %lg", *((double *) value));
+    NOTICE("         SETTING value = %lg", *((double *) value));
 
     //if(*(double*)value > 10.0) return 1;
 
