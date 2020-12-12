@@ -151,7 +151,7 @@ void *AllocateParameter(const char *parameterKind,
     DASSERT(pdict);
     DASSERT(psize);
     DASSERT(structSize > sizeof(struct QsParameter));
-    DASSERT(((struct QsBlock *)b)->isSuperBlock == false);
+    DASSERT(b->block.isSuperBlock == false);
 
     // Check that parameter name is not already present in blocks
     // list of this kind of parameter.
@@ -162,7 +162,7 @@ void *AllocateParameter(const char *parameterKind,
     }
     // A constant parameter also can't have the same name as a setter and
     // the setters are not in the same dictionary as the constants, so we
-    // need another name check for 2 cases:
+    // need another parameter name check for 2 cases:
     //
     // 1. This is a setter and we can't have a constant with that name:
     // 2. This is a constant and we can't have a setter with that name:
@@ -217,43 +217,48 @@ void *AllocateParameter(const char *parameterKind,
 
 
 struct QsParameter *
-qsParameterSetterCreate(struct QsBlock *b, const char *pname,
-        enum QsParameterType type, size_t psize,
-        int (*setCallback)(struct QsParameter *p,
-            void *value, size_t size, void *userData),
-        void (*cleanup)(struct QsParameter *, void *userData),
-        void *userData, uint32_t flags) {
+qsParameterGetterCreate(struct QsBlock *b, const char *pname,
+        enum QsParameterType type, size_t psize, void *initVal) {
 
     GET_OWNER_BLOCK(b);
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
-    struct QsSetter *p = AllocateParameter("Setter",
-        smB,
-        smB->setters, psize, type, b->name, pname,
-        QsSetter, sizeof(*p));
+    struct QsGetter *p = AllocateParameter("Getter",
+        smB, smB->getters, psize, type, b->name, pname,
+        QsGetter, sizeof(*p));
     if(!p) return 0;
-    p->userData = userData;
-    p->setCallback = setCallback;
-    p->mutex = &smB->mutex;
-    p->value = calloc(1, psize);
-    ASSERT(p->value, "calloc(1,%zu) failed", psize);
+
+    if(initVal) {
+        p->value = malloc(psize);
+        ASSERT(p->value, "malloc(%zu) failed", psize);
+        memcpy(p->value, initVal, psize);
+    }
 
     return (struct QsParameter *) p;
 }
 
 
 struct QsParameter *
-qsParameterGetterCreate(struct QsBlock *b, const char *pname,
-        enum QsParameterType type, size_t psize) {
+qsParameterSetterCreate(struct QsBlock *b, const char *pname,
+        enum QsParameterType type, size_t psize,
+        int (*setCallback)(struct QsParameter *p,
+            void *value, size_t size, void *userData),
+        void *userData, uint32_t flags) {
 
     GET_OWNER_BLOCK(b);
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
-    struct QsGetter *p = AllocateParameter("Getter",
-        smB,
-        smB->getters, psize, type, b->name, pname,
-        QsGetter, sizeof(*p));
+    struct QsSetter *p = AllocateParameter("Setter",
+        smB, smB->setters, psize, type, b->name, pname,
+        QsSetter, sizeof(*p));
     if(!p) return 0;
+    p->userData = userData;
+    p->setCallback = setCallback;
+    p->mutex = &smB->mutex;
+    // p->value will be free()ed in FreeParameter().
+    p->value = calloc(1, psize);
+    ASSERT(p->value, "calloc(1,%zu) failed", psize);
+    p->callbackWhilePaused = flags & QS_SETS_WHILE_PAUSED;
 
     return (struct QsParameter *) p;
 }
@@ -261,14 +266,16 @@ qsParameterGetterCreate(struct QsBlock *b, const char *pname,
 
 struct QsParameter *
 qsParameterConstantCreate(struct QsBlock *b, const char *pname,
-        enum QsParameterType type, size_t psize, void *initialVal) {
+        enum QsParameterType type, size_t psize,
+        void (*setCallback)(struct QsParameter *p,
+            void *value, size_t size, void *userData),
+        void *userData, const void *initialVal) {
 
     GET_OWNER_BLOCK(b);
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsConstant *p = AllocateParameter("Constant",
-        smB,
-        smB->getters, psize, type, b->name, pname,
+        smB, smB->getters, psize, type, b->name, pname,
         QsConstant, sizeof(*p));
     if(!p) return 0;
 
@@ -413,11 +420,33 @@ int SetterTriggerCB(struct QsSetter *s) {
 }
 
 
+// This is called when the value is changed in a connected group of parameters that
+// has a constant parameter in the group.
+//static
+void PushContantValues(struct QsConstant *c, void *value) {
+
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+
+    // MORE HEREEEEEEEEEEEEEEEEEEEEEEEEEEEE
+
+}
+
+void qsParameterDisconnect(struct QsParameter *p, struct QsParameter *p1) {
+
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    DASSERT(p);
+
+    // TODO: Oh, what fun it will be to write this.
+
+}
+
+
+
 // TODO: We should consider ways to engineer out all the wrong modes in
 // the input parameters of this function, instead of adding all these
 // stupid failure if() checks in this function.
 //
-// Connect from p0  to p1
+// Connect from p0 to p1
 //
 int qsParameterConnect(struct QsParameter *p0,
         struct QsParameter *p1) {
@@ -533,56 +562,78 @@ int qsParameterConnect(struct QsParameter *p0,
     return 0;
 }
 
+/** 
+ 
+  TODO: move this comment block to the doxygen docs.
 
-// These are the only possible connections pairs.  Though very limited,
-// can effectively make very complex parameter passing topologies.
-//
-//
-//     Connection types              action
-//    ----------------------  ------------------------------------------
-//
-//    Getter    --> Setter    values pushed repeatedly after graph start
-//
-//    Constant <--> Constant  values set to all while graph is paused
-//                            and before start
-//
-//    Constant  --> Setter    OPTIONAL, setCallback() is called before
-//                            start
-//                            
-//
-//
-//
-//    Getter is always a source point.
-//    Setter is always a sink point.
-//    Setter is only connected to once or none.
-//
-//    Setters have no intrinsic value state.  They just have callbacks in
-//    the block that receive values.
-//
-//    Getters have no intrinsic value state, they just spits out values
-//    when the owner block tells it to.
-//
-//    Constant has intrinsic value state, which can only be changed when
-//    the graph is paused.  The value when changed is pushed to all
-//    parameters that are connected.  The topology of the Constant
-//    connections is always a fully connected topological graph for all
-//    Constants in the connection group.
-//
-//    Implementing: Constant --> Setter led to an unobvious interruption,
-//    so we made it optional with default being opt out, or not allowed.
-//    If the setter is connected to a Constant then the Setter's
-//    setCallback() will be called each time the Constant is connected or
-//    the connected Constants change as a group.  In some sense the nature
-//    of the setCallback() function as a stream graph flow time callback
-//    changes depending on if it is connected from a Constant or a
-//    Getter.  If the block writer does not understand this there may be
-//    bugs in the block.
-//
-//    The benefit of having the Getter and Setter, be a super class of
-//    parameter like Constant the blocks can more easily compare and share
-//    values between these objects, automatically finding
-//    incompatibilities.
-//
+
+ These are the only possible connections pairs.  Though very limited,
+ can effectively make very complex parameter passing topologies.
+
+
+     Connection types              action
+    ----------------------  ------------------------------------------
+
+    Getter    --> Setter    values pushed repeatedly after graph start
+
+    Constant <--> Constant  values set to all while graph is paused
+                            and before start
+
+    Constant  --> Setter    OPTIONAL, setCallback() is called before
+                            start (at pause) each time the connection
+                            group value changes
+
+
+
+    Getter is always a source point.
+    Setter is always a sink point.
+    Setter is only connected to once or none.
+
+
+    The Getter's value cannot be set from outside the block code.  We
+    think of it as a way for a block to publish values as it runs.
+
+    The is there is a value in Setter parameter's connected group of
+    parameters and QS_SETS_WHILE_PAUSED is set, the Setter's setCallback()
+    will be called just before the block's start().  After the first time
+    the Setter's setCallback() is called it will not be called again
+    until there is a value pushed from the connected parameters or it is
+    reconnected to a new group with a value to push.
+
+    Constant parameter has intrinsic value state, which can only be
+    changed when the graph is paused.  The value when changed is
+    immediately pushed to all parameters that are connected.  The topology
+    of the Constant connections is always a fully connected topological
+    graph for all Constants and Setters connected to the group.  At the
+    time of a connection the parameter that is the "from" argument will
+    have the priority for being the value, if it has a value yet.
+
+    Implementing: Constant --> Setter causes the setters setCallback() to
+    be called after every time the value is set but only if the graph is
+    not paused if the setters QS_SETS_WHILE_PAUSED flag is not set.
+
+    The benefit of having the Getter, Setter, and Constant be a super
+    class of parameter can make it so that we can more easily compare
+    and share values between these objects, automatically finding data
+    value size and type compatibilities.
+
+    This parameter idea screams for an interface with C++ template
+    functions.  C++ template functions could be a little more efficient
+    than the C functions.  One could consider making the C++ version the
+    native implementation instead of making C++ wrappers of the C
+    functions.
+
+    If one wishes to change a parameter continuously, then said parameter
+    is no longer a parameter and it should be implemented as a series of
+    values in a quickstream stream.
+
+*/
+
+
+int qsParameterGetValue(struct QsParameter *p, void *value) {
+
+    return 0;
+}
 
 
 // Called when graph is paused.  Parameter, p, must be a constant or a
@@ -727,24 +778,28 @@ static
 int PrintParameterCB(const char *pname, struct QsParameter *p,
             FILE *file) {
 
-    if(p->kind == QsConstant)
-        fprintf(file, "Constant ");
-    if(p->kind == QsGetter)
-        fprintf(file, "Getter   ");
-    if(p->kind == QsSetter)
-        fprintf(file, "Setter   ");
+    switch(p->kind) {
+        case QsConstant:
+            fprintf(file, "Constant ");
+            break;
+        case QsGetter:
+            fprintf(file, "Getter   ");
+            break;
+        case QsSetter:
+            fprintf(file, "Setter   ");
+    }
 
     switch(p->type) {
-        case QS_NONE:
+        case QsNone:
             fprintf(file, "NONE   %4zu ", p->size);
             break;
-        case QS_DOUBLE:
+        case QsDouble:
             fprintf(file, "DOUBLE %4zu ", p->size);
             break;
-        case QS_FLOAT:
+        case QsFloat:
             fprintf(file, "FLOAT  %4zu ", p->size);
             break;
-        case QS_UINT64:
+        case QsUint64:
             fprintf(file, "UINT64 %4zu ", p->size);
             break;
     }

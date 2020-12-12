@@ -748,6 +748,15 @@ https://raw.githubusercontent.com/lanceman2/quickstream.doc/master/jobFlow.png)
 
 - https://www.valgrind.org/ ya that added to development tests.
 
+- Add a auto-run feature to the GUI editor.  The graph runs and when a
+  connection is added or removed it stops just before and starts just
+  after automatically.  The reallocation of stream buffers needs to
+  be lazy, making it quicker.
+
+- The order in which blocks construct() and start() are called needs to be
+  editable when the graph is paused.  The order of stop(), destroy(), and
+  unload will be the reverse of this order.
+
 
 ## Things to do before a release
 

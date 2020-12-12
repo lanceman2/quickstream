@@ -57,7 +57,9 @@ int triggerCallback(struct QsParameter *p) {
 int bootstrap(void) {
 
 
-    getter = qsParameterGetterCreate(0, "getter", QS_DOUBLE, sizeof(val));
+    getter = qsParameterGetterCreate(0, "getter", QsDouble, sizeof(val),
+            &val);
+
     DASSERT(getter);
 
     qsTriggerSignalCreate(SIGALRM, (int (*)(void *)) triggerCallback,

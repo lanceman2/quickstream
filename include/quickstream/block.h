@@ -19,10 +19,10 @@ struct QsGraph;
 
 enum QsParameterType {
 
-    QS_NONE = 0,
-    QS_DOUBLE,
-    QS_FLOAT,
-    QS_UINT64
+    QsNone = 0,
+    QsDouble,
+    QsFloat,
+    QsUint64
 };
 
 
@@ -49,14 +49,11 @@ enum QsParameterType {
 #define QS_DEFAULTTHRESHOLD        ((size_t) 1)
 
 
-/** bit flag to mark keeping parameter get callback across restarts. */
-#define QS_KEEP_AT_RESTART (02)
-/** free get callback user data */
-#define QS_FREE_USERDATA   (04)
-/** queue up callback before flow() */
-#define QS_Q_BEFORE_FLOW   (010)
-/** queue up callback after flow() */
-#define QS_Q_AFTER_FLOW    (020)
+/** bit flags for creating parameters */
+
+/** With \p QS_SETS_WHILE_PAUSED set in qsParameterSetterCreate() a
+ setter parameter will be it's callback may be called before start. */
+#define QS_SETS_WHILE_PAUSED (01)
 
 
 
@@ -102,11 +99,11 @@ enum QsParameterType {
  that may be related, copy the data in what ever form the block needs, and
  return.
 
-\param cleanup
+ \param userData
 
-\param userData
-
-\param flags
+ \param flags bit mask of flags.  Setting QS_SETS_WHILE_PAUSED makes it so
+ that \p setCallback can be called before flow start and it may be
+ connected to a constant parameter.
 
  \return a setter parameter pointer on success, and 0 is returned if
  the parameter already exists and the QS_GET flag was not used, or the
@@ -119,7 +116,6 @@ qsParameterSetterCreate(struct QsBlock *block, const char *pname,
         enum QsParameterType type, size_t psize,
         int (*triggerCallback)(struct QsParameter *p,
             void *value, size_t size, void *userData),
-        void (*cleanup)(struct QsParameter *, void *userData),
         void *userData, uint32_t flags);
 
 
@@ -127,12 +123,14 @@ qsParameterSetterCreate(struct QsBlock *block, const char *pname,
 
 /** create an changing output parameter, or getter parameter
 
+ /param initialValue if set will be the first value sent to all connected
+ setter parameters.
+
  */
 extern
 struct QsParameter *
 qsParameterGetterCreate(struct QsBlock *block, const char *pname,
-        enum QsParameterType type, size_t psize);
-
+        enum QsParameterType type, size_t psize, void *initialValue);
 
 
 /** check if a getter parameter is connected
@@ -157,13 +155,34 @@ qsParameterNumConnections(struct QsParameter *getter);
  parameters just before each stream graph start.  Constant parameters may
  also be connected any number of other constant parameters.
 
+
+ \param setCallback if set, is called any time there is a different value
+ set.  Since constant parameter do not change while the stream is running
+ when \p setCallback is called it is called in the list and thread with
+ all the blocks that are listening to this parameter channel, as apposed
+ to setter parameters, which get their \p setCallbacks called while the
+ stream is running/flowing.
+
+ As an alternative to using the \p setCallback a quickstream API user can
+ poll the current value with qsParameterGetValue().
+
  */
 extern
 struct QsParameter *
 qsParameterConstantCreate(struct QsBlock *block, const char *pname,
-        enum QsParameterType type, size_t psize, void *initialVal);
+        enum QsParameterType type, size_t psize,
+        void (*setCallback)(struct QsParameter *p,
+            void *value, size_t size, void *userData),
+        void *userData, const void *initialVal);
 
 
+// Called when graph is paused.  Parameter, p, must be a constant or a
+// getter, or a disconnected setter.
+//
+// TODO: Should a simple block be allowed to call this?
+//
+extern
+void qsParameterSet(struct QsParameter *p, const void *value);
 
 
 /** Push a getter parameter to all setter parameters that are connected
@@ -191,6 +210,24 @@ extern
 uint32_t qsParameterGetterPush(struct QsParameter *getter,
         const void *value);
 
+
+/** Get the last parameter value that was pushed or set
+
+ Calling qsParameterGetValue() does not effect when and if a setter parameter's
+ setCallback is called, this just poll the last queued setter parameter value.
+
+ \param p a pointer to a parameter.
+
+ \param value points to memory that the caller manages.  The memory must be of
+ size that is the size of the parameter.
+
+ /param p must be a getter, setter or constant parameter.
+
+ /return 0 is a value was set, 1 if there was no value set yet, and -1 on error
+ and \p value is not set.
+*/
+extern int
+qsParameterGetValue(struct QsParameter *p, void *value);
 
 
 /*
@@ -379,6 +416,7 @@ void qsSetInputReadPromise(uint32_t inputPortNum, size_t len);
  */
 extern
 void qsCreateOutputBuffer(uint32_t outputPortNum, size_t maxWriteLen);
+
 
 /** create a "pass-through" buffer
 

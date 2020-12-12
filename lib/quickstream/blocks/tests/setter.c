@@ -37,8 +37,8 @@ int bootstrap(void) {
 
     DSPEW("count = %d", count++);
 
-    qsParameterSetterCreate(0, "setter", QS_DOUBLE, sizeof(double),
-        set_CB, setCleanup_CB, 0, 0);
+    qsParameterSetterCreate(0, "setter", QsDouble, sizeof(double),
+        set_CB, 0, 0);
 
     return 0; // 0 => success
 }

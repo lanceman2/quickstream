@@ -275,6 +275,20 @@ extern
 int qsParameterConnect(struct QsParameter *from, struct QsParameter *to);
 
 
+/** Disconnect a parameter
+
+ \param p parameter to disconnect from.
+
+ \param p1 if set will be the only parameter disconnected from all
+ parameters that are connected to this parameter connection group.  If \p
+ p1 is not set parameter \p p will disconnect from all other parameters in
+ the graph.
+
+ */
+extern
+void qsParameterDisconnect(struct QsParameter *p, struct QsParameter *p1);
+
+
 /** Super block exposing a parameter of an inner block
 
  */

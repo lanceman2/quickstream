@@ -46,14 +46,32 @@ struct QsConstant {
     // We inherit a parameter
     struct QsParameter parameter;
 
+    // Current value.  This pointer points to memory that is shared by all
+    // connected parameters.
     void *value;
 
-    // Array of constant parameters in other blocks that this constant
+    // Called each time the value changes.  The value can only change
+    // while the stream flow is paused, so no mutex is needed.
+    void (*setCallback)(struct QsParameter *p,
+            void *value, size_t size, void *userData);
+
+    // Array of constant parameters in all blocks that this constant
     // parameter connects to.  Constant parameters form a fully connected
     // topological graph with all constants parameters that they connect
-    // with.
-    uint32_t numConnections;
+    // with.  Some connections may be setter parameters.
+    //
+    // connections points to an array that is shared by all connections
+    // that connect to this parameter.  This starts with array size 0 and
+    // jumps to 2 when the first connection happens so that it includes a
+    // pointer for this constant and the other parameter that it connects
+    // to.
     struct QsParameter **connections;
+    //
+    // numConnections is the array size of the connections pointers.  We
+    // end up will many copies of this number (with the same value), one
+    // in each constant parameter that this constant parameter connect
+    // to.  
+    uint32_t numConnections;
 };
 
 
@@ -62,15 +80,18 @@ struct QsGetter {
     // We inherit a parameter
     struct QsParameter parameter;
 
-    // If set is from qsParameterSet(getter) call before the graph runs.
+    // If set is the initial value from qsParameterGetterCreate() call
+    // before the graph runs.
     // We push it to Setters at the start of the graph run.
+    //
+    // We store the last value that was sent, which can be retrieved with
+    // qsParameterGetValue().
     void *value;
 
     // Array of setter parameters in other blocks that this getter
     // parameter connects to.  This is constant at flow-time.
     struct QsSetter **setters;
     uint32_t numSetters;
-
 };
 
 
@@ -92,12 +113,17 @@ struct QsSetter {
     //
     struct QsParameter *feeder;
 
-    // Setters can be read while the stream is flowing and the value
-    // is passed from one block's thread to another block's thread.
-    // We lock this mutex when 
+    // Setters can be read while the stream is flowing and the value is
+    // passed from one block's thread to another block's thread.  We use
+    // this mutex when access value, and this is not connected to a
+    // constant parameter.
+    //
+    // mutex is set, pointing to the owner block mutex, if the feeder is a
+    // getter parameter.  mutex is 0 if feeders are constant parameters.
     pthread_mutex_t *mutex;
 
-    // We need a mutex lock to access value.
+    // We need a mutex lock to access value, when no connected to a
+    // constant parameter.
     //
     // The current queued up value to be passed to setCallback() next
     // time.
@@ -116,9 +142,9 @@ struct QsSetter {
 
     // Set if the feeder parameter can be constant or getter.
     //
-    bool feederCanBeConstant;
-
-    bool feederIsConstant;
+    // This is a block writer option.
+    //
+    bool callbackWhilePaused;
 };
 
 
