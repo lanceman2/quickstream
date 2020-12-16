@@ -48,18 +48,18 @@ int startItimer(void) {
 }
 #endif
 
-void setCallback(struct QsParameter *p, double *value,
-        size_t size, void *userData) {
+static
+void setCallback(struct QsParameter *p, double *value, void *userData) {
 
-
+    DSPEW("value=%lg\n", *value);
 }
 
 
-int bootstrap(void) {
+int declare(void) {
 
     constant = qsParameterConstantCreate(0, "constant", QsDouble,
             sizeof(double),
-            (void (*)(struct QsParameter *p, void *v, size_t s, void *u))
+            (void (*)(struct QsParameter *p, void *v, void *u))
             setCallback,
             0, &val);
 
@@ -69,11 +69,13 @@ int bootstrap(void) {
     return 0; // 0 => success
 }
 
+
 int start(uint32_t numInPorts, uint32_t numOutPorts) {
 
 
     return 0; // success
 }
+
 
 int stop(uint32_t numInPorts, uint32_t numOutPorts) {
 

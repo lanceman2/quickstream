@@ -6,7 +6,7 @@
 static int count = 0;
 
 
-int bootstrap(void) {
+int declare(void) {
 
     DSPEW("count = %d", count++);
 

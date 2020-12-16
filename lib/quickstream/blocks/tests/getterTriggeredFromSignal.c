@@ -54,7 +54,7 @@ int triggerCallback(struct QsParameter *p) {
 }
 
 
-int bootstrap(void) {
+int declare(void) {
 
 
     getter = qsParameterGetterCreate(0, "getter", QsDouble, sizeof(val),

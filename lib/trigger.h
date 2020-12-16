@@ -10,7 +10,7 @@ struct QsSignal *sig;
 
 enum QsTriggerKind {
 
-    QsSetterT, // for calling setter parameter callback
+    QsSetterTrigger, // for calling setter parameter callback
     QsStream,  // for calling flow() and flush() block functions
     QsSignal   // OS signal trigger callback
 };

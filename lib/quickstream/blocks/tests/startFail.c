@@ -4,7 +4,7 @@
 
 
 
-int bootstrap(void) {
+int declare(void) {
 
 
     return 0; // 0 => success

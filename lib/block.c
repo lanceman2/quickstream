@@ -128,7 +128,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // 5. Add block to graph's block Dictionary list
     // 6. Add this block to the graph doubly linked list of blocks.
     // 7. Get callbacks
-    // 8. Call bootscrap()
+    // 8. Call declare()
     // 9. Add cleanup callback for block's entry in graph block Dictionary
 
     DASSERT(graph);
@@ -372,12 +372,12 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
 
     ///////////////////////////////////////////////////////////////////
-    // 8. Call bootscrap()
+    // 8. Call declare()
     ///////////////////////////////////////////////////////////////////
 
-    int (*bootstrap)(void) = dlsym(dlhandle, "bootstrap");
-    if(bootstrap == 0) {
-        ERROR("dlsym(, \"bootstrap\") failed: %s", dlerror());
+    int (*declare)(void) = dlsym(dlhandle, "declare");
+    if(declare == 0) {
+        ERROR("dlsym(, \"declare\") failed: %s", dlerror());
         free(path);
         qsDictionaryRemove(entry, blockName);
         qsBlockUnload_noDestory(b);
@@ -385,7 +385,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     }
 
 
-    // Setup thread specfic data for bootstrap call.
+    // Setup thread specfic data for declare call.
     // And Make this re-entrant code.
     //
     struct QsBlock *oldBlock = pthread_getspecific(_qsGraphKey);
@@ -402,7 +402,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     //
     b->inWhichCallback = _QS_IN_BOOTSTRAP;
 
-    ret = bootstrap();
+    ret = declare();
 
     b->inWhichCallback = _QS_IN_NONE;
 
@@ -412,7 +412,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     if(ret) {
 
         if(ret < 0) {
-            ERROR("bootstrap() failed for block named \"%s\"", b->name);
+            ERROR("delcare() failed for block named \"%s\"", b->name);
             free(path);
             qsDictionaryRemove(entry, blockName);
             qsBlockUnload_noDestory(b);
@@ -420,7 +420,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         }
         // In this case we keep a block that is a struct in the program
         // but there will be no more calling callbacks from the DSO.
-        DSPEW("bootstrap() returned %d removing callbacks"
+        DSPEW("declare() returned %d removing callbacks"
                 " for block named \"%s\"",
                 ret, b->name);
         dlclose(dlhandle);
@@ -459,7 +459,7 @@ void qsBlockUnload(struct QsBlock *b) {
         void (*destroy)(void) = dlsym(b->dlhandle, "destroy");
 
         if(destroy) {
-            // Setup thread specfic data for bootstrap call.
+            // Setup thread specfic data for declare() call.
             // And Make this re-entrant code.
             //
             struct QsBlock *oldBlock = pthread_getspecific(_qsGraphKey);

@@ -217,6 +217,7 @@ void TriggerStart(struct QsTrigger *t) {
     DASSERT(t);
 
     if(t->isRunning) return;
+    t->isRunning = true;
 
     switch(t->kind) {
 
@@ -231,8 +232,14 @@ void TriggerStart(struct QsTrigger *t) {
             CHECK(sigaction(((struct QsSignal *) t)->signum, &act, 0));
         }
         break;
-        case QsSetterT:
-            ((struct QsSetter *)t->userData)->trigger = t;
+        case QsSetterTrigger:
+        {
+            // There is a setter that is connected to a 
+            struct QsSetter *s = (struct QsSetter *) t->userData;
+            s->trigger = t;
+            DASSERT(s->parameter.first->kind == QsGetter);
+            QueueUpSetterFromGetter(s, s->parameter.first);
+        }
         break;
         case QsStream:
         {
@@ -240,8 +247,6 @@ void TriggerStart(struct QsTrigger *t) {
         }
         break;
     }
-
-    t->isRunning = true;
 }
 
 
@@ -265,7 +270,7 @@ void TriggerStop(struct QsTrigger *t) {
             CHECK(sigaction(((struct QsSignal *) t)->signum, &act, 0));
         }
         break;
-        case QsSetterT:
+        case QsSetterTrigger:
             ((struct QsSetter *)t->userData)->trigger = 0;
         break;
         case QsStream:

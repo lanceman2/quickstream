@@ -4,15 +4,15 @@ set -ex
 
 # We run a few variations of threads and number of runs.
 
+
 ../bin/quickstream\
  -v 3\
  --threads 0\
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
- --block tests/setter setter2\
  --parameters-connect getter getter setter setter\
- --parameters-connect getter getter setter2 setter\
  --run
+
 
 ../bin/quickstream\
  -v 3\
@@ -28,5 +28,6 @@ set -ex
  --run\
  --run\
  --run
+
 
 exec ./success

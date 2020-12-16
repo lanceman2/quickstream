@@ -6,7 +6,7 @@
 
 
 
-int bootstrap(void) {
+int declare(void) {
 
     DSPEW();
 

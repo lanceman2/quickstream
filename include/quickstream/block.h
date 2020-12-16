@@ -57,6 +57,72 @@ enum QsParameterType {
 
 
 
+/** \section quickstream parameters
+ 
+
+ These are the only possible connections pairs.  Though very limited,
+ can effectively make very complex parameter passing topologies.
+
+
+     Connection types              action
+    ----------------------  ------------------------------------------
+
+    Getter    --> Setter    values pushed repeatedly after graph start
+
+    Constant <--> Constant  values set to all while graph is paused
+                            and before start
+
+    Constant  --> Setter    OPTIONAL, setCallback() is called before
+                            start (at pause) each time the connection
+                            group value changes
+
+
+
+    Getter is always a source point.
+    Setter is always a sink point.
+    Setter is only connected to once or none.
+
+
+    The Getter's value cannot be set from outside the block code.  We
+    think of it as a way for a block to publish values as it runs.
+
+    The is there is a value in Setter parameter's connected group of
+    parameters and QS_SETS_WHILE_PAUSED is set, the Setter's setCallback()
+    will be called just before the block's start().  After the first time
+    the Setter's setCallback() is called it will not be called again
+    until there is a value pushed from the connected parameters or it is
+    reconnected to a new group with a value to push.
+
+    Constant parameter has intrinsic value state, which can only be
+    changed when the graph is paused.  The value when changed is
+    immediately pushed to all parameters that are connected.  The topology
+    of the Constant connections is always a fully connected topological
+    graph for all Constants and Setters connected to the group.  At the
+    time of a connection the parameter that is the "from" argument will
+    have the priority for being the value, if it has a value yet.
+
+    Implementing: Constant --> Setter causes the setters setCallback() to
+    be called after every time the value is set but only if the graph is
+    not paused if the setters QS_SETS_WHILE_PAUSED flag is not set.
+
+    The benefit of having the Getter, Setter, and Constant be a super
+    class of parameter can make it so that we can more easily compare
+    and share values between these objects, automatically finding data
+    value size and type compatibilities.
+
+    This parameter idea screams for an interface with C++ template
+    functions.  C++ template functions could be a little more efficient
+    than the C functions.  One could consider making the C++ version the
+    native implementation instead of making C++ wrappers of the C
+    functions.
+
+    If one wishes to change a parameter continuously, then said parameter
+    is no longer a parameter and it should be implemented as a series of
+    values in a quickstream stream.
+*/
+
+
+
 /** create an input parameter, or setter parameter
 
  Create an input parameter.  Input parameters are values that can be set
@@ -80,25 +146,9 @@ enum QsParameterType {
  If this value is an array the \p psize is the total size in bytes of
  the array.
 
- \verbinclude triggerCallback.dox
+ \param setCallback user callback that is called any time the parameter is set
+ by a 
  
- \p triggerCallback is the callback function that will be called before
- or after the block flow() function, after each time a connected getter
- parameter changes.  The parameter \p value that is passed to triggerCallback
- points to memory that only exists while the triggerCallback function is being
- called; the triggerCallback function may change the contents of this memory,
- but if the contents is needed after the triggerCallback function is called
- then the contents must be copied.
-
- The \p triggerCallback function may call qsParameterGetterPush().
- 
- The \p triggerCallback function should avoid making long time blocking calls.
- The intent of this parameter mechanism is to just think of it a way to
- quickly pass small chunks of data asynchronously.  The triggerCallback()
- function should just qsParameterGetterPush() to any getter parameters
- that may be related, copy the data in what ever form the block needs, and
- return.
-
  \param userData
 
  \param flags bit mask of flags.  Setting QS_SETS_WHILE_PAUSED makes it so
@@ -106,18 +156,16 @@ enum QsParameterType {
  connected to a constant parameter.
 
  \return a setter parameter pointer on success, and 0 is returned if
- the parameter already exists and the QS_GET flag was not used, or the
- \p psize and \p type do not match the existing parameter.
-
+ the parameter already exists, or other error.
  */
 extern
 struct QsParameter *
 qsParameterSetterCreate(struct QsBlock *block, const char *pname,
         enum QsParameterType type, size_t psize,
-        int (*triggerCallback)(struct QsParameter *p,
-            void *value, size_t size, void *userData),
-        void *userData, uint32_t flags);
-
+        int (*setCallback)(struct QsParameter *p,
+            void *value, void *userData),
+        void *userData, uint32_t flags,
+        const void *initialValue);
 
 
 
@@ -130,7 +178,8 @@ qsParameterSetterCreate(struct QsBlock *block, const char *pname,
 extern
 struct QsParameter *
 qsParameterGetterCreate(struct QsBlock *block, const char *pname,
-        enum QsParameterType type, size_t psize, void *initialValue);
+        enum QsParameterType type, size_t psize,
+        const void *initialValue);
 
 
 /** check if a getter parameter is connected
@@ -172,7 +221,7 @@ struct QsParameter *
 qsParameterConstantCreate(struct QsBlock *block, const char *pname,
         enum QsParameterType type, size_t psize,
         void (*setCallback)(struct QsParameter *p,
-            void *value, size_t size, void *userData),
+            void *value, void *userData),
         void *userData, const void *initialVal);
 
 
@@ -222,11 +271,8 @@ uint32_t qsParameterGetterPush(struct QsParameter *getter,
  size that is the size of the parameter.
 
  /param p must be a getter, setter or constant parameter.
-
- /return 0 is a value was set, 1 if there was no value set yet, and -1 on error
- and \p value is not set.
 */
-extern int
+extern void
 qsParameterGetValue(struct QsParameter *p, void *value);
 
 
@@ -249,26 +295,26 @@ qsParameterGetValue(struct QsParameter *p, void *value);
         same program the runs the flow in the stream graph.
 
         The block plugin module may provide a file named
-        BLOCK_bootstrap.so which is a DSO (dynamic shared object) that
-        contains the bootstrap() function, where BLOCK is the plugin file
+        BLOCK_declare.so which is a DSO (dynamic shared object) that
+        contains the declare() function, where BLOCK is the plugin file
         name that contains the modules flow-time functions.  We use the
-        word bootstrap as it refers to a process of constructing without
-        external input.  https://en.wikipedia.org/wiki/Bootstrapping The
-        benefit of separating the plugin module into two DSO files is
-        that the bootstrap file may not need to link to any libraries that
-        may be needed for the module to run at run/flow-time.  To be
-        clear, we mean that bootstrap does not configure, and defines the
-        structure of the block in terms of just the q service uickbuild
-        *block* API and optional quickstream *build* API which can load
-        other blocks into super-blocks.
+        word declare as it refers to a process of constructing without
+        external input, it declares the block as it is seen from outside
+        the block.  The benefit of separating the plugin module into two
+        DSO files is that the declare file may not need to link to any
+        libraries that may be needed for the module to run at
+        run/flow-time.  To be clear, we mean that declare does not
+        configure, and defines the structure of the block in terms of just
+        the service quickbuild *block* API and optional quickstream
+        *build* API which can load other blocks into super-blocks.
 
-        For super blocks that create blocks the bootstrap() function may
-        load other module blocks, and call their bootstrap() functions.
+        For super blocks that create blocks the declare() function may
+        load other module blocks, and call their declare() functions.
 
     - **run** we link and load more code and can run the flow graph.  In
-        this mode getConfig() is called before construct().   If there is
-        a getConfig DSO file, then the getConfig() function in it must
-        be the same as the getConfig() in the run/flow-time plugin DSO
+        this mode declare() is called before construct().   If there is
+        a declare DSO file, then the declare() function in it must
+        be the same as the declare() in the run/flow-time plugin DSO
         file.  The optional file, named BLOCK_config.so, if it
         exists, is ignored in this **run** mode.
 */
@@ -516,18 +562,18 @@ int qsTriggerSignalCreate(int signum,
         void *userData);
 
 
-/** The block plugin bootstrap module callback function
+/** The block plugin declare module callback function
 
- The block plugin module bootstrap callback, \p bootstrap(), is the only
- required block plugin callback function.  \p bootstrap() can only call
- *builder* and *block* functions, or so called block bootstrap functions.
+ The block plugin module declare callback, \p declare(), is the only
+ required block plugin callback function.  \p declare() can only call
+ *builder* and *block* functions, or so called block declare functions.
  It should not access hardware devices, or initialize anything, for that
  would make the quickstream *builder* process use more resources than
  necessary.
 
- The bootstrap() function may setup options in it's block.
+ The declare() function may setup interfaces to it's block.
 
- bootstrap() is called when qsGraphLoadBlock() is called.
+ declare() is called when qsGraphLoadBlock() is called.
 
  \param graph is a pointer to the graph that was used to load this block
  module.
@@ -538,7 +584,7 @@ int qsTriggerSignalCreate(int signum,
 
  \memberof CBlockAPI
  */
-int bootstrap(void);
+int declare(void);
 
 
 

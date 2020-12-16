@@ -8,36 +8,88 @@ struct QsBlock;
 
 struct QsParameter {
 
-    // This struct is constant after it is created.
-
-    // The block that owns this parameter.  Super blocks do not
-    // own parameters.
+    // The block that owns this parameter.  Super blocks do not own
+    // parameters.
     struct QsSimpleBlock *block;
 
     // name of the parameter.  Unique for each block for all setters
-    // and unique for each block for all getters.
+    // and unique for each block for all getters.  strdup() memory.
     const char *name;
 
-    // size in bytes of the parameter data that is copied for each.
-    // If the value passed is a double array[5]; then size =
-    // 5*sizeof(double) or sizeof(array).
+    // This points to memory that is the size of parameter.  When
+    // connected to other parameters it sometimes points to the same
+    // memory as another parameter, depending on the kind of parameter and
+    // how it's connected.
+    void *value;
+
+    // Lots of little shit details here, i.e. the nature of the beast is
+    // complex, and there's no way around it.
+    //
+    // There are two kinds of lists of connections or connection groups:
+    //
+    //   1. Getter --> N Setters
+    //        In a group they all have the same list and the Getter is
+    //        "first" and they all have the same "numConnections".  There
+    //        can be only one Getter in the group.
+    //
+    //   2. Constants and Setters in a group
+    //        and that includes Constant  --> Setters
+    //        and               Constant <--> Constant
+    //        in a fully connected topology.
+    //        In a group they all have the same "first" and
+    //        "numConnections".
+    //        We require the convention that the "first" must be a
+    //        constant parameter.
+    //        There must be at least 1 constant in the group.
+    //        Therefore removing the last constant destroys the whole
+    //        connection group.
+    //        There can be 1,2,3,... constants in the group.
+    //        There can be 0,1,2,3,... setters in the group.
+    //
+    //
+    // The "first" and "numConnections" are repeated in every element
+    // parameter in the list.  "next" points to the next parameter in the
+    // list.  We tried other structures, but this seemed the simplest, and
+    // requires no memory allocations (beyond the parameter) to connect
+    // and disconnect any parameters, except "value" above.
+    //
+    // "next" keeps a singly linked list with each element having a
+    // pointer to the "first" and the count "numConnections".
+    //
+    // "numConnections" is more like the number of nodes in the connection
+    // group.
+    //
+    struct QsParameter *first; // first in the list
+    struct QsParameter *next;  // next in the list
+    uint32_t numConnections;   // number in the list
+
+
+    // size in bytes of the parameter data that is copied.  If the value
+    // passed is a double array[5], then size = 5*sizeof(double).
     //
     size_t size;
-
-    // Bit-wise or-ed flag
-    //
-    // TODO: This stupid list is evolving.
-    //
-    // QS_FREE_USERDATA   (01)
-    //
-    uint32_t flags;
 
     // Kind of parameter: QsConstant, QsGetter, or QsSetter
     enum QsParameterKind kind;
 
-    // double, float, uint64_t and shit like that.
+    // double, float, uint64_t and structures we can make up.
+    //
+    // This should align well with C++ template types.  The C++ template
+    // user API to the Parameters will be better than the C API.
+    //
     enum QsParameterType type;
+};
 
+
+struct QsGetter {
+
+    // We inherit a parameter
+    struct QsParameter parameter;
+
+    // If set, value, is the initial value from qsParameterGetterCreate() call
+    // before the graph runs.  We push it to Setters at the start of the
+    // graph run.
+    //
 };
 
 
@@ -48,50 +100,12 @@ struct QsConstant {
 
     // Current value.  This pointer points to memory that is shared by all
     // connected parameters.
-    void *value;
+    // void *value; // in parameter
 
     // Called each time the value changes.  The value can only change
     // while the stream flow is paused, so no mutex is needed.
     void (*setCallback)(struct QsParameter *p,
-            void *value, size_t size, void *userData);
-
-    // Array of constant parameters in all blocks that this constant
-    // parameter connects to.  Constant parameters form a fully connected
-    // topological graph with all constants parameters that they connect
-    // with.  Some connections may be setter parameters.
-    //
-    // connections points to an array that is shared by all connections
-    // that connect to this parameter.  This starts with array size 0 and
-    // jumps to 2 when the first connection happens so that it includes a
-    // pointer for this constant and the other parameter that it connects
-    // to.
-    struct QsParameter **connections;
-    //
-    // numConnections is the array size of the connections pointers.  We
-    // end up will many copies of this number (with the same value), one
-    // in each constant parameter that this constant parameter connect
-    // to.  
-    uint32_t numConnections;
-};
-
-
-struct QsGetter {
-
-    // We inherit a parameter
-    struct QsParameter parameter;
-
-    // If set is the initial value from qsParameterGetterCreate() call
-    // before the graph runs.
-    // We push it to Setters at the start of the graph run.
-    //
-    // We store the last value that was sent, which can be retrieved with
-    // qsParameterGetValue().
-    void *value;
-
-    // Array of setter parameters in other blocks that this getter
-    // parameter connects to.  This is constant at flow-time.
-    struct QsSetter **setters;
-    uint32_t numSetters;
+            void *value, void *userData);
 };
 
 
@@ -105,14 +119,6 @@ struct QsSetter {
     // a getter parameter.
     struct QsTrigger *trigger;
 
-    // TODO: Is this needed:
-    //
-    // Zero or one getter or constant may connect to this setter.
-    //
-    // 0 if not connected.  It's a flag too.
-    //
-    struct QsParameter *feeder;
-
     // Setters can be read while the stream is flowing and the value is
     // passed from one block's thread to another block's thread.  We use
     // this mutex when access value, and this is not connected to a
@@ -122,27 +128,33 @@ struct QsSetter {
     // getter parameter.  mutex is 0 if feeders are constant parameters.
     pthread_mutex_t *mutex;
 
-    // We need a mutex lock to access value, when no connected to a
+    // We need a mutex lock to access value, when not connected to a
     // constant parameter.
     //
     // The current queued up value to be passed to setCallback() next
     // time.
-    void *value;
+    //void *value; // in parameter
 
-    // This is a flow-time constant.  Passed to the setCallback().
+    // This is a user definable constant.  Passed to the setCallback().
     void *userData;
 
+
     int (*setCallback)(struct QsParameter *p,
-            void *value, size_t size, void *userData);
+            void *value, void *userData);
 
 
     // Flag that says we have a value loaded and it has not been read yet
     // and the trigger is queued.
     bool haveValueQueued;
 
-    // Set if the feeder parameter can be constant or getter.
+    // Set if the parameter can be used (setCallback called) any time,
+    // otherwise the parameter setCallback is only called at flow-time.
     //
-    // This is a block writer option.
+    // Note: In order for a setter to be connected to a constant parameter
+    // this flag must be set, and then setCallback will not be called at
+    // flow-time.
+    //
+    // This is a block writer user option.
     //
     bool callbackWhilePaused;
 };
@@ -150,3 +162,8 @@ struct QsSetter {
 
 extern
 void GettersStart(struct QsGraph *g);
+
+
+extern
+void QueueUpSetterFromGetter(struct QsSetter *s,
+        struct QsParameter *getter);

@@ -12,12 +12,11 @@
 
 
 static int count = 0;
+static struct QsParameter *p = 0;
 
 
-int set_CB(struct QsParameter *p,
-            void *value, size_t size, void *userData) {
-
-    DASSERT(size == sizeof(double));
+static
+int set_CB(struct QsParameter *p, void *value, void *userData) {
 
     NOTICE("         SETTING value = %lg", *((double *) value));
 
@@ -27,19 +26,24 @@ int set_CB(struct QsParameter *p,
 }
 
 
-void setCleanup_CB(struct QsParameter *p, void *userData) {
-
-    DSPEW();
-}
-
-
-int bootstrap(void) {
+int declare(void) {
 
     DSPEW("count = %d", count++);
 
-    qsParameterSetterCreate(0, "setter", QsDouble, sizeof(double),
-        set_CB, 0, 0);
+    double initVal = 0.055;
+
+    p = qsParameterSetterCreate(0, "setter", QsDouble, sizeof(double),
+        set_CB, 0, QS_SETS_WHILE_PAUSED, &initVal/*initialValue*/);
 
     return 0; // 0 => success
 }
 
+int start(uint32_t numIn, uint32_t numOut) {
+
+    double value;
+    qsParameterGetValue(p, &value);
+
+    NOTICE("       value=%lg\n", value);
+
+    return 0;
+}
