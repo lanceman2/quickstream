@@ -4,13 +4,10 @@ set -ex
 
 # We run a few variations of threads and number of runs.
 
-../bin/quickstream\
- --threads 0\
- --block tests/getterTriggeredFromSignal getter\
- --block tests/setter setter\
- --block tests/dummy\
- --parameters-connect getter getter setter setter\
- --run
+# the block tests/setter prints to stdout.
+
+dataFile="data_$(basename $0)"
+tmpFile="${dataFile}.tmp"
 
 ../bin/quickstream\
  --threads 0\
@@ -18,8 +15,16 @@ set -ex
  --block tests/setter setter\
  --block tests/dummy\
  --parameters-connect getter getter setter setter\
+ --run > $tmpFile
+
+../bin/quickstream\
+ --threads 0\
+ --block tests/getterTriggeredFromSignal getter\
+ --block tests/setter setter\
+ --block tests/dummy\
+ --parameters-connect getter getter setter setter\
  --run\
- --run
+ --run >> $tmpFile
 
 ../bin/quickstream\
  --threads 1\
@@ -27,7 +32,7 @@ set -ex
  --block tests/setter setter\
  --block tests/dummy\
  --parameters-connect getter getter setter setter\
- --run
+ --run >> $tmpFile
 
 ../bin/quickstream\
  --threads 1\
@@ -36,7 +41,7 @@ set -ex
  --block tests/dummy\
  --parameters-connect getter getter setter setter\
  --run\
- --run
+ --run >> $tmpFile
 
 ../bin/quickstream\
  --threads 4\
@@ -44,7 +49,7 @@ set -ex
  --block tests/setter setter\
  --block tests/dummy\
  --parameters-connect getter getter setter setter\
- --run
+ --run >> $tmpFile
 
 ../bin/quickstream\
  --threads 4\
@@ -53,7 +58,10 @@ set -ex
  --block tests/dummy\
  --parameters-connect getter getter setter setter\
  --run\
- --run
+ --run >> $tmpFile
+
+
+diff -q $dataFile $tmpFile
 
 
 exec ./success

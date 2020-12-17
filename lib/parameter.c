@@ -441,7 +441,7 @@ qsParameterSetterCreate(struct QsBlock *b, const char *pname,
 struct QsParameter *
 qsParameterConstantCreate(struct QsBlock *b, const char *pname,
         enum QsParameterType type, size_t psize,
-        void (*setCallback)(struct QsParameter *p,
+        int (*setCallback)(struct QsParameter *p,
             const void *value, void *userData),
         void *userData, const void *initialVal) {
 
@@ -840,17 +840,23 @@ int qsParameterSetValue(struct QsParameter *p, const void *value) {
 
     if(p->kind == QsConstant)
         for(struct QsParameter *i = p->first; i; i = i->next) {
-            if(i->kind == QsConstant &&
-                    ((struct QsConstant *)i)->setCallback) {
-                DASSERT(i->value == p->value);
-                ((struct QsConstant *)i)->setCallback(i, i->value,
-                    ((struct QsConstant *)i)->userData);
-            } else if(((struct QsSetter *)i)->setCallback) {
+            int (*setCallback)(struct QsParameter *p,
+                const void *value, void *userData);
+            void *userData;
+            if(i->kind == QsConstant) {
+                setCallback = ((struct QsConstant *)i)->setCallback;
+                userData = ((struct QsConstant *)i)->userData;
+            } else {
                 DASSERT(i->kind == QsSetter);
-                DASSERT(i->value == p->value);
-                ((struct QsSetter *)i)->setCallback(i, i->value, 
-                    ((struct QsSetter *)i)->userData);
+                setCallback = ((struct QsSetter *)i)->setCallback;
+                userData = ((struct QsSetter *)i)->userData;
             }
+            DASSERT(i->value == p->value);
+            DASSERT(pthread_getspecific(_qsGraphKey) == 0);
+            if(!setCallback) continue;
+            CHECK(pthread_setspecific(_qsGraphKey, &i->block->block));
+            setCallback(i, i->value, userData);
+            CHECK(pthread_setspecific(_qsGraphKey, 0));
         }
 
     return 0;

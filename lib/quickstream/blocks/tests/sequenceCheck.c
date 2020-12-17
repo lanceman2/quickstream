@@ -35,7 +35,7 @@ int construct(void) {
 
     ASSERT(maxWrite);
 
-    blockName = qsGetBlockName();
+    blockName = qsBlockGetName(0);
 
     return 0; // success
 }

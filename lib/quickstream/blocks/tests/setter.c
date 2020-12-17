@@ -1,8 +1,8 @@
 // This is used in test ../../../../tests/233_simpleGetToSetControllers
 // and ../../../../tests/243_simpleGetToSetNControllers
+// ../../../../tests/255_constantToSetterControllers
 //
 // Editing this file will likely break these tests.
-
 
 #include <stdio.h>
 
@@ -19,6 +19,8 @@ static
 int set_CB(struct QsParameter *p, const void *value, void *userData) {
 
     NOTICE("         SetCallback with value = %lg", *((double *) value));
+
+    printf("%s %lg\n", qsBlockGetName(0), *((double *) value));
 
     //if(*(double*)value > 10.0) return 1;
 
@@ -43,7 +45,7 @@ int start(uint32_t numIn, uint32_t numOut) {
     double value;
     qsParameterGetValue(p, &value);
 
-    NOTICE("       value=%lg\n", value);
+    NOTICE("       value=%lg", value);
 
     return 0;
 }

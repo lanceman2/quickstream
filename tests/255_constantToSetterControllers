@@ -2,6 +2,10 @@
 
 set -ex
 
+# the block tests/setter prints to stdout.
+
+dataFile="data_$(basename $0)"
+tmpFile="${dataFile}.tmp"
 
 ../bin/quickstream\
  -v 5\
@@ -10,7 +14,7 @@ set -ex
  --block tests/setter sblock\
  --parameters-connect cblock constant sblock setter\
  --parameter-set cblock constant 30.03\
- --parameter-set cblock constant 3.03
+ --parameter-set cblock constant 3.03 > $tmpFile
 
 
 ../bin/quickstream\
@@ -24,7 +28,7 @@ set -ex
  --parameters-connect cblock constant sblock1 setter\
  --parameters-connect cblock constant sblock2 setter\
  --parameter-set cblock constant 1\
- --parameter-set cblock constant 2
+ --parameter-set cblock constant 2 >> $tmpFile
 
 
 # This will run it, but there are no source triggers so it will just
@@ -43,7 +47,13 @@ set -ex
  --parameter-set cblock constant 2\
  --run\
  --parameter-set cblock constant 30\
- --parameter-set cblock constant 40
+ --parameter-set cblock constant 40\
+ --run\
+ --parameter-set cblock constant 550\
+ --parameter-set cblock constant 660 >> $tmpFile
+
+
+diff -q $dataFile $tmpFile
 
 
 exec ./success

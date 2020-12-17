@@ -107,7 +107,7 @@ struct QsConstant {
 
     // Called each time the value changes.  The value can only change
     // while the stream flow is paused, so no mutex is needed.
-    void (*setCallback)(struct QsParameter *p,
+    int (*setCallback)(struct QsParameter *p,
             const void *value, void *userData);
 
     void *userData;
@@ -142,7 +142,6 @@ struct QsSetter {
 
     // This is a user definable constant.  Passed to the setCallback().
     void *userData;
-
 
     int (*setCallback)(struct QsParameter *p,
             const void *value, void *userData);

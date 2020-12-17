@@ -1,3 +1,6 @@
+// All this code does is parse arguments and call quickstream API
+// functions, in a big switch.  Very straight forward.
+//
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
@@ -20,9 +23,9 @@
 //   ../lib/quickstream/misc/quickstreamHelp.c.in
 static int level = DEFAULT_SPEW_LEVEL;
 
-// Current graph:
+// Current/last graph:
 static struct QsGraph *graph = 0;
-// 
+//
 static uint32_t numGraphs = 0;
 static struct QsGraph **graphs = 0;
 
@@ -216,7 +219,6 @@ int main(int argc, const char * const *argv) {
                         p1 = qsParameterGetPointer(b1, argv[i+3],
                                 /*isSetter*/false);
 
-
                     if(!b0 || !p0 || !b1 || !p1) {
                         fprintf(stderr, "--parameters-connect "
                                 "%s %s %s %s FAILED: ",
@@ -245,8 +247,6 @@ int main(int argc, const char * const *argv) {
                         break;
                     }
 
-                    // TODO: this is already checked in
-                    // qsParameterConnect():
                     //
                     // We can connect certain kinds of parameters from and
                     // to each other.  Here is the complete list of
@@ -255,6 +255,11 @@ int main(int argc, const char * const *argv) {
                     //   1. Getter    to  Setter
                     //   2. Constant  to  Setter
                     //   3. Constant  to  Constant
+                    //
+                    // There are only two kinds of groups of connections:
+                    //
+                    //   1.  1 Getter and 1 or more Setters
+                    //   2.  1 or more Constants and 0 or more Setters
                     //
                     if(! (
                          (qsParameterKind(p0) == QsGetter &&
@@ -270,7 +275,6 @@ int main(int argc, const char * const *argv) {
                         ret = 1; // fail
                         break;
                     }
-
                     ret = qsParameterConnect(p0, p1);
                 }
                 // next

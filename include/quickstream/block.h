@@ -220,7 +220,7 @@ extern
 struct QsParameter *
 qsParameterConstantCreate(struct QsBlock *block, const char *pname,
         enum QsParameterType type, size_t psize,
-        void (*setCallback)(struct QsParameter *p,
+        int (*setCallback)(struct QsParameter *p,
             const void *value, void *userData),
         void *userData, const void *initialVal);
 
@@ -504,7 +504,7 @@ int qsCreatePassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum,
  \memberof CBlockAPI
  */
 extern
-const char* qsGetBlockName(void);
+const char* qsBlockGetName(struct QsBlock *block);
 
 
 /** Get a block pointer from the blocks loaded name

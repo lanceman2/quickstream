@@ -34,8 +34,11 @@ bool CallTriggerCallback(struct QsTrigger *t, struct QsThreadPool *tp) {
     // which is why we made this function.
 
     CHECK(pthread_mutex_unlock(tp->mutex));
+    DASSERT(pthread_getspecific(_qsGraphKey) == 0);
+    CHECK(pthread_setspecific(_qsGraphKey, t->block));
     // This is the call of a function in a simple block module.
     int ret = t->callback(t->userData);
+    CHECK(pthread_setspecific(_qsGraphKey, 0));
     CHECK(pthread_mutex_lock(tp->mutex));
 
     // The block can change the trigger from this return value, ret.

@@ -49,9 +49,10 @@ int startItimer(void) {
 #endif
 
 static
-void setCallback(struct QsParameter *p, const double *value, void *userData) {
+int setCallback(struct QsParameter *p, const double *value, void *userData) {
 
     DSPEW("value=%lg", *value);
+    return 0;
 }
 
 
@@ -59,7 +60,7 @@ int declare(void) {
 
     constant = qsParameterConstantCreate(0, "constant", QsDouble,
             sizeof(double),
-            (void (*)(struct QsParameter *p, const void *v, void *u))
+            (int (*)(struct QsParameter *p, const void *v, void *u))
             setCallback,
             0, &val);
 

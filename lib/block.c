@@ -484,6 +484,13 @@ void qsBlockUnload(struct QsBlock *b) {
         }
     }
 
-
     qsBlockUnload_noDestory(b);
+}
+
+
+const char* qsBlockGetName(struct QsBlock *block) {
+
+    if(block) return block->name;
+    // This gets the block from pthread_setspecific(_qsGraphKey,block).
+    return GetBlock()->name;
 }

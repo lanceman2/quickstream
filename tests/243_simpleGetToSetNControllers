@@ -4,6 +4,10 @@ set -ex
 
 # We run a few variations of threads and number of runs.
 
+# the block tests/setter prints to stdout.
+
+dataFile="data_$(basename $0)"
+tmpFile="${dataFile}.tmp"
 
 ../bin/quickstream\
  -v 3\
@@ -11,7 +15,7 @@ set -ex
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
  --parameters-connect getter getter setter setter\
- --run
+ --run > $tmpFile
 
 
 ../bin/quickstream\
@@ -27,7 +31,10 @@ set -ex
  --parameters-connect getter getter setter3 setter\
  --run\
  --run\
- --run
+ --run >> $tmpFile
+
+
+diff -q $dataFile $tmpFile
 
 
 exec ./success
