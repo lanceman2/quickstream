@@ -2,7 +2,6 @@
 
 set -ex
 
-# We run a few variations of threads and number of runs.
 
 ../bin/quickstream\
  -v 5\
@@ -45,9 +44,6 @@ set -ex
  --run\
  --parameter-set cblock constant 30\
  --parameter-set cblock constant 40
-
-
-
 
 
 exec ./success
