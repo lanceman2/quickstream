@@ -240,7 +240,7 @@ static struct QsOption
         " prints parameters only for the last graph created."
     },
 /*----------------------------------------------------------------------*/
-    { "--parameter-set", 'S', "BLOCK_NAME PARAMETER_NAME VALUE",  false,
+    { "--parameter-set", 'S', "BLOCK_NAME PARAMETER_NAME VALUE ...", false,
 
         "set a parameter value.  The parameter must be a getter or a "
         "constant parameter."

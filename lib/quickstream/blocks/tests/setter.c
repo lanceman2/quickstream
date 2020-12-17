@@ -16,9 +16,9 @@ static struct QsParameter *p = 0;
 
 
 static
-int set_CB(struct QsParameter *p, void *value, void *userData) {
+int set_CB(struct QsParameter *p, const void *value, void *userData) {
 
-    NOTICE("         SETTING value = %lg", *((double *) value));
+    NOTICE("         SetCallback with value = %lg", *((double *) value));
 
     //if(*(double*)value > 10.0) return 1;
 

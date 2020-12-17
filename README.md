@@ -695,7 +695,7 @@ https://raw.githubusercontent.com/lanceman2/quickstream.doc/master/jobFlow.png)
     directory) and everything runs the same.
     - there are not full path strings compiled in the library.
 - Environment variables allow users to tell quickstream programs where to
-  find users files that are not in the quickstream source code.
+  find users files that are not in or from the quickstream source code.
 - The installation prefix directory is not used in the quickstream code,
   only relative paths are needed for running quickstream files to find
   themselves.  On a bad note: One needs to worry about package
@@ -706,8 +706,8 @@ https://raw.githubusercontent.com/lanceman2/quickstream.doc/master/jobFlow.png)
 - The private code is slightly more integrated than the public interfaces
   may suggest.
 - We wish to keep this C code small and manageable.
-  - Run: *./dev_tests/linesOfCCode.bash* to see the number of lines of
-    code.
+  - Run: *LinesOfCCode* to see the number of lines of
+    code; 
 - Minimize the use of CPP macros, so that understanding the code is easy
   and not a CPP macro nightmare like many C and C++ APIs.  Every
   programmer knows that excessive use of CPP macros leads to code that is
@@ -750,7 +750,7 @@ https://raw.githubusercontent.com/lanceman2/quickstream.doc/master/jobFlow.png)
   objects when it is necessary.  Excessive OOP can lead to more complexity
   and bloat, which we want to avoid.
 - Don't put stuff in quickstream that does not belong in quickstream.  You
-  can always build higher level APIs on top of quickstream.
+  can always build higher level APIs on top of quickstream.  Or can you?
 - If you don't like quickstream don't use it.
 - The term "Super Module" is used by SymNet Composer software
   https://www.symetrix.co/  This software has a similar connect DSP
@@ -762,7 +762,8 @@ https://raw.githubusercontent.com/lanceman2/quickstream.doc/master/jobFlow.png)
   works.  We can only guess.  Since it appears to be made for audio and
   vision (AV) DSP it does not have as high a speed requirement like that
   needed for software defined radio (SDR).  It has LUA scripting, which is
-  great for the LUA project.
+  great for the LUA project and quickstream.  LUA is simple and nice, not
+  bloated and complex like python.
 
 
 

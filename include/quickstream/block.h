@@ -163,7 +163,7 @@ struct QsParameter *
 qsParameterSetterCreate(struct QsBlock *block, const char *pname,
         enum QsParameterType type, size_t psize,
         int (*setCallback)(struct QsParameter *p,
-            void *value, void *userData),
+            const void *value, void *userData),
         void *userData, uint32_t flags,
         const void *initialValue);
 
@@ -221,7 +221,7 @@ struct QsParameter *
 qsParameterConstantCreate(struct QsBlock *block, const char *pname,
         enum QsParameterType type, size_t psize,
         void (*setCallback)(struct QsParameter *p,
-            void *value, void *userData),
+            const void *value, void *userData),
         void *userData, const void *initialVal);
 
 

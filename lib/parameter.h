@@ -108,7 +108,9 @@ struct QsConstant {
     // Called each time the value changes.  The value can only change
     // while the stream flow is paused, so no mutex is needed.
     void (*setCallback)(struct QsParameter *p,
-            void *value, void *userData);
+            const void *value, void *userData);
+
+    void *userData;
 };
 
 
@@ -143,7 +145,7 @@ struct QsSetter {
 
 
     int (*setCallback)(struct QsParameter *p,
-            void *value, void *userData);
+            const void *value, void *userData);
 
 
     // Flag that says we have a value loaded and it has not been read yet

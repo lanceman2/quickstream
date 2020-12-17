@@ -7,10 +7,47 @@ set -ex
 ../bin/quickstream\
  -v 5\
  --threads 0\
- --block tests/constant constant\
- --block tests/setter setter\
- --parameters-connect constant constant setter setter\
- --run
+ --block tests/constant cblock\
+ --block tests/setter sblock\
+ --parameters-connect cblock constant sblock setter\
+ --parameter-set cblock constant 30.03\
+ --parameter-set cblock constant 3.03
+
+
+../bin/quickstream\
+ -v 5\
+ --threads 0\
+ --block tests/constant cblock\
+ --block tests/setter sblock0\
+ --block tests/setter sblock1\
+ --block tests/setter sblock2\
+ --parameters-connect cblock constant sblock0 setter\
+ --parameters-connect cblock constant sblock1 setter\
+ --parameters-connect cblock constant sblock2 setter\
+ --parameter-set cblock constant 1\
+ --parameter-set cblock constant 2
+
+
+# This will run it, but there are no source triggers so it will just
+# quickly return from trying to run it.
+../bin/quickstream\
+ -v 5\
+ --threads 3\
+ --block tests/constant cblock\
+ --block tests/setter sblock0\
+ --block tests/setter sblock1\
+ --block tests/setter sblock2\
+ --parameters-connect cblock constant sblock0 setter\
+ --parameters-connect cblock constant sblock1 setter\
+ --parameters-connect cblock constant sblock2 setter\
+ --parameter-set cblock constant 1\
+ --parameter-set cblock constant 2\
+ --run\
+ --parameter-set cblock constant 30\
+ --parameter-set cblock constant 40
+
+
+
 
 
 exec ./success

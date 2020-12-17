@@ -419,7 +419,7 @@ struct QsParameter *
 qsParameterSetterCreate(struct QsBlock *b, const char *pname,
         enum QsParameterType type, size_t psize,
         int (*setCallback)(struct QsParameter *p,
-            void *value, void *userData),
+            const void *value, void *userData),
         void *userData, uint32_t flags, const void *initialValue) {
 
     GET_OWNER_BLOCK(b);
@@ -442,7 +442,7 @@ struct QsParameter *
 qsParameterConstantCreate(struct QsBlock *b, const char *pname,
         enum QsParameterType type, size_t psize,
         void (*setCallback)(struct QsParameter *p,
-            void *value, void *userData),
+            const void *value, void *userData),
         void *userData, const void *initialVal) {
 
     GET_OWNER_BLOCK(b);
@@ -454,6 +454,7 @@ qsParameterConstantCreate(struct QsBlock *b, const char *pname,
     if(!p) return 0;
 
     p->setCallback = setCallback;
+    p->userData = userData;
 
     return (struct QsParameter *) p;
 }
@@ -823,7 +824,8 @@ int qsParameterSetValue(struct QsParameter *p, const void *value) {
 
     // Called when graph is paused.  Parameter, p, must be a constant or a
     // getter, or a disconnected setter.
-    DASSERT(p->kind != QsSetter, "Setter parameters cannot be set");
+    DASSERT(p->kind != QsSetter, "Setter parameters cannot be directly"
+            " set, they must be connected");
 
     if(p->kind == QsSetter) {
         ERROR("parameter %s:%s is setter", p->block->block.name, p->name);
@@ -835,6 +837,21 @@ int qsParameterSetValue(struct QsParameter *p, const void *value) {
     // here.  Setters can be initialized if they are not connected yet.
 
     memcpy(p->value, value, p->size);
+
+    if(p->kind == QsConstant)
+        for(struct QsParameter *i = p->first; i; i = i->next) {
+            if(i->kind == QsConstant &&
+                    ((struct QsConstant *)i)->setCallback) {
+                DASSERT(i->value == p->value);
+                ((struct QsConstant *)i)->setCallback(i, i->value,
+                    ((struct QsConstant *)i)->userData);
+            } else if(((struct QsSetter *)i)->setCallback) {
+                DASSERT(i->kind == QsSetter);
+                DASSERT(i->value == p->value);
+                ((struct QsSetter *)i)->setCallback(i, i->value, 
+                    ((struct QsSetter *)i)->userData);
+            }
+        }
 
     return 0;
 }
