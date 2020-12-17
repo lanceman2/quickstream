@@ -225,15 +225,6 @@ qsParameterConstantCreate(struct QsBlock *block, const char *pname,
         void *userData, const void *initialVal);
 
 
-// Called when graph is paused.  Parameter, p, must be a constant or a
-// getter, or a disconnected setter.
-//
-// TODO: Should a simple block be allowed to call this?
-//
-extern
-void qsParameterSet(struct QsParameter *p, const void *value);
-
-
 /** Push a getter parameter to all setter parameters that are connected
 
  Push a value to all connected blocks setter parameters.  Because this is

@@ -505,6 +505,13 @@ enum QsParameterKind qsParameterKind(struct QsParameter *p) {
 }
 
 
+enum QsParameterType qsParameterType(struct QsParameter *p) {
+
+    DASSERT(p);
+    return p->type;
+}
+
+
 //
 // p1 is a constant parameter or a getter
 //
@@ -582,19 +589,6 @@ AddParameterConnections(struct QsParameter *p1, struct QsParameter *p2) {
             free(i->value);
             i->value = p1->value;
         }
-    }
-
-    {
-    // REMOVE THIS TEST BLOCK:
-    uint32_t count = 0;
-    for(i = p1; i; i = i->next) {
-        ++count;
-        ASSERT(i->first == p1);
-        ASSERT(i->numConnections == numConnections);
-        ASSERT(i->value);
-ERROR("FUCK %" PRIu32, count);
-    }
-    ASSERT(count == numConnections);
     }
 }
 
@@ -817,21 +811,34 @@ void qsParameterGetValue(struct QsParameter *p, void *value) {
 // Called when graph is paused.  Parameter, p, must be a constant or a
 // getter.
 //
-void qsParameterSet(struct QsParameter *p, const void *value) {
+int qsParameterSetValue(struct QsParameter *p, const void *value) {
+
+    DASSERT(p);
+    DASSERT(value);
 
     // Catch API user coding errors.
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
     ASSERT(p->block->block.graph->flowState == QsGraphPaused);
 
-    DASSERT(p);
-    DASSERT(value);
+
+    // Called when graph is paused.  Parameter, p, must be a constant or a
+    // getter, or a disconnected setter.
+    DASSERT(p->kind != QsSetter, "Setter parameters cannot be set");
+
+    if(p->kind == QsSetter) {
+        ERROR("parameter %s:%s is setter", p->block->block.name, p->name);
+        return -1; // error
+    }
 
     // Constant parameters keep an internal value.
     // Getter parameter just push values to setters but can be initialized
-    // here.
+    // here.  Setters can be initialized if they are not connected yet.
 
     memcpy(p->value, value, p->size);
+
+    return 0;
 }
+
 
 #if 0
 static int

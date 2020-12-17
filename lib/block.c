@@ -238,7 +238,6 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // 2. dlopen()
     ///////////////////////////////////////////////////////////////////
 
-
     void *dlhandle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
     if(!dlhandle) {
         WARN("dlopen(\"%s\",) failed: %s", path, dlerror());

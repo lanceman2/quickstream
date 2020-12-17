@@ -160,7 +160,7 @@ to add the GNU autotools build files to the source.
 Or if you got this source code from a software tarball release change
 directory to the top source directory and do not run bootstrap.
 
-Then from the top source directory run
+Then, from the top source directory run
 
 ```console
 ./configure --prefix=/usr/local/PLACE_TO_INSTALL
@@ -193,8 +193,8 @@ use *make distclean* (after running ./configure) for that.
 
 We use the GNU autotool build system to generate tarball releases.  To
 make a tarball release, after you finish testing and editing, edit
-RELEASE.bash changing the version numbers and so on, then you can run a
-sequence of programs something like the following:
+include/quickstream/app.h changing the version numbers and so on, then you
+can run a sequence of programs something like the following:
 
 ```console
 ./RepoClean
@@ -642,6 +642,35 @@ https://raw.githubusercontent.com/lanceman2/quickstream.doc/master/jobFlow.png)
      suffer.
   4. Blocks can trigger themselves work from their other callbacks.
 
+
+#### Classes of user API usage
+
+
+   1.  Building simple blocks
+
+       2 modes: 1. declare and 2. callbacks
+
+            Connecting stream ports and parameters is not allowed
+            Running callbacks is not allowed
+
+
+   2.  Building super blocks
+
+       2 modes: 1. declare which loads blocks and connects them
+                2. can add run/flow time callback functions
+                
+                Running callbacks is not allowed
+
+
+   3. Running
+
+       examples: command-line quickstream and GUI quickstreamBuilder
+
+        declaring blocks is not allowed
+        Connecting stream ports and parameters is allowed
+        Uses run/flow-time API to run streams and shit
+
+
 #### other
 
 - quickstream code is written in fairly simple C with very few dependences.
@@ -723,6 +752,18 @@ https://raw.githubusercontent.com/lanceman2/quickstream.doc/master/jobFlow.png)
 - Don't put stuff in quickstream that does not belong in quickstream.  You
   can always build higher level APIs on top of quickstream.
 - If you don't like quickstream don't use it.
+- The term "Super Module" is used by SymNet Composer software
+  https://www.symetrix.co/  This software has a similar connect DSP
+  modules GUI.  Only on Windoz. Looks like this company makes DSP
+  hardware.  It's not possible to tell what the software inter-thread
+  and/or process module connection methods are without access to it.  All
+  the descriptions on the web give no program details.  Like most
+  proprietary software they do not describe any inner details as to how it
+  works.  We can only guess.  Since it appears to be made for audio and
+  vision (AV) DSP it does not have as high a speed requirement like that
+  needed for software defined radio (SDR).  It has LUA scripting, which is
+  great for the LUA project.
+
 
 
 ## Driving concerns and todo list

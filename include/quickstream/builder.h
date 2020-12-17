@@ -237,8 +237,18 @@ const char *qsParameterGetName(struct QsParameter *p);
  
  */
 extern
-enum QsParameterType qsParameterGetType(struct QsParameter *p);
+enum QsParameterType qsParameterType(struct QsParameter *p);
 
+
+// Called when graph is paused.  Parameter, p, must be a constant or a
+// getter.  Setter values can only get set by connecting them.
+//
+// The stream must be paused.
+//
+// /return 0 on success, and -1 if the parameter is a setter.
+//
+extern
+int qsParameterSetValue(struct QsParameter *p, const void *value);
 
 
 /** connect two different block's parameters together
@@ -247,11 +257,11 @@ enum QsParameterType qsParameterGetType(struct QsParameter *p);
  \p from a setter parameter's block to the \p to a getter parameter's
  block.
 
- Sets up a data exchange from a getter parameter to a setter parameter,
- a constant parameter to a setter parameter, or a constant parameter to
- another constant parameter.  Once a constant parameter is in the connected
- graph of parameters the value of all parameters in the group will be
- constant at flow-time.
+ Sets up a data exchange from a getter parameter to a setter parameter, a
+ constant parameter to a setter parameter, or a constant parameter to
+ another constant parameter.  Once a constant parameter is in the
+ connected graph of parameters the value of all parameters in the group
+ will be constant at flow-time.
 
  Each time the getter parameter changes the value is queued up and
  copied to the setter parameter.

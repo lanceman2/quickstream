@@ -7,6 +7,7 @@
 
 #include "../include/quickstream/app.h"
 #include "../include/quickstream/builder.h"
+#include "../include/quickstream/block.h"
 
 #include "getOpt.h"
 #include "../lib/quickstream/misc/qsOptions.h"
@@ -114,6 +115,61 @@ int main(int argc, const char * const *argv) {
                 // next
                 arg = 0;
                 ++i;
+                break;
+            case 'S': // --parameter-set BLOCK_NAME PARAMETER_NAME VALUE
+                // We must have 3 additional args:
+                if( (i+2) >= argc ||
+                        (argv[i][0] == '-') ||
+                        (argv[i+1][0] == '-')
+                        ) {
+                    fprintf(stderr, "--parameter-set without 3 args\n");
+                    return 1;
+                }
+                if(!graph) {
+                    // If there not graph than their are no blocks.
+                    fprintf(stderr, "--parameter-set "
+                            "with no blocks loaded");
+                    return 1;
+                }
+                {
+                    // Get the block
+                    struct QsBlock *b = qsGraphGetBlockByName(graph,
+                            argv[i]);
+                    if(!b) return 1;
+                    struct QsParameter *p = qsParameterGetPointer(b,
+                            argv[i+1], false);
+                    switch(qsParameterType(p)) {
+
+                        // TODO: figure out how to do arrays.
+
+                        case QsDouble:
+                        {
+                            char *endptr = 0;
+                            double val = strtold(argv[i+2], &endptr);
+                            if(argv[i+2] == endptr) {
+                                fprintf(stderr, "--parameter-set %s "
+                                        "%s %s\n"
+                                        "  Failed to convert %s "
+                                        "to double\n",
+                                        argv[i], argv[i+1],
+                                        argv[i+2], argv[i+2]);
+                                return 1;
+                            }
+                            if(qsParameterSetValue(p, &val))
+                                return 1; // error
+                        }
+                        break;
+                        case QsNone:
+                        case QsFloat:
+                        case QsUint64:
+                            ASSERT(0, "Write this code");
+                        break;
+                    }
+
+                }
+                // next
+                arg = 0;
+                i += 3; // 3 additional args parsed
                 break;
             case 'C': // --parameters-connect
                 // We must have 4 additional args:

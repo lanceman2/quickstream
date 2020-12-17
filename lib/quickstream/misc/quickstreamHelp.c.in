@@ -202,6 +202,18 @@ static struct QsOption
         "stdout."
     },
 /*----------------------------------------------------------------------*/
+    { "--graph", 'g', 0,               false,
+
+        "create another stream graph.  Each time this option is given"
+        " another stream graph, QsGraph, is created.  All subsequent blocks"
+        " are loaded into this last stream graph that is created.  The "
+        "--ready, --run, --dot, --display, and --display-wait command "
+        "options are applied to all the stream graphs.  The up-coming --block, "
+        "--connect, --plug, and --threads command options are applied to "
+        "the last created stream graph.  If no --graph option was given a "
+        "stream graph will be created automatically when it is needed."
+    },
+/*----------------------------------------------------------------------*/
     { "--help", 'h', 0,                     false/*arg_optional*/,
 
         "print this help to stdout and then exit."
@@ -228,10 +240,16 @@ static struct QsOption
         " prints parameters only for the last graph created."
     },
 /*----------------------------------------------------------------------*/
-    { "--plug", 'p', "\"FROM_B TO_B FROM_PORT TO_PORT\"",  false,
+    { "--parameter-set", 'S', "BLOCK_NAME PARAMETER_NAME VALUE",  false,
 
-        "connects two blocks with more control over which"
-        " ports get connected.  FROM_F refers to the block we"
+        "set a parameter value.  The parameter must be a getter or a "
+        "constant parameter."
+    },
+/*----------------------------------------------------------------------*/
+    { "--plug", 'p', "FROM_B TO_B FROM_PORT TO_PORT",  false,
+
+        "connects two block's buffer streams with more control over"
+        " which ports get connected.  FROM_F refers to the block we"
         " are connecting from as a number in order in which the"
         " blocks are loading starting at 0.  TO_F refers to the"
         " block we are connecting to as a number in order in"
@@ -241,7 +259,7 @@ static struct QsOption
         " the port number that we are connecting to as viewed"
         " from the \"to block\".  For example:\n"
         "\n"
-        "    --plug \"0 1 2 3\"\n"
+        "    --plug 0 1 2 3\n"
         "\n"
         "will feed the second block from the first block loaded,"
         " the feeding, first, block will output from it's output"
@@ -251,9 +269,10 @@ static struct QsOption
 /*----------------------------------------------------------------------*/
     { "--ready", 'R', 0,                false,
 
-        "ready the streams.  This calls all the block's start()"
-        " functions that exist and gets the stream ready to flow,"
-        " except for spawning worker flow threads.\n"
+        "ready the streams.  This gets the stream closer to ready to flow,"
+        " but does not call block's start() functions or spawn worker"
+        " flow threads.  This is more of a block and stream graph "
+        " development tool and is not a regular user tool.\n"
         "\n"
         "This option lets the use test the stream graph, and also "
         "builds more information about the stream graph for printing "
@@ -274,18 +293,6 @@ static struct QsOption
         "Sleep the main thread SEC seconds.  This can be handy "
         "for development to delay running the next commands from"
         " up and coming options."
-    },
-/*----------------------------------------------------------------------*/
-    { "--graph", 'g', 0,               false,
-
-        "create another stream graph.  Each time this option is given"
-        " another stream graph, QsGraph, is created.  All subsequent blocks"
-        " are loaded into this last stream graph that is created.  The "
-        "--ready, --run, --dot, --display, and --display-wait command "
-        "options are applied to all the stream graphs.  The up-coming --block, "
-        "--connect, --plug, and --threads command options are applied to "
-        "the last created stream graph.  If no --graph option was given a "
-        "stream graph will be created automatically when it is needed."
     },
 /*----------------------------------------------------------------------*/
     { "--threads", 't', "NUM",          false,

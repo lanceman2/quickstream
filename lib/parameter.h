@@ -31,6 +31,9 @@ struct QsParameter {
     //        In a group they all have the same list and the Getter is
     //        "first" and they all have the same "numConnections".  There
     //        can be only one Getter in the group.
+    //        The "value" is not shared, and data must be copied to the
+    //        setters from the getter and between thread blocks.
+    //        Requires mutex locks to do the copies.
     //
     //   2. Constants and Setters in a group
     //        and that includes Constant  --> Setters
