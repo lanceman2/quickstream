@@ -107,24 +107,15 @@ struct QsGraph {
     // in all thread pools.  Need graph mutex to access.
     uint32_t numIdleThreads;
 
-
-    // This list of filter block connections is not used while the stream
-    // is running (flowing).  It's queried at stream start, and the
-    // QsSimpleBlock data structs are setup at startup.  The QsSimpleBlock
-    // data structures are used when the stream is running.
-    //
-    // qsBlockConnect() is not called at flow time.
-    //
-    // tallied filter block connections from qsBlockConnect():
-    struct QsConnection {
-
-        struct QsBlock *from; // from filter block
-        struct QsBlock *to;   // to filter block
-
-        uint32_t fromPortNum; // output port number for from filter block
-        uint32_t toPortNum;   // input port number for to filter block
-
-    } *connections; // malloc()ed array of connections
-
-    uint32_t numConnections;// length of connections array
+    bool canHaveStreamLoops;
 };
+
+
+// Allocate stream ring buffers and ...
+extern
+int StreamsInit(struct QsGraph *g);
+
+
+// Free the stream ring buffers and ...
+extern
+void StreamFree(struct QsGraph *g);

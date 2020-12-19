@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# howto discusses valgrind suppression files and how to create
+# your own.
+#
+# https://wiki.wxwidgets.org/Valgrind_Suppression_File_Howto
+
+
 set -e
 cd $(dirname ${BASH_SOURCE[0]})
 
@@ -14,9 +20,11 @@ export VALGRIND_RUN="valgrind\
  --trace-children=yes\
  --show-leak-kinds=all\
  --trace-children-skip='*'\
+ --suppressions=valgrind_suppressions\
  --errors-for-leak-kinds=all\
  --error-exitcode=1"
 
 
-
 exec ./run_tests $*
+
+# --gen-suppressions=all\

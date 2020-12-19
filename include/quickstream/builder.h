@@ -349,6 +349,10 @@ int qsBlockConnect(struct QsBlock *from, struct QsBlock *to,
         uint32_t outPortNum, uint32_t inPortNum);
 
 
+extern
+int qsBlockDisconnect(struct QsBlock *toBlock, uint32_t inputPortNum);
+
+
 /** Load a block plugin DSO (dynamic shared object) and call getConfig()
 
   Find and load the DSO file and call the getConfig() for that block.

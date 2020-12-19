@@ -251,7 +251,7 @@ void qsGraphParametersPrint(struct QsGraph *graph, FILE *file);
  less than zero on other error.
  */
 extern
-int asGraphPrintDot(struct QsGraph *graph, FILE *file, uint32_t flags);
+int qsGraphPrintDot(struct QsGraph *graph, FILE *file, uint32_t flags);
 
 
 extern
@@ -261,8 +261,6 @@ int qsBlockPrintHelp(const char *filename, FILE *file);
 extern
 uint32_t qsGraphForEachBlock(struct QsGraph *graph,
         int (*callback)(struct QsBlock *block, void *userData));
-
-
 
 
 

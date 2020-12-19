@@ -11,7 +11,8 @@ libquickstream.so_SOURCES :=\
  GetPluginPath.c\
  trigger.c\
  run.c\
- threadPool.c
+ threadPool.c\
+ stream.c
 
 
 libquickstream.so_LDFLAGS := -lpthread -ldl -lrt

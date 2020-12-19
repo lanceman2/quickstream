@@ -19,7 +19,6 @@
 
 
 
-
 // We will have a thread pool (graph) mutex before calling this and after.
 // When the users trigger callback is called the mutex will be unlocked.
 //

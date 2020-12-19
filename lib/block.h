@@ -106,6 +106,7 @@ struct QsSimpleBlock {
     struct QsDictionary *getters; // getters and constants
     struct QsDictionary *setters; // setters
 
+
     // A doubly linked list of triggers.  The block is responsible for
     // cleaning up triggers when it is destroyed.  When the stream is
     // flowing the triggers provide job block callback functions.  This
@@ -184,11 +185,23 @@ struct QsSimpleBlock {
     int (* flush)(void *buffer[], const size_t len[],
             uint32_t numInputs, uint32_t numOutputs);
 
-    uint32_t numOutputs; // number of connected filter blocks we write to.
+
+    // Some of the elements in the outputs[] array can be zeroed out with
+    // the largest index (port) not being zeroed, while the connections
+    // are being created; but, we do not let there be any zeroed entries
+    // while the stream is flowing.
+    uint32_t numOutputs; // number of output buffers we write to.
+    // indexed by output port number 0,1,2,3,...
     struct QsOutput *outputs; // array of struct QsOutput
     //
-    //
+    // numInputs is not so much as the number of inputs as it is the
+    // number of elements in the inputs[] array.  Some of the elements in
+    // the inputs[] array can be zeroed out with the largest index (port)
+    // not being zeroed, while the connections are being created; but, we
+    // do not let there be any zeroed entries while the stream is
+    // flowing.
     uint32_t numInputs; // number of connected input filters feeding this.
+    // array of struct QsInput indexed by input port number, 0,1,2,3,...
     struct QsInput *inputs; // array of struct QsInput
 
     // We queue up setCallbacks that need to be called in the owner block
@@ -229,8 +242,8 @@ struct QsInput {
     // The filter block that is reading.
     struct QsSimpleBlock *block;
 
-    // feedBlock is the block that is writing to this reader.
-    struct QsBlock *feedBlock;
+    // feederBlock is the block that is writing to this reader.
+    struct QsSimpleBlock *feederBlock;
 
     struct QsBuffer *buffer;
 
@@ -258,8 +271,11 @@ struct QsInput {
     size_t maxRead; // Length in bytes.
 
     // The input port number that this filter block being written to sees
-    // in it's input(,,portNum,) call.
+    // in it's flow(,,portNum,) call.
     uint32_t inputPortNum;
+    // The output port number that the feedBlock uses as the output port
+    // number that it is writing to.
+    uint32_t outputPortNum;
 };
 
 
@@ -297,9 +313,9 @@ struct QsOutput {  // points to reader filter blocks
     //
     // writePtr can only be read from and written to by the filter block
     // that feeds this output.  If the filter block that owns this output
-    // can run input() in multiple threads a filter block mutex lock is
+    // can run flow() in multiple threads a filter block mutex lock is
     // required to read or write to this writePtr, but otherwise this is a
-    // lock-less buffer when in the input() call.
+    // lock-less buffer when in the flow() call.
     //
     uint8_t *writePtr;
 
@@ -326,15 +342,23 @@ struct QsOutput {  // points to reader filter blocks
     // output and the index number to this array is likely not related to
     // the reading block's input port number.
     //
-    // Each element in this array may point to a different block.
+    // Each element in this array may point to a different blocks input.
     //
     // This readers is a mapping from output to a block.  The QsSimpleBlock
     // structure has a readers array of pointers that is a mapping from
     // block input port to reader (or output buffer).  Yes, it's
     // complicated but essential, so draw a pointer graph picture.
     //
-    struct QsInput *inputs; // array of filter block input readers.
-
+    // array of pointers to filter block input readers that this output
+    // feeds.  The indexes to this array are not related to stream port
+    // numbers.
+    //
+    // This array needs to stay without any empty elements, so when a
+    // connection that is in the middle of this array, the array must be
+    // shift/packed with no empty elements in it. 
+    //
+    struct QsInput **inputs;
+    //
     uint32_t numInputs; // length of inputs (readers) array
 
     // flow() just returns 0 if a threshold is not reached.

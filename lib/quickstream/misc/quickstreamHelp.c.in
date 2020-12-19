@@ -180,7 +180,27 @@ static struct QsOption
         "and so on.  If no SEQUENCE argument is given, all "
         "blocks that are not connected yet and that are "
         "currently loaded will be connected in the order that "
-        "they have been loaded."
+        "they have been loaded.  The input and output ports "
+        "will be set to the next available port."
+    },
+/*----------------------------------------------------------------------*/
+    { "--connect-stream", 'p', "FROM_BLOCK FROM_PORT TO_BLOCK TO_PORT",  false,
+
+        "connects two block's buffer streams with more control over "
+        "which ports get connected.  FROM_BLOCK is the name of the "
+        "loaded module block that has the name FROM_BLOCK.  "
+        "FROM_PORT is the port number to connect from that FROM_BLOCK.  "
+        "Stream port numbers start at 0 are always in sequence.  "
+        "TO_BLOCK is the name of the "
+        "loaded module block that has the name TO_BLOCK.  "
+        "TO_PORT is the port number to connect to at TO_BLOCK.  "
+        " For example:\n"
+        "\n"
+        "    --connect-stream foo 1 bar 0\n"
+        "\n"
+        "will feed from the block named \"foo\" from its' stream "
+        "port number 1 to the block named \"bar\" to its' stream "
+        "port number 0."
     },
 /*----------------------------------------------------------------------*/
     { "--display", 'd', 0,                  false/*arg_optional*/,
@@ -244,27 +264,6 @@ static struct QsOption
 
         "set a parameter value.  The parameter must be a getter or a "
         "constant parameter."
-    },
-/*----------------------------------------------------------------------*/
-    { "--plug", 'p', "FROM_B TO_B FROM_PORT TO_PORT",  false,
-
-        "connects two block's buffer streams with more control over"
-        " which ports get connected.  FROM_F refers to the block we"
-        " are connecting from as a number in order in which the"
-        " blocks are loading starting at 0.  TO_F refers to the"
-        " block we are connecting to as a number in order in"
-        " which the blocks are loading starting at 0.  FROM_PORT"
-        " refers to the port number that we are connecting from"
-        " as viewed from the \"from block\".  TO_PORT refers to"
-        " the port number that we are connecting to as viewed"
-        " from the \"to block\".  For example:\n"
-        "\n"
-        "    --plug 0 1 2 3\n"
-        "\n"
-        "will feed the second block from the first block loaded,"
-        " the feeding, first, block will output from it's output"
-        " port number 2, and the second block will read what is"
-        " fed on it's input port number 3."
     },
 /*----------------------------------------------------------------------*/
     { "--ready", 'R', 0,                false,

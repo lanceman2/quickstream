@@ -673,6 +673,10 @@ https://raw.githubusercontent.com/lanceman2/quickstream.doc/master/jobFlow.png)
 
 #### other
 
+- Are block stream buffer promises a declarative thing?  No, Blocks do not
+  necessarily know how many input and outputs they have until start();
+  buffer sizing can depend on constant parameters which can change until
+  start(), so big NO.
 - quickstream code is written in fairly simple C with very few dependences.
   Currently runtime libraries linked are -lpthread -ldl and -lrt.
 - The API (application programming interface) user sees data structures as

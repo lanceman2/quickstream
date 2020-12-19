@@ -454,6 +454,39 @@ void qsBlockUnload(struct QsBlock *b) {
     ASSERT(b->graph->flowState == QsGraphPaused ||
             b->graph->flowState == QsGraphFailed);
 
+    // TODO: more super block stuff like unload all it's sub-blocks.
+
+
+    if(b->isSuperBlock == 0) {
+        // This is a simple block.
+        struct QsSimpleBlock *smB = (struct QsSimpleBlock *)b;
+        // Disconnect all stream inputs and outputs
+        uint32_t num = smB->numInputs;
+        for(uint32_t i = 0; i < num; ++i)
+            // Note: we are editing this inputs array while iterating through
+            // it, so we need keep qsBlockDisconnect() happy about that.
+            qsBlockDisconnect(b, i);
+        // And that should have cleaned up all inputs.
+        DASSERT(smB->numInputs == 0);
+        DASSERT(smB->inputs == 0);
+
+        // We remove all the outputs by removing all the inputs that
+        // connect from them.
+        num = smB->numOutputs;
+        for(uint32_t i = 0; i < num; ++i)
+            // Iterate backwards will keep the lower indexes as we destroy
+            // them.  This will remove connections to other blocks.
+            for(uint32_t j = smB->outputs[i].numInputs - 1; j != -1; --j)
+                // Ya, follow the namespace to the struct QsBlock that the
+                // output connects to.  Structures from block.h
+                qsBlockDisconnect(&smB->outputs[i].inputs[j]->block->block,
+                        smB->outputs[i].inputs[j]->inputPortNum);
+        // And that should have cleaned up all outputs.
+        DASSERT(smB->numOutputs == 0);
+        DASSERT(smB->outputs == 0);
+    }
+
+
     if(b->dlhandle) {
         void (*destroy)(void) = dlsym(b->dlhandle, "destroy");
 
