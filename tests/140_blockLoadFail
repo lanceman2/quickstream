@@ -12,5 +12,3 @@ if ! ../bin/quickstream\
  ; then
     exec ./success
 fi
-
-exec ./fail

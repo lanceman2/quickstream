@@ -10,8 +10,8 @@ How to add a test
   ./run_tests
 
     Running ./run_tests with no arguments runs all numbered tests that are
-    in this directory.   It should in less than a second on a fast computer.
-    Run it and see.
+    in this directory.   It should finish running in less than a second on
+    a fast computer.  Run it and see.
 
 
   ./valgrid_run_tests
@@ -20,8 +20,9 @@ How to add a test
     that are in this directory with the valgrind debugging program.  This
     will take some time to run.  Valgrind slows down your code by at least
     a factor of ten.  It will check for memory leaks in all the tests run.
-    Tests written with a bash script need to use exec to remove bashes
-    memory leaks.  Just look at them and see.
+    We add a valgrind suppressions file named valgrind_suppressions.
+    It removes the memory leak testing of bash and other programs in
+    /usr/bin/.
 
 
    When adding a numbered test running both ./run_tests and
@@ -59,6 +60,10 @@ How to add a test
     but we can't add it to the numbered test suite because it is made to
     fail.
 
+    Some of the test programs who's names do not start with 3 digits are
+    interactive test programs, and so are not well suited for automated
+    testing; and hence are not run with the suite testing commands:
+    "./run_tests" and "./valgrind_run_tests".
 
 
 At the start of the project the API is unstable, so at the start we tend

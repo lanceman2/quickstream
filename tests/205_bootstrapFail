@@ -9,4 +9,4 @@ if ! ../bin/quickstream\
     exec ./success
 fi
 
-exec ./fail
+exit 1

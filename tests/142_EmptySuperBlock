@@ -16,5 +16,3 @@ if ../bin/quickstream\
  --run ; then
     exec ./fail
 fi
-
-exec ./success

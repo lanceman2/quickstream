@@ -118,3 +118,7 @@ void qsDictionarySetValue(struct QsDictionary *dict, void *value);
 // Get the value for the node at "dict".
 extern
 void *qsDictionaryGetValue(const struct QsDictionary *dict);
+
+
+extern
+bool qsDictionaryIsEmpty(const struct QsDictionary *dict);

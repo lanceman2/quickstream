@@ -35,6 +35,3 @@ tmpFile="${dataFile}.tmp"
 
 
 diff -q $dataFile $tmpFile
-
-
-exec ./success

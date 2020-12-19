@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <inttypes.h>
 
 #include "Dictionary.h"
@@ -202,6 +203,14 @@ struct QsDictionary {
 
     void (*freeValueOnDestroy)(void *);
 };
+
+
+bool qsDictionaryIsEmpty(const struct QsDictionary *d) {
+
+    DASSERT(d);
+    if(d->children || d->suffix) return false; // not empty
+    return true; // empty
+}
 
 
 struct QsDictionary *qsDictionaryCreate(void) {

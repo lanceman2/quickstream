@@ -499,20 +499,6 @@ struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
 }
 
 
-enum QsParameterKind qsParameterKind(struct QsParameter *p) {
-
-    DASSERT(p);
-    return p->kind;
-}
-
-
-enum QsParameterType qsParameterType(struct QsParameter *p) {
-
-    DASSERT(p);
-    return p->type;
-}
-
-
 //
 // p1 is a constant parameter or a getter
 //
@@ -1037,4 +1023,28 @@ void qsGraphParametersPrint(struct QsGraph *graph, FILE *file) {
                 (int (*) (const char *key, void *value,
                     void *userData)) PrintParameterCB, file);
     }
+}
+
+
+const char *qsParameterGetName(const struct QsParameter *p) {
+    DASSERT(p);
+    return p->name;
+}
+
+
+size_t qsParameterGetSize(const struct QsParameter *p) {
+    DASSERT(p);
+    return p->size;
+}
+
+
+enum QsParameterType qsParameterGetType(const struct QsParameter *p) {
+    DASSERT(p);
+    return p->type;
+}
+
+
+enum QsParameterKind qsParameterGetKind(const struct QsParameter *p) {
+    DASSERT(p);
+    return p->kind;
 }

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -ex
+
+../bin/quickstream\
+ -v 3\
+ --threads 0\
+ --block tests/getterTriggeredFromSignal Block_0\
+ --block tests/constant Block_Constant\
+ --block tests/constant Block_Constant1\
+ --block tests/constant Block_Constant2\
+ --block tests/setter Block_1\
+ --block tests/setter Block_2\
+ --block tests/setter Block_3\
+ --parameters-connect Block_0 getter Block_1 setter\
+ --parameters-connect Block_0 getter Block_2 setter\
+ --parameters-connect Block_Constant constant  Block_3 setter\
+ --parameters-connect Block_Constant constant Block_Constant1 constant\
+ --parameters-connect Block_Constant constant Block_Constant2 constant\
+  --dot\
+ --display-wait
+

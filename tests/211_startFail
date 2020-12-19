@@ -11,7 +11,7 @@ if ! ../bin/quickstream\
  --block tests/dummy\
  --ready\
  --run ; then
-    exec ./success
+    exit 0
 fi
 
-exec ./fail
+exit 1

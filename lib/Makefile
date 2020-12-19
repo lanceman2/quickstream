@@ -12,7 +12,8 @@ libquickstream.so_SOURCES :=\
  trigger.c\
  run.c\
  threadPool.c\
- stream.c
+ stream.c\
+ graphPrint.c
 
 
 libquickstream.so_LDFLAGS := -lpthread -ldl -lrt

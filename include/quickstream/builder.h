@@ -203,7 +203,7 @@ struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
 /** Get kind of parameter
  */
 extern
-enum QsParameterKind qsParameterKind(struct QsParameter *p);
+enum QsParameterKind qsParameterGetKind(const struct QsParameter *p);
 
 
 
@@ -215,7 +215,7 @@ enum QsParameterKind qsParameterKind(struct QsParameter *p);
 
  */
 extern
-size_t qsParameterGetSize(struct QsParameter *p);
+size_t qsParameterGetSize(const struct QsParameter *p);
 
 
 /** Get the name of a parameter object
@@ -226,7 +226,7 @@ size_t qsParameterGetSize(struct QsParameter *p);
 
  */
 extern
-const char *qsParameterGetName(struct QsParameter *p);
+const char *qsParameterGetName(const struct QsParameter *p);
 
 
 /** Get the type of a parameter object
@@ -237,7 +237,7 @@ const char *qsParameterGetName(struct QsParameter *p);
  
  */
 extern
-enum QsParameterType qsParameterType(struct QsParameter *p);
+enum QsParameterType qsParameterGetType(const struct QsParameter *p);
 
 
 // Called when graph is paused.  Parameter, p, must be a constant or a

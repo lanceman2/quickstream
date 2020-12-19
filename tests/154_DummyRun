@@ -14,4 +14,3 @@ exec ../bin/quickstream\
  --block tests/dummy\
  --ready\
  --run
-

@@ -23,7 +23,3 @@ if ../bin/quickstream\
     # This avoids the memory leaks from bash that valgrind detects.
     exec ./fail
 fi
-
-
-# This avoids the memory leaks from bash that valgrind detects.
-exec ./success

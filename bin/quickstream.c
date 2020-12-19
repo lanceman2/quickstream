@@ -141,7 +141,7 @@ int main(int argc, const char * const *argv) {
                     if(!b) return 1;
                     struct QsParameter *p = qsParameterGetPointer(b,
                             argv[i+1], false);
-                    switch(qsParameterType(p)) {
+                    switch(qsParameterGetType(p)) {
 
                         // TODO: figure out how to do arrays.
 
@@ -214,7 +214,7 @@ int main(int argc, const char * const *argv) {
                     struct QsParameter *p1 = b1?
                         qsParameterGetPointer(b1, argv[i+3],
                                 /*isSetter*/true):0;
-                    if(!p1 && qsParameterKind(p0) == QsConstant)
+                    if(!p1 && qsParameterGetKind(p0) == QsConstant)
                         // Okay maybe it's a constant
                         p1 = qsParameterGetPointer(b1, argv[i+3],
                                 /*isSetter*/false);
@@ -262,12 +262,12 @@ int main(int argc, const char * const *argv) {
                     //   2.  1 or more Constants and 0 or more Setters
                     //
                     if(! (
-                         (qsParameterKind(p0) == QsGetter &&
-                            qsParameterKind(p1) == QsSetter) ||
-                         (qsParameterKind(p0) == QsConstant &&
-                            qsParameterKind(p1) == QsSetter) ||
-                         (qsParameterKind(p0) == QsConstant &&
-                            qsParameterKind(p1) == QsConstant)
+                         (qsParameterGetKind(p0) == QsGetter &&
+                            qsParameterGetKind(p1) == QsSetter) ||
+                         (qsParameterGetKind(p0) == QsConstant &&
+                            qsParameterGetKind(p1) == QsSetter) ||
+                         (qsParameterGetKind(p0) == QsConstant &&
+                            qsParameterGetKind(p1) == QsConstant)
                          )
                       ) {
                         fprintf(stderr,"--parameters-connect: Wrong mix "
@@ -285,7 +285,23 @@ int main(int argc, const char * const *argv) {
                 if(graph)
                     qsGraphParametersPrint(graph, stdout);
                 break;
-            case 'g': // --graph
+            case 'd': // --display Generate a graphviz dot graph and run the
+                // imagemagick display program and continue running
+                if(graph)
+                    qsGraphPrintDotDisplay(graph, false/*waitForDisplay*/);
+                break;
+            case 'D': // --display-wait Generate a graphviz dot graph and run the
+                // imagemagick display program and wait for the display
+                // program to exit and then continue running
+                if(graph)
+                    qsGraphPrintDotDisplay(graph, true/*waitForDisplay*/);
+                break;
+            case 'o': // --dot  Print a graphviz dot file of the stream graph
+                // to stdout
+                if(graph)
+                    qsGraphPrintDot(graph, stdout);
+                break;
+             case 'g': // --graph
                 CreateGraph();
                 break;
             case 's': // sleep SECONDS

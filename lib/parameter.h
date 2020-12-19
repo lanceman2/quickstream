@@ -86,6 +86,8 @@ struct QsParameter {
 
 struct QsGetter {
 
+    // Getters only connect to Setters in one group, with one getter.
+
     // We inherit a parameter
     struct QsParameter parameter;
 
