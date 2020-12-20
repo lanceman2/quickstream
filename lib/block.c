@@ -462,15 +462,23 @@ void qsBlockUnload(struct QsBlock *b) {
         struct QsSimpleBlock *smB = (struct QsSimpleBlock *)b;
         // Disconnect all stream inputs and outputs
         uint32_t num = smB->numInputs;
-        for(uint32_t i = 0; i < num; ++i)
+        DASSERT(num == 0 || smB->inputs[num-1].feederBlock != 0);
+
+        for(uint32_t i = 0; i < num; ++i) {
+
+            if(smB->inputs[i].feederBlock == 0) {
+                // This is an input that is not connected.  There has to
+                // be an element in the array with a higher index, that is
+                // not zeroed.
+                continue;
+            }
             // Note: we are editing this inputs array while iterating through
             // it, so we need keep qsBlockDisconnect() happy about that.
             qsBlockDisconnect(b, i);
+        }
         // And that should have cleaned up all inputs.
         DASSERT(smB->numInputs == 0);
         DASSERT(smB->inputs == 0);
-
-
 
         // We remove all the outputs by removing all the inputs that
         // connect from them.  We have to search for them.

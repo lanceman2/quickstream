@@ -271,7 +271,8 @@ struct QsInput {
     size_t maxRead; // Length in bytes.
 
     // The input port number that this filter block being written to sees
-    // in it's flow(,,portNum,) call.
+    // in it's flow(,,portNum,) call.  This is an index into the
+    // block->inputs[] array.
     uint32_t inputPortNum;
     // The output port number that the feedBlock uses as the output port
     // number that it is writing to.

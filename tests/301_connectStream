@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -ex
+
+
+../bin/quickstream\
+ -v 3\
+ --threads 0\
+ --block tests/dummy.so B0\
+ --block tests/dummy.so B1\
+ --block tests/dummy.so B2\
+ --block tests/dummy.so B3\
+ --connect B0 0 B1 0\
+ --connect B0 1 B1 1\
+ --connect B0 0 B2 0\
+ --connect B0 1 B3 0\
+ --dot
+
+
