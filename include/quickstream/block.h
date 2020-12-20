@@ -504,7 +504,7 @@ int qsCreatePassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum,
  \memberof CBlockAPI
  */
 extern
-const char* qsBlockGetName(struct QsBlock *block);
+const char* qsBlockGetName(const struct QsBlock *block);
 
 
 /** Get a block pointer from the blocks loaded name

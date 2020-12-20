@@ -470,21 +470,28 @@ void qsBlockUnload(struct QsBlock *b) {
         DASSERT(smB->numInputs == 0);
         DASSERT(smB->inputs == 0);
 
+
+
         // We remove all the outputs by removing all the inputs that
-        // connect from them.
-        num = smB->numOutputs;
-        for(uint32_t i = 0; i < num; ++i)
-            // Iterate backwards will keep the lower indexes as we destroy
-            // them.  This will remove connections to other blocks.
-            for(uint32_t j = smB->outputs[i].numInputs - 1; j != -1; --j)
-                // Ya, follow the namespace to the struct QsBlock that the
-                // output connects to.  Structures from block.h
-                qsBlockDisconnect(&smB->outputs[i].inputs[j]->block->block,
-                        smB->outputs[i].inputs[j]->inputPortNum);
-        // And that should have cleaned up all outputs.
+        // connect from them.  We have to search for them.
+        for(struct QsBlock *bl = b->graph->firstBlock; bl; bl = bl->next) {
+            if(bl->isSuperBlock || bl == b) continue;
+
+            struct QsSimpleBlock *smBl = (struct QsSimpleBlock *) bl;
+            if(smBl->inputs == 0) {
+                DASSERT(smBl->numInputs == 0);
+                continue;
+            }
+
+            for(uint32_t i = smBl->numInputs - 1; i != -1; --i)
+                if(smBl->inputs[i].feederBlock == smB)
+                    qsBlockDisconnect(bl, smBl->inputs[i].inputPortNum);
+        }
+
         DASSERT(smB->numOutputs == 0);
         DASSERT(smB->outputs == 0);
     }
+
 
 
     if(b->dlhandle) {
@@ -521,7 +528,7 @@ void qsBlockUnload(struct QsBlock *b) {
 }
 
 
-const char* qsBlockGetName(struct QsBlock *block) {
+const char* qsBlockGetName(const struct QsBlock *block) {
 
     if(block) return block->name;
     // This gets the block from pthread_setspecific(_qsGraphKey,block).

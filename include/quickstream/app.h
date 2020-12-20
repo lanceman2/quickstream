@@ -153,24 +153,6 @@ extern
 void qsThreadPoolDestroy(struct QsThreadPool *tp);
 
 
-/** Ready the graph
-
- If this is the first time the graph will flow all the block's construct()
- functions that exist will be called first.
-
- This allocates the stream buffers and calls the block start() functions,
- but does not run the flow.
-
- \param graph a pointer to an graph.
-
- \return 0 on success, and less than 0 on unrecoverable error.
-
- Return error(s): a block's start() returned less than 0.
- */
-extern
-int qsGraphReady(struct QsGraph *graph);
-
-
 /** Wait for the flows to finish
  
  This call will block until the stream flow is finished.
@@ -251,11 +233,11 @@ void qsGraphParametersPrint(struct QsGraph *graph, FILE *file);
  less than zero on other error.
  */
 extern
-int qsGraphPrintDot(struct QsGraph *graph, FILE *file);
+int qsGraphPrintDot(const struct QsGraph *graph, FILE *file);
 
 
 extern
-int qsGraphPrintDotDisplay(struct QsGraph *graph, bool waitForDisplay);
+int qsGraphPrintDotDisplay(const struct QsGraph *graph, bool waitForDisplay);
 
 
 
@@ -264,7 +246,7 @@ int qsBlockPrintHelp(const char *filename, FILE *file);
 
 
 extern
-uint32_t qsGraphForEachBlock(struct QsGraph *graph,
+uint32_t qsGraphForEachBlock(const struct QsGraph *graph,
         int (*callback)(struct QsBlock *block, void *userData));
 
 

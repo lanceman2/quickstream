@@ -30,6 +30,41 @@
 #define SETTER   "Setter"
 #define CONSTANT "Constant"
 
+static inline
+const char *GetKindString(const struct QsParameter *p) {
+
+    switch(p->kind) {
+
+        case QsConstant:
+            return CONSTANT;
+        case QsGetter:
+            return GETTER;
+        case QsSetter:
+            return SETTER;
+    }
+
+    ASSERT(0, "WTF");
+    return "WTF";
+}
+
+
+static inline
+const char *ParameterFillColor(const struct QsParameter *p) {
+
+    switch(p->kind) {
+
+        case QsConstant:
+            return "green";
+        case QsGetter:
+            return "blue";
+        case QsSetter:
+            return "orange";
+    }
+
+    ASSERT(0, "WTF");
+    return "WTF";
+}
+
 
 
 // Used to pass function parameter arguments to printing callback.
@@ -41,7 +76,6 @@ struct PrintParameterStruct {
     enum QsParameterKind kind;
     bool gotOne;
 };
-
 
 static int
 PrintParameterDotContent(const char *key, const struct QsParameter *p,
@@ -65,9 +99,9 @@ PrintParameterDotContent(const char *key, const struct QsParameter *p,
     }
 
     fprintf(ps->file,
-            "      \"%s:%s:%s\" [label=\"%s\"];\n",
+            "      \"%s:%s:%s\" [label=\"%s\",color=%s];\n",
             ps->desc, ps->blockName, qsParameterGetName(p),
-            qsParameterGetName(p));
+            qsParameterGetName(p), ParameterFillColor(p));
 
     return 0;
 }
@@ -127,7 +161,7 @@ int PrintGetterConnectionDotContent(const char *key,
     for(struct QsParameter *s = p->first->next; s; s = s->next) {
         DASSERT(s->kind == QsSetter);
         fprintf(ps->file,
-            "  \"%s:%s:%s\" -> \"%s:%s:%s\";\n",
+            "  \"%s:%s:%s\" -> \"%s:%s:%s\" [color=blue];\n",
             GETTER, p->block->block.name, p->name,
             SETTER, s->block->block.name, s->name);
     }
@@ -137,7 +171,7 @@ int PrintGetterConnectionDotContent(const char *key,
 
 
 static inline
-void PrintGetterToSetterConnections(struct QsGraph *g, FILE *file) {
+void PrintGetterToSetterConnections(const struct QsGraph *g, FILE *file) {
 
      for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
         if(b->isSuperBlock) continue;
@@ -152,24 +186,6 @@ void PrintGetterToSetterConnections(struct QsGraph *g, FILE *file) {
                 void *userData)) PrintGetterConnectionDotContent, &ps);
      }
 
-}
-
-
-static inline
-const char *GetKindString(const struct QsParameter *p) {
-
-    switch(p->kind) {
-
-        case QsConstant:
-            return CONSTANT;
-        case QsGetter:
-            return GETTER;
-        case QsSetter:
-            return SETTER;
-    }
-
-    ASSERT(0, "WTF");
-    return "WTF";
 }
 
 
@@ -202,9 +218,9 @@ int PrintParameterConnectionDotContent(const char *key,
     DASSERT(p->first->next);
 
     for(struct QsParameter *s = p->first->next; s; s = s->next) {
-        const char *dir = (s->kind == QsSetter)?"":"[dir=none]";
+        const char *dir = (s->kind == QsSetter)?"[":"[dir=none,";
         fprintf(ps->file,
-            "  \"%s:%s:%s\" -> \"%s:%s:%s\" %s\n",
+            "  \"%s:%s:%s\" -> \"%s:%s:%s\" %scolor=green]\n",
             GetKindString(p), p->block->block.name, p->name,
             GetKindString(s), s->block->block.name, s->name,
             dir);
@@ -215,7 +231,7 @@ int PrintParameterConnectionDotContent(const char *key,
 
 
 static inline
-void PrintConstantAndSetterConnections(struct QsGraph *g, FILE *file) {
+void PrintConstantAndSetterConnections(const struct QsGraph *g, FILE *file) {
 
      for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
         if(b->isSuperBlock) continue;
@@ -233,8 +249,7 @@ void PrintConstantAndSetterConnections(struct QsGraph *g, FILE *file) {
 }
 
 
-
-int qsGraphPrintDot(struct QsGraph *g, FILE *f) {
+int qsGraphPrintDot(const struct QsGraph *g, FILE *f) {
 
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
     DASSERT(g->flowState == QsGraphPaused);
@@ -291,7 +306,7 @@ int qsGraphPrintDot(struct QsGraph *g, FILE *f) {
 }
 
 
-int qsGraphPrintDotDisplay(struct QsGraph *g, bool waitForDisplay) {
+int qsGraphPrintDotDisplay(const struct QsGraph *g, bool waitForDisplay) {
 
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
     DASSERT(g->flowState == QsGraphPaused);

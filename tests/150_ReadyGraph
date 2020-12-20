@@ -1,7 +1,0 @@
-#!/bin/bash
-
-exec ../bin/quickstream\
- --block tests/dummy.so\
- --block tests/dummy xx\
- --block tests/dummy\
- --ready

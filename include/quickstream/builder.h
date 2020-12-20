@@ -136,7 +136,7 @@ enum QsParameterKind {
  \return 0 on success and -1 if the block was not found.
  */
 extern
-int qsBlockGetNumPorts(struct QsBlock *block,
+int qsBlockGetNumPorts(const struct QsBlock *block,
         uint32_t *numIn, uint32_t *numOut);
 
 
@@ -149,7 +149,7 @@ int qsBlockGetNumPorts(struct QsBlock *block,
 
  */
 extern
-struct QsBlock *qsBlockGetGraph(struct QsBlock *block);
+struct QsBlock *qsBlockGetGraph(const struct QsBlock *block);
 
 
 
@@ -162,7 +162,8 @@ struct QsBlock *qsBlockGetGraph(struct QsBlock *block);
  \return a pointer to the block with the name.
  */
 extern
-struct QsBlock *qsGraphGetBlockByName(struct QsGraph *graph, const char *bname);
+struct QsBlock *qsGraphGetBlockByName(const struct QsGraph *graph,
+        const char *bname);
 
 
 /** get a block name from the block pointer
@@ -175,7 +176,7 @@ struct QsBlock *qsGraphGetBlockByName(struct QsGraph *graph, const char *bname);
  Do not write to it.
  */
 extern
-const char *qsBlockGetName(struct QsBlock *block);
+const char *qsBlockGetName(const struct QsBlock *block);
 
 
 /** Get a pointer to a shared parameter object

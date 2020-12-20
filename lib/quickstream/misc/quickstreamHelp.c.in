@@ -167,26 +167,9 @@ static struct QsOption
         "print the block module help to stdout and then exit."
     },
 /*----------------------------------------------------------------------*/
-    { "--connect", 'c',   "SEQUENCE",     true/*arg_optional*/,
+    { "--connect", 'c', "FROM_BLOCK FROM_PORT TO_BLOCK TO_PORT",  false,
 
-        "connect loaded blocks in a stream."
-        " Loaded blocks are numbered starting at zero.  For example:\n"
-        "\n"
-        "    --connect \"0 1 2 4\"\n"
-        "\n"
-        "will connect the from block 0 to block 1 and from "
-        "block 2 to block 4, where block 0 is the first "
-        "loaded block, block 1 is the second loaded block, "
-        "and so on.  If no SEQUENCE argument is given, all "
-        "blocks that are not connected yet and that are "
-        "currently loaded will be connected in the order that "
-        "they have been loaded.  The input and output ports "
-        "will be set to the next available port."
-    },
-/*----------------------------------------------------------------------*/
-    { "--connect-stream", 'p', "FROM_BLOCK FROM_PORT TO_BLOCK TO_PORT",  false,
-
-        "connects two block's buffer streams with more control over "
+        "connects two block's buffer streams with control over "
         "which ports get connected.  FROM_BLOCK is the name of the "
         "loaded module block that has the name FROM_BLOCK.  "
         "FROM_PORT is the port number to connect from that FROM_BLOCK.  "
@@ -196,11 +179,11 @@ static struct QsOption
         "TO_PORT is the port number to connect to at TO_BLOCK.  "
         " For example:\n"
         "\n"
-        "    --connect-stream foo 1 bar 0\n"
+        "    --connect foo 1 bar 0\n"
         "\n"
         "will feed from the block named \"foo\" from its' stream "
-        "port number 1 to the block named \"bar\" to its' stream "
-        "port number 0."
+        "output port number 1 to the block named \"bar\" to its' stream "
+        "input port number 0."
     },
 /*----------------------------------------------------------------------*/
     { "--display", 'd', 0,                  false/*arg_optional*/,
@@ -227,7 +210,7 @@ static struct QsOption
         "create another stream graph.  Each time this option is given"
         " another stream graph, QsGraph, is created.  All subsequent blocks"
         " are loaded into this last stream graph that is created.  The "
-        "--ready, --run, --dot, --display, and --display-wait command "
+        "--run, --dot, --display, and --display-wait command "
         "options are applied to all the stream graphs.  The up-coming --block, "
         "--connect, --plug, and --threads command options are applied to "
         "the last created stream graph.  If no --graph option was given a "
@@ -264,18 +247,6 @@ static struct QsOption
 
         "set a parameter value.  The parameter must be a getter or a "
         "constant parameter."
-    },
-/*----------------------------------------------------------------------*/
-    { "--ready", 'R', 0,                false,
-
-        "ready the streams.  This gets the stream closer to ready to flow,"
-        " but does not call block's start() functions or spawn worker"
-        " flow threads.  This is more of a block and stream graph "
-        " development tool and is not a regular user tool.\n"
-        "\n"
-        "This option lets the use test the stream graph, and also "
-        "builds more information about the stream graph for printing "
-        "with the --display and --display-wait options."
     },
 /*----------------------------------------------------------------------*/
     { "--run", 'r', 0,                  false,

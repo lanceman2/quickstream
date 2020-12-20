@@ -339,23 +339,25 @@ struct QsOutput {  // points to reader filter blocks
     // Elements in this array are accessible from the QsSimpleBlock
     // (filter) but block->readers (not output->readers) are indexed by
     // the block's input port number.  This is readers of the current
-    // output and the index number to this array is likely not related to
-    // the reading block's input port number.
+    // output and the index number to this array is not necessarily
+    // related to the reading block's input port number.
     //
     // Each element in this array may point to a different blocks input.
     //
-    // This readers is a mapping from output to a block.  The QsSimpleBlock
-    // structure has a readers array of pointers that is a mapping from
-    // block input port to reader (or output buffer).  Yes, it's
-    // complicated but essential, so draw a pointer graph picture.
+    // This readers is a mapping from output to a block.  The
+    // QsSimpleBlock structure has a readers array of pointers that is a
+    // mapping from block input port to reader (or output buffer).  Yes,
+    // it's complicated but essential, so draw a pointer graph picture.
     //
     // array of pointers to filter block input readers that this output
     // feeds.  The indexes to this array are not related to stream port
     // numbers.
     //
-    // This array needs to stay without any empty elements, so when a
-    // connection that is in the middle of this array, the array must be
-    // shift/packed with no empty elements in it. 
+    // This inputs[] array of pointers needs to be allocated just before
+    // running the flow, so we can be sure that the addresses of these
+    // inputs is not being changed before running flow by editing the
+    // stream connections.  To make this array we need to search all the
+    // simple blocks in the graph.
     //
     struct QsInput **inputs;
     //

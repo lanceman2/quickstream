@@ -174,7 +174,65 @@ int main(int argc, const char * const *argv) {
                 arg = 0;
                 i += 3; // 3 additional args parsed
                 break;
-            case 'C': // --parameters-connect
+            case 'c': // --connect block0 outPort block1 inPort
+                // We must have 4 additional args:
+                if( (i+3) >= argc ||
+                        (argv[i][0] == '-') ||
+                        (argv[i+1][0] == '-') ||
+                        (argv[i+2][0] == '-') ||
+                        (argv[i+3][0] == '-')
+                        ) {
+                    fprintf(stderr, "--connect "
+                            "without 4 more args: "
+                            "block0 outPort block1 inPort\n");
+                    return 1;
+                }
+                if(!graph) {
+                    // If there not graph than their are no blocks.
+                    fprintf(stderr, "--connect "
+                            "with no blocks loaded");
+                    return 1;
+                }
+                char *end;
+                uint32_t fromPortNum = strtoul(argv[i+1], &end, 10); 
+                if(argv[i+1] == end) {
+                    fprintf(stderr, "--connect bad outPort number: %s\n",
+                            argv[i+1]);
+                    return 1;
+                }
+                uint32_t toPortNum = strtoul(argv[i+3], &end, 10); 
+                if(argv[i+3] == end) {
+                    fprintf(stderr, "--connect bad inPort number: %s\n",
+                            argv[i+3]);
+                    return 1;
+                }
+                struct QsBlock *block0 =
+                    qsGraphGetBlockByName(graph, argv[i]);
+                if(!block0) {
+                    fprintf(stderr, "--connect: block \"%s\" not found\n",
+                            argv[i]);
+                    return 1;
+                }
+                struct QsBlock *block1 =
+                    qsGraphGetBlockByName(graph, argv[i+2]);
+                if(!block1) {
+                    fprintf(stderr, "--connect: block \"%s\" not found\n",
+                            argv[i+2]);
+                    return 1;
+                }
+
+                if(qsBlockConnect(block0, block1,
+                            fromPortNum, toPortNum)) {
+                    fprintf(stderr, "--connect: failed to connect\n");
+                    return 1;
+                }
+
+                // next
+                arg = 0;
+                i += 4; // 4 additional args parsed
+                break;
+            case 'C': // --parameters-connect 
+                // blockName0 parameterName0 blockName1 parameterName1
                 // We must have 4 additional args:
                 if( (i+3) >= argc ||
                         (argv[i][0] == '-') ||
@@ -324,12 +382,6 @@ int main(int argc, const char * const *argv) {
                 // next
                 arg = 0;
                 ++i;
-                break;
-            case 'R': // --ready all the stream flow graphs
-                for(uint32_t i = 0; i<numGraphs; ++i) {
-                    ret = qsGraphReady(graphs[i]);
-                    if(ret) break;
-                }
                 break;
             case 'r': // --run run all the stream flow graphs
 

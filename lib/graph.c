@@ -217,6 +217,7 @@ void qsGraphDestroy(struct QsGraph *graph) {
 }
 
 
+static
 int qsGraphReady(struct QsGraph *graph) {
 
     DASSERT(graph);
@@ -447,11 +448,12 @@ int qsGraphWait(struct QsGraph *graph) {
     return 0; // success
 }
 
-struct QsBlock *qsGraphGetBlockByName(struct QsGraph *graph,
+
+struct QsBlock *qsGraphGetBlockByName(const struct QsGraph *graph,
         const char *bname) {
 
     DASSERT(graph);
     DASSERT(graph->blocks);
 
-    return (struct QsBlock *) qsDictionaryFind(graph->blocks, bname);
+    return qsDictionaryFind(graph->blocks, bname);
 }
