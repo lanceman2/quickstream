@@ -690,20 +690,20 @@ int qsParameterConnect(struct QsParameter *p0,
                 " parameter; setters QS_SETS_WHILE_PAUSED flag was not set",
                 p1->block->block.name, p1->name);
         DASSERT(0);
-        return -1;
+        return -2;
     }
 
     if(p0 == p1) {
         ERROR("No parameter \"%s\" can connect to itself", p1->name);
         DASSERT(0);
-        return -1;
+        return -3;
     }
 
     if(p0->block == p1->block) {
         ERROR("Block \"%s\" cannot connect parameters in itself",
                 ((struct QsBlock *)p0->block)->name);
         DASSERT(0);
-        return -1;
+        return -4;
     }
 
     // The parameters size and type must match.
@@ -715,7 +715,13 @@ int qsParameterConnect(struct QsParameter *p0,
                 ((struct QsBlock *)p1->block)->name,
                 p1->name, p1->size, p1->type);
         DASSERT(0);
-        return -1;
+        return -5;
+    }
+
+    if(p0->first && p1->first && p0->first == p1->first) {
+        // These parameters shared the same connection list.
+        WARN("Parameters already connected");
+        return 0; // success
     }
 
 
@@ -726,7 +732,7 @@ int qsParameterConnect(struct QsParameter *p0,
             ERROR("Setter \"%s:%s\" already has a connection",
                     ((struct QsBlock *)p1->block)->name, p1->name);
             DASSERT(0);
-            return 1;
+            return -7;
         }
         struct QsSetter *setter = (struct QsSetter *)p1;
         if(p0->kind == QsGetter) {

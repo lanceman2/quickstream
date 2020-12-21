@@ -208,7 +208,7 @@ struct QsDictionary {
 bool qsDictionaryIsEmpty(const struct QsDictionary *d) {
 
     DASSERT(d);
-    if(d->children || d->suffix) return false; // not empty
+    if(d->children || d->suffix || d->key) return false; // not empty
     return true; // empty
 }
 

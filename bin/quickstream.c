@@ -77,7 +77,7 @@ int main(int argc, const char * const *argv) {
             /////////////////////////////////////////////////////////////
             case -1:
             case '*':
-                fprintf(stderr, "Bad option: %s\n\n", arg);
+                fprintf(stderr, "\nBad option: %s\n\n", argv[i]);
                 // this will exit with error.
                 return 1;
             case '?':
@@ -141,6 +141,7 @@ int main(int argc, const char * const *argv) {
                     if(!b) return 1;
                     struct QsParameter *p = qsParameterGetPointer(b,
                             argv[i+1], false);
+
                     switch(qsParameterGetType(p)) {
 
                         // TODO: figure out how to do arrays.
@@ -198,13 +199,15 @@ int main(int argc, const char * const *argv) {
                 if(argv[i+1] == end) {
                     fprintf(stderr, "--connect bad outPort number: %s\n",
                             argv[i+1]);
-                    return 1;
+                    ret = 1; // error
+                    break;
                 }
                 uint32_t toPortNum = strtoul(argv[i+3], &end, 10); 
                 if(argv[i+3] == end) {
                     fprintf(stderr, "--connect bad inPort number: %s\n",
                             argv[i+3]);
-                    return 1;
+                    ret = 1; // error
+                    break;
                 }
                 struct QsBlock *block0 =
                     qsGraphGetBlockByName(graph, argv[i]);
@@ -226,14 +229,15 @@ int main(int argc, const char * const *argv) {
                 if(qsBlockConnect(block0, block1,
                             fromPortNum, toPortNum)) {
                     fprintf(stderr, "--connect: failed to connect\n");
-                    return 1;
+                    ret = 1;
+                    break;
                 }
 
                 // next
                 arg = 0;
                 i += 4; // 4 additional args parsed
                 break;
-            case 'C': // --parameters-connect 
+            case 'C': // --connect-parameters
                 // blockName0 parameterName0 blockName1 parameterName1
                 // We must have 4 additional args:
                 if( (i+3) >= argc ||
@@ -242,13 +246,13 @@ int main(int argc, const char * const *argv) {
                         (argv[i+2][0] == '-') ||
                         (argv[i+3][0] == '-')
                         ) {
-                    fprintf(stderr, "--parameters-connect "
+                    fprintf(stderr, "--connect-parameters "
                             "without 4 name args\n");
                     return 1;
                 }
                 if(!graph) {
                     // If there not graph than their are no blocks.
-                    fprintf(stderr, "--parameters-connect "
+                    fprintf(stderr, "--connect-parameters "
                             "with no blocks loaded");
                     return 1;
                 }
@@ -258,7 +262,7 @@ int main(int argc, const char * const *argv) {
                 // The names must be of this form:
                 //
                 // example:
-                //   --parameters-connect block0 par0 block1 par1
+                //   --connect-parameters block0 par0 block1 par1
                 {
                     struct QsBlock *b0 = qsGraphGetBlockByName(graph,
                             argv[i]);
@@ -274,13 +278,13 @@ int main(int argc, const char * const *argv) {
                     struct QsParameter *p1 = b1?
                         qsParameterGetPointer(b1, argv[i+3],
                                 /*isSetter*/true):0;
-                    if(!p1 && qsParameterGetKind(p0) == QsConstant)
+                    if(b1 && !p1 && qsParameterGetKind(p0) == QsConstant)
                         // Okay maybe it's a constant
                         p1 = qsParameterGetPointer(b1, argv[i+3],
                                 /*isSetter*/false);
 
                     if(!b0 || !p0 || !b1 || !p1) {
-                        fprintf(stderr, "--parameters-connect "
+                        fprintf(stderr, "--connect-parameters "
                                 "%s %s %s %s FAILED: ",
                                 argv[i], argv[i+1],
                                 argv[i+2], argv[i+3]);
@@ -330,7 +334,7 @@ int main(int argc, const char * const *argv) {
                             qsParameterGetKind(p1) == QsConstant)
                          )
                       ) {
-                        fprintf(stderr,"--parameters-connect: Wrong mix "
+                        fprintf(stderr,"--connect-parameters: Wrong mix "
                                 "of parameter connections.\n");
                         ret = 1; // fail
                         break;

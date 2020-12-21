@@ -12,7 +12,7 @@ tmpFile="${dataFile}.tmp"
  --threads 0\
  --block tests/constant cblock\
  --block tests/setter sblock\
- --parameters-connect cblock constant sblock setter\
+ --connect-parameters cblock constant sblock setter\
  --parameter-set cblock constant 30.03\
  --parameter-set cblock constant 3.03 > $tmpFile
 
@@ -24,9 +24,9 @@ tmpFile="${dataFile}.tmp"
  --block tests/setter sblock0\
  --block tests/setter sblock1\
  --block tests/setter sblock2\
- --parameters-connect cblock constant sblock0 setter\
- --parameters-connect cblock constant sblock1 setter\
- --parameters-connect cblock constant sblock2 setter\
+ --connect-parameters cblock constant sblock0 setter\
+ --connect-parameters cblock constant sblock1 setter\
+ --connect-parameters cblock constant sblock2 setter\
  --parameter-set cblock constant 1\
  --parameter-set cblock constant 2 >> $tmpFile
 
@@ -40,9 +40,9 @@ tmpFile="${dataFile}.tmp"
  --block tests/setter sblock0\
  --block tests/setter sblock1\
  --block tests/setter sblock2\
- --parameters-connect cblock constant sblock0 setter\
- --parameters-connect cblock constant sblock1 setter\
- --parameters-connect cblock constant sblock2 setter\
+ --connect-parameters cblock constant sblock0 setter\
+ --connect-parameters cblock constant sblock1 setter\
+ --connect-parameters cblock constant sblock2 setter\
  --parameter-set cblock constant 1\
  --parameter-set cblock constant 2\
  --run\

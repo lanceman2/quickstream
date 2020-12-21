@@ -179,9 +179,9 @@ void PrintGetterToSetterConnections(const struct QsGraph *g, FILE *file,
 
     struct QsBlock *b = g->firstBlock;
     for(; b; b = b->next)
-        if(b->isSuperBlock ||
-                qsDictionaryIsEmpty(((struct QsSimpleBlock *)b)->getters))
-            continue;
+        if(!b->isSuperBlock &&
+                !qsDictionaryIsEmpty(((struct QsSimpleBlock *)b)->getters))
+            break;
 
     if(!b)
         // nothing to print
@@ -229,6 +229,7 @@ int PrintParameterConnectionDotContent(const char *key,
         // first constant parameters that are in this block.
         return 0;
 
+
     DASSERT(p->first->kind == QsConstant);
     // If the connection list exists than there must be at least two
     // parameters in the list:
@@ -253,13 +254,14 @@ void PrintConstantAndSetterConnections(const struct QsGraph *g, FILE *file,
 
     struct QsBlock *b = g->firstBlock;
     for(; b; b = b->next)
-        if(b->isSuperBlock ||
-                qsDictionaryIsEmpty(((struct QsSimpleBlock *)b)->getters))
-            continue;
+        if(!b->isSuperBlock &&
+                !qsDictionaryIsEmpty(((struct QsSimpleBlock *)b)->getters))
+            break;
 
     if(!b)
         // Nothing to print.
         return;
+
 
     // We will have at least one line in this dot file.
     // TODO: Well shit, maybe not if there is no constant parameters.
@@ -270,7 +272,7 @@ void PrintConstantAndSetterConnections(const struct QsGraph *g, FILE *file,
     ps.graphNum = graphNum;
 
 
-    for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
+    for(; b; b = b->next) {
         if(b->isSuperBlock) continue;
         struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
         qsDictionaryForEach(smB->getters,

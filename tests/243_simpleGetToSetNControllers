@@ -14,7 +14,7 @@ tmpFile="${dataFile}.tmp"
  --threads 0\
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
- --parameters-connect getter getter setter setter\
+ --connect-parameters getter getter setter setter\
  --run > $tmpFile
 
 
@@ -26,9 +26,9 @@ tmpFile="${dataFile}.tmp"
  --block tests/setter setter2\
  --block tests/setter setter3\
  --block tests/dummy\
- --parameters-connect getter getter setter setter\
- --parameters-connect getter getter setter2 setter\
- --parameters-connect getter getter setter3 setter\
+ --connect-parameters getter getter setter setter\
+ --connect-parameters getter getter setter2 setter\
+ --connect-parameters getter getter setter3 setter\
  --run\
  --run\
  --run >> $tmpFile

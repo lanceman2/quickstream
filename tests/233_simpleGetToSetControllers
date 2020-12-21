@@ -14,7 +14,7 @@ tmpFile="${dataFile}.tmp"
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
  --block tests/dummy\
- --parameters-connect getter getter setter setter\
+ --connect-parameters getter getter setter setter\
  --run > $tmpFile
 
 ../bin/quickstream\
@@ -22,7 +22,7 @@ tmpFile="${dataFile}.tmp"
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
  --block tests/dummy\
- --parameters-connect getter getter setter setter\
+ --connect-parameters getter getter setter setter\
  --run\
  --run >> $tmpFile
 
@@ -31,7 +31,7 @@ tmpFile="${dataFile}.tmp"
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
  --block tests/dummy\
- --parameters-connect getter getter setter setter\
+ --connect-parameters getter getter setter setter\
  --run >> $tmpFile
 
 ../bin/quickstream\
@@ -39,7 +39,7 @@ tmpFile="${dataFile}.tmp"
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
  --block tests/dummy\
- --parameters-connect getter getter setter setter\
+ --connect-parameters getter getter setter setter\
  --run\
  --run >> $tmpFile
 
@@ -48,7 +48,7 @@ tmpFile="${dataFile}.tmp"
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
  --block tests/dummy\
- --parameters-connect getter getter setter setter\
+ --connect-parameters getter getter setter setter\
  --run >> $tmpFile
 
 ../bin/quickstream\
@@ -56,7 +56,7 @@ tmpFile="${dataFile}.tmp"
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
  --block tests/dummy\
- --parameters-connect getter getter setter setter\
+ --connect-parameters getter getter setter setter\
  --run\
  --run >> $tmpFile
 

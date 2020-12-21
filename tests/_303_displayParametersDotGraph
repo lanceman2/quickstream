@@ -12,11 +12,11 @@ set -ex
  --block tests/setter Block_1\
  --block tests/setter Block_2\
  --block tests/setter Block_3\
- --parameters-connect Block_0 getter Block_1 setter\
- --parameters-connect Block_0 getter Block_2 setter\
- --parameters-connect Block_Constant constant  Block_3 setter\
- --parameters-connect Block_Constant constant Block_Constant1 constant\
- --parameters-connect Block_Constant constant Block_Constant2 constant\
-  --dot\
+ --connect-parameters Block_0 getter Block_1 setter\
+ --connect-parameters Block_0 getter Block_2 setter\
+ --connect-parameters Block_Constant constant  Block_3 setter\
+ --connect-parameters Block_Constant constant Block_Constant1 constant\
+ --connect-parameters Block_Constant constant Block_Constant2 constant\
+ --dot\
  --display-wait
 

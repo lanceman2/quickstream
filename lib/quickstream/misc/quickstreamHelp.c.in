@@ -186,6 +186,21 @@ static struct QsOption
         "input port number 0."
     },
 /*----------------------------------------------------------------------*/
+    { "--connect-parameters", 'C', "BNAME0 PNAME0 BNAME1 PNAME1",  false,
+
+        "connects two parameters.  Getter and constant parameters may"
+        " be connected to setter parameters, and constant parameters "
+        "may be connected to other constant parameters.  "
+        "Setter parameters may only"
+        " have one getter and constant parameter connected to it.  This"
+        " makes connections only for the last graph created.  You can't"
+        " make parameter connections between different graphs.  "
+        "BNAME0 is the name of the block we are connecting from.  "
+        "PNAME0 is the name of the parameter we are connecting from.  "
+        "BNAME1 is the name of the block we are connecting to.  "
+        "PNAME1 is the name of the parameter we are connecting to."
+    },
+/*----------------------------------------------------------------------*/
     { "--display", 'd', 0,                  false/*arg_optional*/,
 
         "display a graphviz dot graph of the stream.  If display is"
@@ -220,21 +235,6 @@ static struct QsOption
     { "--help", 'h', 0,                     false/*arg_optional*/,
 
         "print this help to stdout and then exit."
-    },
-/*----------------------------------------------------------------------*/
-    { "--parameters-connect", 'C', "BNAME0 PNAME0 BNAME1 PNAME1",  false,
-
-        "connects two parameters.  Getter and constant parameters may"
-        " be connected to setter parameters, and constant parameters "
-        "may be connected to other constant parameters.  "
-        "Setter parameters may only"
-        " have one getter and constant parameter connected to it.  This"
-        " makes connections only for the last graph created.  You can't"
-        " make parameter connections between different graphs.  "
-        "BNAME0 is the name of the block we are connecting from.  "
-        "PNAME0 is the name of the parameter we are connecting from.  "
-        "BNAME1 is the name of the block we are connecting to.  "
-        "PNAME1 is the name of the parameter we are connecting to."
     },
 /*----------------------------------------------------------------------*/
     { "--parameters-print", 'P', 0,  false,
