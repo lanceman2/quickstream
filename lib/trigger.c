@@ -193,8 +193,8 @@ int qsTriggerSignalCreate(int signum,
 
     // Get the block module that is calling this function:
     struct QsBlock *b = GetBlock();
-    ASSERT(b->inWhichCallback == _QS_IN_BOOTSTRAP,
-            "this must be called in bootstrap()");
+    ASSERT(b->inWhichCallback == _QS_IN_DECLARE,
+            "this must be called in declare()");
     ASSERT(b->isSuperBlock == false, "SuperBlocks may not call this");
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 

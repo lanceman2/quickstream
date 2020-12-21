@@ -21,8 +21,8 @@ struct QsTrigger;
 // some other number.  We saw this as better than an enum.
 //
 #define _QS_IN_NONE             ((uint32_t) 0x2499f501)
-// in bootstrap()
-#define _QS_IN_BOOTSTRAP        ((uint32_t) 0x38def4de)
+// in declare()
+#define _QS_IN_DECLARE          ((uint32_t) 0x38def4de)
 // in construct()
 #define _QS_IN_CONSTRUCT        ((uint32_t) 0xe583e10c)
 // in destroy()
@@ -106,6 +106,17 @@ struct QsSimpleBlock {
     struct QsDictionary *getters; // getters and constants
     struct QsDictionary *setters; // setters
 
+    // Since we can't allocate inputs in the declare() function we need to
+    // store an list that tells us what input ports will use passThrough
+    // ring buffers.
+    //
+    // numPassThroughs is the length of the realloc() allocated
+    // passThroughs array.
+    uint32_t numPassThroughs;
+    struct QsPassThrough {
+        uint32_t inputPortNum;
+        uint32_t outputPortNum; // Can be QS_OUTPUT_PORT_UNSTATED
+    } *passThroughs;
 
     // A doubly linked list of triggers.  The block is responsible for
     // cleaning up triggers when it is destroyed.  When the stream is
@@ -261,9 +272,9 @@ struct QsInput {
     //
     // It only has to read 1 byte to fulfill this promise, but so long as
     // the readable amount of data on this port is >= maxRead is will keep
-    // having it's input() called until the readable amount of data on
-    // this port is < maxRead or an output buffer write pointer is at a
-    // limit (???).
+    // having it's flow() called until the readable amount of data on this
+    // port is < maxRead or an output buffer write pointer is at a limit
+    // (???).
     //
     // This parameter guarantees that we can calculate a fixed ring buffer
     // size that will not be overrun.

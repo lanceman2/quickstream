@@ -71,7 +71,7 @@
  hanging out.  It shows a lack of foresight in the design of GNUradio.
  Blocks in quickstream do not have there guts hanging out.  This
  simplifies quickstream.  The bottom-line is, can quickstream do what you
- need?  We'll see.
+ need with this very restricted interface?  We'll see.
 
 
  The quickstream builder interface functions provide ways to create and
@@ -83,7 +83,7 @@
  have all of the blocks and connections in it anyway, the builder
  is built into the graph object.
 
- That left us with three basic objects (data structures):
+ That left us with three basic API user opaque objects (data structures):
 
     1. **QsGraph** factory for all blocks and connections that can build and run
         the flow graph that it builds
@@ -92,9 +92,17 @@
     3. **QsParameter** named discrete-like controlling connections
 
 
- The stream connections do not require an object to be exposed.
+ The stream connections do not require an object to be exposed, we just connect
+ blocks to port numbers.
 
  */
+
+
+#define QS_DEFAULT_INPUT_THRESHOLD  (1)
+#define QS_DEFAULT_INPUT_MAXREAD    (1024) // maximum input read promise
+#define QS_DEFAULT_OUTPUT_MAXWRITE  (1024)
+
+
  
 
 struct QsGraph;

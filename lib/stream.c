@@ -92,7 +92,7 @@ int qsBlockConnect(struct QsBlock *_from, struct QsBlock *_to,
     // It's okay if an output port has a connection already.
 
     // Make sure that from->outputs has the needed number of ports.
-    // Port numbers start at 0, just like an array index that it is.
+    // Port numbers start at 0, just like the array index that it is.
     if(from->numOutputs <= fromPortNum) {
         // We need to add an output port.  We'll check that all output
         // ports in the array get used before we start the streams.
@@ -106,10 +106,14 @@ int qsBlockConnect(struct QsBlock *_from, struct QsBlock *_to,
         // that we just added.  Any old memory is saved by realloc().
         memset(from->outputs + oldNum, 0,
                 (from->numOutputs - oldNum)*sizeof(*to->outputs));
+        // Initialize all the outputs that we just added with the
+        // output defaults that are not zero.
+        for(uint32_t i = oldNum - 1; i < from->numOutputs; ++i)
+            from->outputs[i].maxWrite = QS_DEFAULT_OUTPUT_MAXWRITE;
     }
 
     // Make sure that to->inputs has the needed number of ports.
-    // Port numbers start at 0, just like an array index that it is.
+    // Port numbers start at 0, just like the array index that it is.
     if(to->numInputs <= toPortNum) {
         // We need to add an input port.  We'll check that all input
         // ports in the array get used before we start the streams.
@@ -125,6 +129,13 @@ int qsBlockConnect(struct QsBlock *_from, struct QsBlock *_to,
         // that we just added.  Any old memory is saved by realloc().
         memset(to->inputs + oldNum, 0,
                 (to->numInputs - oldNum)*sizeof(*to->inputs));
+        // Initialize all the inputs that we just added with the
+        // input defaults that are not zero.
+        for(uint32_t i = oldNum - 1; i < to->numInputs; ++i) {
+            struct QsInput *input = to->inputs + i;
+            input->threshold = QS_DEFAULT_INPUT_THRESHOLD;
+            input->maxRead = QS_DEFAULT_INPUT_MAXREAD;
+        }
     }
 
     // Now connect the blocks.
@@ -132,13 +143,16 @@ int qsBlockConnect(struct QsBlock *_from, struct QsBlock *_to,
     struct QsOutput *output = from->outputs + fromPortNum;
     struct QsInput *input = to->inputs + toPortNum;
 
-    // Add an input to the output, ha ha.
+    // Add a count of the number of inputs that an output will feed stream
+    // data.
     //
     // Each output port keeps a list of the to block inputs which we will
     // allocate just before flow start.  We cannot allocate them now since
     // the addresses of the inputs can be changed each time a connection
-    // is added above.  We just count them for now.
+    // is added (realloc()) above.  We just count them for now.
     ++output->numInputs;
+    // We make this array of pointers from the output to the inputs just
+    // before we run the flow, and remove it just after.
     DASSERT(output->inputs == 0);
 
     input->block = to;
@@ -266,15 +280,16 @@ int qsBlockDisconnect(struct QsBlock *b, uint32_t inputPortNum) {
 
 
 
-
 // Allocate stream ring buffers and ...
-int StreamsInit(struct QsGraph *g) {
+int StreamsStart(struct QsGraph *g) {
 
     DASSERT(g);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
 
 
     // Check the stream graph has no loops.
+
+
 
 
     // Build the stream graph.
@@ -287,7 +302,11 @@ int StreamsInit(struct QsGraph *g) {
 
 
 // Free the stream ring buffers and ...
-void StreamFree(struct QsGraph *g) {
+void StreamStop(struct QsGraph *g) {
+
+    DASSERT(g);
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+
 
 
 

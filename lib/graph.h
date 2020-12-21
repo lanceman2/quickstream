@@ -113,9 +113,9 @@ struct QsGraph {
 
 // Allocate stream ring buffers and ...
 extern
-int StreamsInit(struct QsGraph *g);
+int StreamsStart(struct QsGraph *g);
 
 
 // Free the stream ring buffers and ...
 extern
-void StreamFree(struct QsGraph *g);
+void StreamStop(struct QsGraph *g);

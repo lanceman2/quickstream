@@ -21,6 +21,8 @@
 #include "graph.h"
 #include "Dictionary.h"
 #include "LoadDSOFromTmpFile.h"
+#include "GET_BLOCK.h"
+
 
 static
 int FindHandle_cb(const char *blockName, struct QsBlock *b, void **dlhh) {
@@ -399,7 +401,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // We add a marker to block struct so we know what block callback
     // function is being called.
     //
-    b->inWhichCallback = _QS_IN_BOOTSTRAP;
+    b->inWhichCallback = _QS_IN_DECLARE;
 
     ret = declare();
 
@@ -455,6 +457,7 @@ void qsBlockUnload(struct QsBlock *b) {
             b->graph->flowState == QsGraphFailed);
 
     // TODO: more super block stuff like unload all it's sub-blocks.
+    // So, this function needs to be re-entrant.
 
 
     if(b->isSuperBlock == 0) {
@@ -498,8 +501,18 @@ void qsBlockUnload(struct QsBlock *b) {
 
         DASSERT(smB->numOutputs == 0);
         DASSERT(smB->outputs == 0);
-    }
 
+        if(smB->passThroughs) {
+            DASSERT(smB->numPassThroughs);
+#ifdef DEBUG
+            memset(smB->passThroughs, 0,
+                    smB->numPassThroughs*sizeof(*smB->passThroughs));
+#endif
+            free(smB->passThroughs);
+            smB->passThroughs = 0;
+            smB->numPassThroughs = 0;
+        }
+    }
 
 
     if(b->dlhandle) {
@@ -533,6 +546,39 @@ void qsBlockUnload(struct QsBlock *b) {
     }
 
     qsBlockUnload_noDestory(b);
+}
+
+
+int qsBlockPassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum) {
+
+    struct QsBlock *b = 0;
+    GET_SIMPLEBLOCK_IN_DECLARE(b);
+    struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b; 
+
+    for(uint32_t i = 0; i < smB->numPassThroughs; ++i) {
+        if(smB->passThroughs[i].inputPortNum == inputPortNum) {
+            ERROR("Block \"%s\" input port %" PRIu32
+                    " is already a pass-through",
+                    b->name, inputPortNum);
+            return 1;
+        }
+        if(smB->passThroughs[i].outputPortNum == outputPortNum) {
+            ERROR("Block \"%s\" output port %" PRIu32
+                    " is already a pass-through",
+                    b->name, outputPortNum);
+            return 1;
+        }
+    }
+
+    ++smB->numPassThroughs;
+    smB->passThroughs = realloc(smB->passThroughs,
+            smB->numPassThroughs*sizeof(*smB->passThroughs));
+    ASSERT(smB->passThroughs, "realloc(,%zu) failed",
+            smB->numPassThroughs*sizeof(*smB->passThroughs));
+    smB->passThroughs[smB->numPassThroughs - 1].inputPortNum = inputPortNum;
+    smB->passThroughs[smB->numPassThroughs - 1].outputPortNum = outputPortNum;
+
+    return 0;
 }
 
 

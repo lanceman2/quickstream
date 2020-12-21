@@ -16,46 +16,7 @@
 #include "block.h"
 #include "graph.h"
 #include "trigger.h"
-
-
-
-// A terrible CPP macro that sets b to the current block if it is not set
-// already.  Also checks that we are in a block bootstrap() call.
-// Also checks that this is the main thread that creates graphs.
-// Also checks that b is a simple block.
-//
-// Note: blocks can create parameters for other blocks.  That's why
-// this macro is important.
-//
-// Maybe this beats repeating this code many times in this file.
-//
-// There are 2 cases:
-//   1. the creator and owner block are different blocks
-//      and they must both be from the same graph.
-//   2. the creator and owner block are the same block
-//
-//   In either case we return the owner block.
-//
-// The parameter owner block must be a simple block.
-//
-//
-#define GET_OWNER_BLOCK(b) \
-    do {\
-        ASSERT(pname && pname[0]);\
-        ASSERT(mainThread == pthread_self(), "Not graph main thread");\
-        if(b) {\
-            struct QsBlock *creatorB = GetBlock();\
-            ASSERT(creatorB->inWhichCallback == _QS_IN_BOOTSTRAP,\
-                "%s() must be called from bootstrap()", __func__);\
-            ASSERT(creatorB == b || creatorB->graph == b->graph);\
-        } else {\
-            b = GetBlock();\
-            ASSERT(b->inWhichCallback == _QS_IN_BOOTSTRAP,\
-                "%s() must be called from bootstrap()", __func__);\
-        }\
-        ASSERT(b->isSuperBlock == false);\
-    } while(0)
-
+#include "GET_BLOCK.h"
 
 
 // For braking parameter connections when there are just 2 parameters that
@@ -403,7 +364,9 @@ struct QsParameter *
 qsParameterGetterCreate(struct QsBlock *b, const char *pname,
         enum QsParameterType type, size_t psize, const void *initVal) {
 
-    GET_OWNER_BLOCK(b);
+    ASSERT(pname);
+    ASSERT(pname[0]);
+    GET_SIMPLEBLOCK_IN_DECLARE(b);
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsGetter *p = AllocateParameter("Getter",
@@ -422,7 +385,9 @@ qsParameterSetterCreate(struct QsBlock *b, const char *pname,
             const void *value, void *userData),
         void *userData, uint32_t flags, const void *initialValue) {
 
-    GET_OWNER_BLOCK(b);
+    ASSERT(pname);
+    ASSERT(pname[0]);
+    GET_SIMPLEBLOCK_IN_DECLARE(b);
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsSetter *p = AllocateParameter("Setter",
@@ -445,7 +410,9 @@ qsParameterConstantCreate(struct QsBlock *b, const char *pname,
             const void *value, void *userData),
         void *userData, const void *initialVal) {
 
-    GET_OWNER_BLOCK(b);
+    ASSERT(pname);
+    ASSERT(pname[0]);
+    GET_SIMPLEBLOCK_IN_DECLARE(b);
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsConstant *p = AllocateParameter("Constant",
@@ -751,7 +718,7 @@ int qsParameterConnect(struct QsParameter *p0,
         }
     }
 
-    // Which we connect "to" which matters.
+    // Which we connect "to" matters.
     if(p0->kind == QsConstant)
         AddParameterConnections(p0, p1);
     else if(p1->kind == QsConstant) {
@@ -761,8 +728,6 @@ int qsParameterConnect(struct QsParameter *p0,
         DASSERT(p1->kind == QsSetter);
         AddParameterConnections(p0, p1);
     }
-
-    // TODO: push values across connections, if we can.
 
     return 0;
 }

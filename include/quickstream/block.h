@@ -455,7 +455,7 @@ extern
 void qsCreateOutputBuffer(uint32_t outputPortNum, size_t maxWriteLen);
 
 
-/** create a "pass-through" buffer
+/** pair input and output ports as to use "pass-through" buffer
 
  A pass-through buffer shared the memory mapping between the input port
  to an output port.  The block reading the input can write it's output
@@ -466,14 +466,17 @@ void qsCreateOutputBuffer(uint32_t outputPortNum, size_t maxWriteLen);
  saving the need for transferring data between two separate memory
  buffers.
 
+ This only declares that if the given ports are used that they will be
+ using a sharing a pass-through buffer.  If the ports are not connected
+ than the pass-through buffer will not exist at stream run/flow time.
+
+ This can only be called in the block's declare() function.
+
  \param inputPortNum the input port number that will share memory with
  the output.
 
  \param outputPortNum the output port number that will share memory with
  the input.
-
- \param maxWriteLen is the maximum length in bytes that the calling
- block promises not to exceed calling qsOutput().
 
  \return 0 on success.  If the buffer that corresponds with the output port
  is already passed through to this or another input to any block this
@@ -482,8 +485,7 @@ void qsCreateOutputBuffer(uint32_t outputPortNum, size_t maxWriteLen);
  \memberof CBlockAPI
  */
 extern
-int qsCreatePassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum,
-        size_t maxWriteLen);
+int qsBlockPassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum);
 
 
 /** Get the name of the block
