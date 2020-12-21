@@ -177,20 +177,32 @@ static inline
 void PrintGetterToSetterConnections(const struct QsGraph *g, FILE *file,
         int graphNum) {
 
-     for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
+    struct QsBlock *b = g->firstBlock;
+    for(; b; b = b->next)
+        if(b->isSuperBlock ||
+                qsDictionaryIsEmpty(((struct QsSimpleBlock *)b)->getters))
+            continue;
+
+    if(!b)
+        // nothing to print
+        return;
+
+    // We will have at least one line in this dot file.
+    // TODO: Well shit, maybe not if there is no getter parameters.
+    fprintf(file, "\n");
+
+    struct PrintParameterConnectionStruct ps;
+    ps.file = file;
+    ps.graphNum = graphNum;
+
+    for(; b; b = b->next) {
         if(b->isSuperBlock) continue;
         struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
-
-        struct PrintParameterConnectionStruct ps;
-        ps.file = file;
-        ps.graphNum = graphNum;
-
         qsDictionaryForEach(smB->getters,
             // Butt ugly function cast
             (int (*) (const char *key, void *value,
                 void *userData)) PrintGetterConnectionDotContent, &ps);
      }
-
 }
 
 
@@ -239,14 +251,28 @@ static inline
 void PrintConstantAndSetterConnections(const struct QsGraph *g, FILE *file,
         int graphNum) {
 
-     for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
+    struct QsBlock *b = g->firstBlock;
+    for(; b; b = b->next)
+        if(b->isSuperBlock ||
+                qsDictionaryIsEmpty(((struct QsSimpleBlock *)b)->getters))
+            continue;
+
+    if(!b)
+        // Nothing to print.
+        return;
+
+    // We will have at least one line in this dot file.
+    // TODO: Well shit, maybe not if there is no constant parameters.
+    fprintf(file, "\n");
+
+    struct PrintParameterConnectionStruct ps;
+    ps.file = file;
+    ps.graphNum = graphNum;
+
+
+    for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
         if(b->isSuperBlock) continue;
         struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
-
-        struct PrintParameterConnectionStruct ps;
-        ps.file = file;
-        ps.graphNum = graphNum;
-
         qsDictionaryForEach(smB->getters,
             // Butt ugly function cast
             (int (*) (const char *key, void *value,
@@ -273,15 +299,15 @@ void PrintStreamConnections(const struct QsGraph *graph, FILE *file,
             struct QsInput *input = smB->inputs + i;
             DASSERT(input);
             if(!input->feederBlock) continue;
+            DASSERT(input->inputPortNum == i);
             DASSERT(input->feederBlock->outputs);
             DASSERT(input->feederBlock->numOutputs);
-            fprintf(file, "  \"%d:%s:%" PRIu32 ":floW\" -> \"%d:Input:%s\""
+            fprintf(file, "  \"%d:%s:%" PRIu32 ":floW\" -> \"%d:%s:Input%" PRIu32 "\""
                     " [label=\"%" PRIu32 "\", color=red];\n",
                     graphNum, input->feederBlock->block.name,
                     input->outputPortNum,
 
-                    graphNum, b->name,
-                    input->inputPortNum);
+                    graphNum, b->name, i, i);
         }
     }
 }
@@ -310,31 +336,28 @@ int qsGraphPrintDot(const struct QsGraph *g, FILE *f) {
 
         fprintf(f,
             "  subgraph cluster_%d {\n"
-            "    label=\"%s\";\n"
-            "\n", clusterNum++, b->name);
+            "    label=\"%s\";\n",
+                    clusterNum++, b->name);
         if(smB->flow) {
             // Make a cluster for all output ports for this block
             fprintf(f,
             "    subgraph cluster_%d {\n"
-            "      label=\"\";\n"
-            "\n"
-            "      \"%d:Input:%s\" [label=\"flow()\"];\n"
-            "\n",
-                clusterNum++,
-                graphNum, b->name);
+            "      label=\"flow()%s\";\n",
+                    clusterNum++, (smB->flush)?" flush()":"");
+            for(uint32_t i = smB->numInputs - 1; i != -1; --i)
+                fprintf(f,
+            "      \"%d:%s:Input%" PRIu32 "\" "
+                    "[label=\"%" PRIu32 "\",shape=circle];\n",
+                    graphNum, b->name, i, i);
             for(uint32_t i = 0; i<smB->numOutputs; ++i)
                 // Print the output ports, connected or not.
                 fprintf(f,
-            "      \"%d:%s:%" PRIu32 ":floW\" [label=\"%" PRIu32 "\"];\n",
+            "      \"%d:%s:%" PRIu32 ":floW\" "
+                  "[label=\"%" PRIu32 "\",shape=diamond];\n",
                     graphNum, b->name, i, i);
             fprintf(f,
             "    }\n");
         }
-        if(smB->flush)
-            // Just let them know there is a flush() function.
-            fprintf(f,
-            "    \"%d:%s:flusH\" [label=\"flush()\"];\n",
-                    graphNum, b->name);
 
         PrintParameters(CONSTANT, smB->getters, QsConstant,
                 b->name, f, &clusterNum, graphNum);

@@ -211,14 +211,16 @@ int main(int argc, const char * const *argv) {
                 if(!block0) {
                     fprintf(stderr, "--connect: block \"%s\" not found\n",
                             argv[i]);
-                    return 1;
+                    ret = 1; // error
+                    break;
                 }
                 struct QsBlock *block1 =
                     qsGraphGetBlockByName(graph, argv[i+2]);
                 if(!block1) {
                     fprintf(stderr, "--connect: block \"%s\" not found\n",
                             argv[i+2]);
-                    return 1;
+                    ret = 1;
+                    break;
                 }
 
                 if(qsBlockConnect(block0, block1,

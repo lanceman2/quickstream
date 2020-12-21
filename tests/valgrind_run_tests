@@ -17,12 +17,13 @@ fi
 export VALGRIND_RUN="valgrind\
  --tool=memcheck\
  --leak-check=full\
+ --error-exitcode=1\
  --trace-children=yes\
  --show-leak-kinds=all\
  --trace-children-skip='*'\
  --suppressions=valgrind_suppressions\
  --errors-for-leak-kinds=all\
- --error-exitcode=1"
+ --error-exitcode=211"
 
 
 exec ./run_tests $*
