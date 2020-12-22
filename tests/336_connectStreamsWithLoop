@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -ex
+
+# This will be good valgrind check the cleanup of stream connections.
+
+bn=tests/dummy
+
+
+# Running this should fail with Loop problem
+if ../bin/quickstream\
+ -v 3\
+ --threads 0\
+ --block $bn B0\
+ --block $bn B1\
+ --block $bn B2\
+ --block $bn B3\
+ --connect B0 0 B1 0\
+ --connect B0 1 B1 1\
+ --connect B0 3 B1 2\
+ --connect B0 0 B2 0\
+ --connect B0 3 B2 1\
+ --connect B2 1 B3 0\
+ --connect B3 0 B0 0\
+ --dot\
+ --run ; then
+    exit 1
+fi

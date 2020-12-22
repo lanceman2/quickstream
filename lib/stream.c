@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <setjmp.h>
 #include <string.h>
+#include <stdbool.h>
 #include <pthread.h>
 
 #include "../include/quickstream/app.h"
@@ -278,6 +279,143 @@ int qsBlockDisconnect(struct QsBlock *b, uint32_t inputPortNum) {
     return 0; // success
 }
 
+void RemoveOutputInputsArray(struct QsGraph *g) {
+
+    for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
+        if(b->isSuperBlock) continue;
+        struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
+        if(smB->numOutputs == 0) continue;
+        DASSERT(smB->outputs);
+        for(uint32_t i = smB->numOutputs - 1; i != -1; --i) {
+            struct QsOutput *output = smB->outputs + i;
+            if(output->numInputs == 0) continue;
+            DASSERT(output->inputs);
+#ifdef DEBUG
+            memset(output->inputs, 0,
+                    output->numInputs*sizeof(*output->inputs));
+#endif
+            free(output->inputs);
+            output->inputs = 0;
+        }
+    }
+}
+
+
+// Return 0 on success else returns the number of outputs without inputs.
+uint32_t MakeOuputInputsArray(struct QsGraph *g) {
+
+    for(struct QsBlock *b0 = g->firstBlock; b0; b0 = b0->next) {
+        if(b0->isSuperBlock) continue;
+        struct QsSimpleBlock *smB0 = (struct QsSimpleBlock *) b0;
+        if(smB0->numOutputs == 0) {
+            DASSERT(smB0->outputs == 0);
+            continue;
+        }
+        DASSERT(smB0->outputs);
+        for(uint32_t i = smB0->numOutputs - 1; i != -1; --i) {
+            struct QsOutput *output = smB0->outputs + i;
+            if(output->numInputs == 0) continue;
+            output->inputs =
+                calloc(1, output->numInputs*sizeof(*output->inputs));
+            ASSERT(output->inputs, "malloc(%zu) failed",
+                    output->numInputs*sizeof(*output->inputs));
+        }
+
+        for(struct QsBlock *b1 = g->firstBlock; b1; b1 = b1->next) {
+            if(b1->isSuperBlock) continue;
+            struct QsSimpleBlock *smB1 = (struct QsSimpleBlock *)b1;
+            uint32_t j = smB1->numInputs - 1;
+            for(;j != -1; --j) {
+                if(smB1->inputs[j].feederBlock == smB0) {
+                    DASSERT(smB1->inputs[j].inputPortNum == j);
+                    uint32_t outputPortNum = smB1->inputs[j].outputPortNum;
+                    DASSERT(outputPortNum < smB0->numOutputs);
+#ifdef DEBUG
+                    uint32_t numInputs =
+                        smB0->outputs[outputPortNum].numInputs;
+                    DASSERT(numInputs);
+#endif
+                    // Get the array of pointers to inputs in this output.
+                    struct QsInput **oInputs =
+                        smB0->outputs[outputPortNum].inputs;
+                    // Find an input pointer that is 0 (unused), ...
+                    while(*oInputs != 0) {
+                        // We should not overrun the array.
+                        DASSERT(--numInputs);
+                        ++oInputs;
+                    }
+                    // and set its' value.
+                    *oInputs = smB1->inputs + j;
+                }
+            }
+        }
+    }
+
+    int numError = 0;
+
+    // Check that all outputs are connected to inputs.
+    for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
+        if(b->isSuperBlock) continue;
+        struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
+        for(uint32_t i = smB->numOutputs - 1; i != -1; --i)
+            if((smB->outputs + i)->numInputs == 0) {
+                ERROR("Block \"%s\" has outputs not connected",
+                        b->name);
+                ++numError;
+                continue;
+            }
+    }
+
+    if(numError) {
+        RemoveOutputInputsArray(g);
+        return numError;
+    }
+
+    // Check that all inputs are connected to inputs.
+    for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
+        if(b->isSuperBlock) continue;
+        struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
+        for(uint32_t i = smB->numInputs - 1; i != -1; --i)
+            if((smB->inputs + i)->feederBlock == 0) {
+                ERROR("Block \"%s\" has inputs not connected",
+                        b->name);
+                ++numError;
+                continue;
+            }
+    }
+
+    if(numError)
+        RemoveOutputInputsArray(g);
+
+    return numError;
+}
+
+
+// Returns true if there is a loop.
+static bool
+HaveLoops(struct QsSimpleBlock *b, uint32_t numFilters,
+        uint32_t count) {
+
+    for(int32_t i = b->numOutputs - 1; i != -1; --i) {
+        ++count;
+        if(count > numFilters)
+            // We have been to count blocks greater than the number of
+            // filters, therefore we are looping.  The recursive function
+            // would blow the stack if not for this return.
+            return true;
+        for(int32_t j = b->outputs[i].numInputs - 1; j != -1; --j)
+            return HaveLoops(b->outputs[i].inputs[j]->block,
+                    numFilters, count);
+    }
+    return false;
+}
+
+
+static inline
+int IsSource(const struct QsSimpleBlock *b) {
+    // Sources have no input and some output:
+    return (b->numInputs == 0 && b->numOutputs);
+}
 
 
 // Allocate stream ring buffers and ...
@@ -286,16 +424,72 @@ int StreamsStart(struct QsGraph *g) {
     DASSERT(g);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
 
+    // Find all sources
+    uint32_t numSources = 0;
+
+    g->numFilters = 0;
+
+    for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
+        if(b->isSuperBlock) continue;
+        if(IsSource((struct QsSimpleBlock *)b))
+            ++numSources;
+        if(((struct QsSimpleBlock *)b)->numInputs ||
+                ((struct QsSimpleBlock *)b)->numOutputs)
+            ++g->numFilters; // has input and/or output
+    }
+
+    if(g->numFilters == 0) return 0; // success
+
+
+    if(numSources == 0) {
+        ERROR("There are %" PRIu32 " filter blocks and"
+                " none are sources", g->numFilters);
+        return -1;
+    }
+
+    if(MakeOuputInputsArray(g)) return -1;
+
+
+    uint32_t i = 0;
+
+    struct QsSimpleBlock **sources =
+            malloc((numSources+1)*sizeof(*sources));
+    ASSERT(sources, "malloc(%zu) failed",
+            (numSources+1)*sizeof(*sources));
+
+    for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
+        if(b->isSuperBlock) continue;
+        if(IsSource((struct QsSimpleBlock *) b))
+            sources[i++] = (struct QsSimpleBlock *)b;
+    }
+
+    sources[i] = 0; // zero terminate
+
+    // dummy iterator, s
+    struct  QsSimpleBlock **s = sources;
+    
+    // Check the stream graph has no loops.
+    struct QsSimpleBlock *b = *s;
+    for(; b; b = *(++s))
+        if(HaveLoops(b, g->numFilters, 0))
+            break;
+    if(b) {
+        free(sources);
+        RemoveOutputInputsArray(g);
+        ERROR("There are loops starting from block \"%s\"",
+                b->block.name);
+        return -1;
+    }
+
 
     // Check the stream graph has no loops.
-
 
 
 
     // Build the stream graph.
     
 
-
+    free(sources);
 
     return 0; // success
 }
@@ -307,7 +501,12 @@ void StreamStop(struct QsGraph *g) {
     DASSERT(g);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
 
+    if(g->numFilters == 0) return;
 
 
+    // REMOVE ring BUFFERSsssssssssssssssssssssssssssssss
 
+
+    RemoveOutputInputsArray(g);
+    g->numFilters = 0;
 }

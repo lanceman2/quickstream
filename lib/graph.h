@@ -15,10 +15,6 @@ enum QsGraphFlowState {
     // blocks are still being created and connected
     // The stream has been stopped or was never flowing.
     QsGraphPaused = 0,
-    // start() callbacks have been called and stream buffers allocated
-    // and superBlocks have been flattened (if that means anything).
-    // The API user should not see this graph state.
-    QsGraphReady,
     // flowing or flushing
     QsGraphFlowing,
     // If we can no longer run this graph because a callback returned
@@ -57,6 +53,11 @@ struct QsGraph {
     // List of blocks.  Indexed by name.  This gives us fast lookup by
     // block name.
     struct QsDictionary *blocks;
+
+    // The number of simple blocks with stream input and/or outputs, in
+    // this graph.
+    uint32_t numFilters;
+
 
     // Another list of the blocks, as a doubly linked list of all the
     // blocks in the order in which they are loaded.  So we may call block

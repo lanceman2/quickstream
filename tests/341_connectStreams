@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -ex
+
+# dummy has no triggers for the stream.
+bn=tests/dummy
+
+
+../bin/quickstream\
+ -v 3\
+ --threads 0\
+ --block $bn B0\
+ --block $bn B1\
+ --block $bn B2\
+ --block $bn B3\
+ --connect B0 0 B1 0\
+ --connect B0 1 B1 1\
+ --connect B0 3 B1 2\
+ --connect B0 0 B2 0\
+ --connect B1 0 B3 0\
+ --connect B0 2 B3 1\
+ --dot\
+ --run # this really will run nothing.

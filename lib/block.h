@@ -227,10 +227,6 @@ struct QsSimpleBlock {
     // We do not expect a lot of inter-thread contention for this queue,
     // but we do need a mutex lock to access this queue.
     pthread_mutex_t mutex;
-
-    // pointers to the setter parameter callbacks that are queued.  This
-    // block owns these setter parameters.
-    //struct QsSetter *first, *last;
 };
 
 

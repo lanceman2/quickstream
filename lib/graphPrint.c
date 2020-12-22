@@ -92,9 +92,9 @@ PrintParameterDotContent(const char *key, const struct QsParameter *p,
         // This is the first parameter of this kind found.
         fprintf(ps->file,
             "    subgraph cluster_%d {\n"
-            "      label=\"%s %ss\";\n"
+            "      label=\"%ss\";\n"
             "\n",
-            *ps->clusterNum, ps->blockName, ps->desc);
+            *ps->clusterNum, ps->desc);
         ps->gotOne = true;
         ++(*ps->clusterNum);
     }
@@ -357,6 +357,11 @@ int qsGraphPrintDot(const struct QsGraph *g, FILE *f) {
             "      \"%d:%s:%" PRIu32 ":floW\" "
                   "[label=\"%" PRIu32 "\",shape=diamond];\n",
                     graphNum, b->name, i, i);
+            if(smB->numInputs == 0 && smB->numOutputs == 0)
+                fprintf(f,
+            "      \"%d:%s:%" PRIu32 ":floW\" "
+                  "[label=\"no stream\nconnections\"];\n",
+                    graphNum, b->name, 0);
             fprintf(f,
             "    }\n");
         }
