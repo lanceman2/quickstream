@@ -115,7 +115,7 @@ struct QsSimpleBlock {
     uint32_t numPassThroughs;
     struct QsPassThrough {
         uint32_t inputPortNum;
-        uint32_t outputPortNum; // Can be QS_OUTPUT_PORT_UNSTATED
+        uint32_t outputPortNum; // Can be QS_OUTPUT_PORT_UNSTATED???
     } *passThroughs;
 
     // A doubly linked list of triggers.  The block is responsible for
@@ -252,16 +252,17 @@ struct QsInput {
     // feederBlock is the block that is writing to this reader.
     struct QsSimpleBlock *feederBlock;
 
+    // This buffer struct does not change at flow-time.
     struct QsBuffer *buffer;
 
     // This threshold will trigger a block->input() call, independent of
     // the other inputs.
     //
-    // The block->input() may just return without advancing any input or
-    // output, effectively ignoring the input() call like the threshold
+    // The block->flow() may just return without advancing any input or
+    // output, effectively ignoring the flow() call like the threshold
     // trigger conditions where not reached.  In this way we may have
     // arbitrarily complex threshold trigger conditions.
-    size_t threshold; // Length in bytes to cause input() to be called.
+    size_t threshold; // Length in bytes to cause flow() to be called.
 
     // The reading filter block promises to read some input data so long
     // as the buffer input length >= maxRead.
@@ -293,9 +294,9 @@ struct QsOutput {  // points to reader filter blocks
     // (QsSimpleBlocks) that own them.
 
 
-    // The "pass through" buffers are a double linked list with the "real"
-    // buffer in the first one in the list.  The "real" output buffer has
-    // prev==0.
+    // The "pass through" buffers are a double linked list with the
+    // "owner" buffer in the first one in the list.  The "owner" output
+    // buffer has prev==0.
     //
     // If this a "pass through" output prev points to the in another
     // filter block output that this output uses to buffer its' data.
@@ -306,8 +307,8 @@ struct QsOutput {  // points to reader filter blocks
     //
     struct QsOutput *prev;
     //
-    // points to the next "pass through" output, if one is present; else
-    // next is 0.
+    // points to the next "pass through" down-stream output, if one is
+    // present; else next is 0.
     struct QsOutput *next;
 
 
@@ -315,6 +316,7 @@ struct QsOutput {  // points to reader filter blocks
     // "real" buffer that is the feed buffer, that feeds this pass through
     // buffer.
     //
+    // This buffer struct does not change at flow-time.
     struct QsBuffer *buffer;
 
     // writePtr points to where to write next in mapped memory. 
@@ -328,7 +330,8 @@ struct QsOutput {  // points to reader filter blocks
     uint8_t *writePtr;
 
     // The block that owns this output promises to not write more than
-    // maxWrite bytes to the buffer.
+    // maxWrite bytes to the buffer.  Also applies to pass-through
+    // writing.
     //
     size_t maxWrite;
 
@@ -340,7 +343,7 @@ struct QsOutput {  // points to reader filter blocks
     // This is used to calculate the ring buffer size and than
     // is used to determine if writing to the buffer is blocked
     // by buffer being full.
-    size_t maxLength;
+    //size_t maxLength;
 
     // readers is where the output data flows to.
     //
@@ -382,7 +385,7 @@ struct QsBuffer {
     //
     // There are two adjacent memory mappings per buffer.
     //
-    // The start of the first memory mapping is at end + mapLength.  We
+    // The start of the first memory mapping is at end - mapLength.  We
     // save "end" in the data structure because we use it more in looping
     // calculations than the "start" of the memory.
     //

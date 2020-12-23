@@ -8,8 +8,11 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <pthread.h>
 
-#include "./debug.h"
+#include "debug.h"
+#include "block.h"
+#include "graph.h"
 
 
 #define TMP_LEN  (64)
@@ -24,7 +27,10 @@
 //
 // https://github.com/gnuradio/gnuradio/blob/master/gnuradio-runtime/lib/vmcircbuf_mmap_shm_open.cc
 //
-//
+// It doesn't appear that GNUradio varies the length of the ring buffer.
+// In quickstream the length of the ring buffers depends on the read and
+// write promises, and whither or not the buffer is a pass-through buffer
+// or not, as in ringBuffers.c.
 
 // This makes a "ring buffer" that is made from two memory mappings, where
 // the second memory mapping maps addresses at the end of the buffer are

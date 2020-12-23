@@ -58,6 +58,10 @@ struct QsGraph {
     // this graph.
     uint32_t numFilters;
 
+    // This is a null terminated array of pointers that is allocated at
+    // before flow-time and freed after flow-time.
+    struct QsSimpleBlock **sources;
+
 
     // Another list of the blocks, as a doubly linked list of all the
     // blocks in the order in which they are loaded.  So we may call block
@@ -120,3 +124,19 @@ int StreamsStart(struct QsGraph *g);
 // Free the stream ring buffers and ...
 extern
 void StreamStop(struct QsGraph *g);
+
+
+extern
+void CreateRingBuffers(struct QsGraph *graph);
+
+
+extern
+void DestroyRingBuffers(struct QsGraph *graph);
+
+
+extern
+void *makeRingBuffer(size_t *len, size_t *overhang);
+
+
+extern
+void freeRingBuffer(void *x, size_t len, size_t overhang);

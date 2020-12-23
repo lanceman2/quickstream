@@ -426,6 +426,7 @@ int StreamsStart(struct QsGraph *g) {
 
     // Find all sources
     uint32_t numSources = 0;
+    DASSERT(g->sources == 0);
 
     g->numFilters = 0;
 
@@ -452,21 +453,20 @@ int StreamsStart(struct QsGraph *g) {
 
     uint32_t i = 0;
 
-    struct QsSimpleBlock **sources =
-            malloc((numSources+1)*sizeof(*sources));
-    ASSERT(sources, "malloc(%zu) failed",
-            (numSources+1)*sizeof(*sources));
+    g->sources =
+            malloc((numSources+1)*sizeof(*g->sources));
+    ASSERT(g->sources, "malloc(%zu) failed",
+            (numSources+1)*sizeof(*g->sources));
 
     for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
         if(b->isSuperBlock) continue;
         if(IsSource((struct QsSimpleBlock *) b))
-            sources[i++] = (struct QsSimpleBlock *)b;
+            g->sources[i++] = (struct QsSimpleBlock *)b;
     }
-
-    sources[i] = 0; // zero terminate
+    g->sources[i] = 0; // zero terminate
 
     // dummy iterator, s
-    struct  QsSimpleBlock **s = sources;
+    struct  QsSimpleBlock **s = g->sources;
     
     // Check the stream graph has no loops.
     struct QsSimpleBlock *b = *s;
@@ -474,7 +474,12 @@ int StreamsStart(struct QsGraph *g) {
         if(HaveLoops(b, g->numFilters, 0))
             break;
     if(b) {
-        free(sources);
+#ifdef DEBUG
+        memset(g->sources, 0, numSources*sizeof(*g->sources));
+#endif
+        free(g->sources);
+        g->sources = 0;
+        g->numFilters = 0;
         RemoveOutputInputsArray(g);
         ERROR("There are loops starting from block \"%s\"",
                 b->block.name);
@@ -482,14 +487,9 @@ int StreamsStart(struct QsGraph *g) {
     }
 
 
-    // Check the stream graph has no loops.
+    // Allocate buffers and map ring buffers
+    CreateRingBuffers(g);
 
-
-
-    // Build the stream graph.
-    
-
-    free(sources);
 
     return 0; // success
 }
@@ -501,10 +501,12 @@ void StreamStop(struct QsGraph *g) {
     DASSERT(g);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
 
-    if(g->numFilters == 0) return;
+    if(g->numFilters == 0) {
+        DASSERT(g->sources == 0);
+        return;
+    }
 
-
-    // REMOVE ring BUFFERSsssssssssssssssssssssssssssssss
+    DestroyRingBuffers(g);
 
 
     RemoveOutputInputsArray(g);

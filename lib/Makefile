@@ -7,13 +7,14 @@ libquickstream.so_SOURCES :=\
  block.c\
  parameter.c\
  graph.c\
- makeRingBuffer.c\
  GetPluginPath.c\
  trigger.c\
  run.c\
  threadPool.c\
  stream.c\
- graphPrint.c
+ graphPrint.c\
+ ringBuffers.c\
+ makeRingBuffer.c
 
 
 libquickstream.so_LDFLAGS := -lpthread -ldl -lrt
