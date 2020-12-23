@@ -129,7 +129,6 @@ void GetBuffer(struct QsBuffer *buffer,
                         output->maxWrite, output);
         }
     }
-
 }
 
 
