@@ -321,6 +321,7 @@ uint32_t MakeOuputInputsArray(struct QsGraph *g) {
                     output->numInputs*sizeof(*output->inputs));
         }
 
+
         for(struct QsBlock *b1 = g->firstBlock; b1; b1 = b1->next) {
             if(b1->isSuperBlock) continue;
             struct QsSimpleBlock *smB1 = (struct QsSimpleBlock *)b1;
@@ -346,6 +347,7 @@ uint32_t MakeOuputInputsArray(struct QsGraph *g) {
                     }
                     // and set its' value.
                     *oInputs = smB1->inputs + j;
+                    DASSERT((*oInputs)->outputPortNum == outputPortNum);
                 }
             }
         }
@@ -508,7 +510,14 @@ void StreamStop(struct QsGraph *g) {
 
     DestroyRingBuffers(g);
 
-
     RemoveOutputInputsArray(g);
+
+    DASSERT(g->sources);
+#ifdef DEBUG
+    for(struct QsSimpleBlock **s = g->sources; *s; ++(s))
+        *s = 0;
+#endif
+    free(g->sources);
+    g->sources = 0;
     g->numFilters = 0;
 }
