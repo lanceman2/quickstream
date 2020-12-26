@@ -11,8 +11,13 @@ struct QsSignal *sig;
 enum QsTriggerKind {
 
     QsSetterTrigger, // for calling setter parameter callback
-    QsStream,  // for calling flow() and flush() block functions
-    QsSignal   // OS signal trigger callback
+    QsSignal,   // OS signal trigger callback
+
+    // Stream triggers go after all others.  So we can tell they are for
+    // streams by the greater value QsStream
+
+    QsStreamSource, // QsStreamSource must be first of streams triggers.
+    QsStreamIO
 };
 
 
@@ -29,7 +34,7 @@ enum QsTriggerKind {
 // threads can work on.  It's just a trigger that causes user callback to
 // be called by a worker thread from the thread pool.  There can be many
 // things that trigger any block to have its' callbacks called, and hence
-// there are can be many triggers in a block.
+// there can be many triggers in a block.
 //
 struct QsTrigger {
 
@@ -42,7 +47,7 @@ struct QsTrigger {
 
     // The opaque QsTrigger is a public API interface.
 
-    // This block owns this trigger.
+    // This block owns this trigger.  A block can own many triggers.
     //
     // Super blocks do not have triggers.
     //
@@ -58,8 +63,8 @@ struct QsTrigger {
 
     // isRunning flag is set at TriggerStart() and unset in TriggerStop():
     //
-    // If isRunning is not set the trigger will not make jobs while the
-    // stream is running.
+    // If isRunning is not set the trigger will not make jobs while
+    // quickstream is running.
     bool isRunning;
 
     // There are source triggers that are triggers that can be triggered
@@ -68,7 +73,13 @@ struct QsTrigger {
     // triggers.  This does not mean that a source trigger can't be
     // triggered by another trigger, like a domino in the middle of a line
     // of dominoes that you knock over with your finger without knocking
-    // over any of the up stream dominoes.
+    // over any of the up stream dominoes, and the down stream dominoes
+    // fall.
+    //
+    // If there are no source triggers in a graph than running the graph
+    // will start and then quickly stop.  The running between start and
+    // stop will be quick, and do near nothing.  No worker threads will
+    // get launched is there are no source triggers in the graph.
     bool isSource;
 
     // TODO:
@@ -119,15 +130,50 @@ struct QsSignal {
     // try to take the action for this signal trigger.
     pthread_t thread;
 
-    // The signal number.  See run in shell: "kill -L".
+    // The signal number.  See a list run in shell: "kill -L".
     int signum;
 };
 
 
-struct QsStream {
+struct QsStreamIO {
+
+    // A trigger that is triggered by just the stream input and output.
 
     // inherit QsTrigger
     struct QsTrigger trigger;
+};
+
+
+struct QsStreamSource {
+
+    // A trigger that is letting the worker thread calling a system
+    // read(2).  Could be a fread(3) which wraps read(2) and stuff like
+    // that.
+
+    // inherit QsTrigger
+    struct QsTrigger trigger;
+};
+
+
+struct QsStreamFdRead {
+
+    // A trigger based on epoll_wait(2) for a reading fd.
+
+    // inherit QsTrigger
+    struct QsTrigger trigger;
+
+    int fd;
+};
+
+
+struct QsStreamFdWrite {
+
+    // A trigger based on epoll_wait(2) for a writing fd.
+
+    // inherit QsTrigger
+    struct QsTrigger trigger;
+
+    int fd;
 };
 
 

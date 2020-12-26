@@ -65,7 +65,7 @@ WaitingToLastJob(struct QsTrigger *t) {
     struct QsSimpleBlock *b = t->block;
     DASSERT(b);
 
-    DASSERT(t->kind == QsStream,
+    DASSERT(t->kind >= QsStreamSource,
             "%s() should only be used by stream triggers",
             __func__);
 

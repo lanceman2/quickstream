@@ -14,7 +14,7 @@ libquickstream.so_SOURCES :=\
  stream.c\
  graphPrint.c\
  ringBuffers.c\
- makeRingBuffer.c
+ mmapRingBuffer.c
 
 
 libquickstream.so_LDFLAGS := -lpthread -ldl -lrt

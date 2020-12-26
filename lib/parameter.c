@@ -942,6 +942,7 @@ uint32_t qsParameterGetterPush(struct QsParameter *p,
 }
 
 
+
 static
 int PrintParameterCB(const char *pname, struct QsParameter *p,
             FILE *file) {
@@ -957,18 +958,22 @@ int PrintParameterCB(const char *pname, struct QsParameter *p,
             fprintf(file, "Setter   ");
     }
 
+
     switch(p->type) {
         case QsNone:
-            fprintf(file, "NONE   %4zu ", p->size);
+            fprintf(file, "QsNone   %4zu ", p->size);
             break;
         case QsDouble:
-            fprintf(file, "DOUBLE %4zu ", p->size);
+            fprintf(file, "QsDouble %4zu ", p->size);
             break;
         case QsFloat:
-            fprintf(file, "FLOAT  %4zu ", p->size);
+            fprintf(file, "QsFloat  %4zu ", p->size);
             break;
         case QsUint64:
-            fprintf(file, "UINT64 %4zu ", p->size);
+            fprintf(file, "QsUint64 %4zu ", p->size);
+            break;
+        case QsString:
+            fprintf(file, "QsString %4zu ", p->size);
             break;
     }
 

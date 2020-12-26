@@ -19,5 +19,4 @@ bn=tests/dummy
  --connect B0 0 B2 0\
  --connect B1 0 B3 0\
  --connect B0 2 B3 1\
- --dot\
- --run # this really will run nothing.
+ --dot

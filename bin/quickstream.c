@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "../lib/debug.h"
 
@@ -159,6 +160,20 @@ int main(int argc, const char * const *argv) {
                                         argv[i+2], argv[i+2]);
                                 return 1;
                             }
+                            if(qsParameterSetValue(p, &val))
+                                return 1; // error
+                        }
+                        break;
+                        case QsString:
+                        {
+                            size_t len = strlen(argv[i+2]) + 1;
+                            size_t psize = qsParameterGetSize(p);
+                            char val[psize];
+                            if(len > psize) {
+                                strncpy(val, argv[i+2], psize);
+                                val[psize - 1] = '\0';
+                            } else
+                                strcpy(val, argv[i+2]);
                             if(qsParameterSetValue(p, &val))
                                 return 1; // error
                         }

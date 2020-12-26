@@ -555,6 +555,8 @@ int qsBlockPassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum) {
     GET_SIMPLEBLOCK_IN_DECLARE(b);
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b; 
 
+    // Make sure that we do not have conflict with a previous pass-through
+    // list.
     for(uint32_t i = 0; i < smB->numPassThroughs; ++i) {
         if(smB->passThroughs[i].inputPortNum == inputPortNum) {
             ERROR("Block \"%s\" input port %" PRIu32

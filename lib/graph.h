@@ -140,3 +140,11 @@ void *makeRingBuffer(size_t *len, size_t *overhang);
 
 extern
 void freeRingBuffer(void *x, size_t len, size_t overhang);
+
+
+extern
+uint32_t MakeOuputInputsArray(struct QsGraph *graph);
+
+
+extern
+void RemoveOutputInputsArray(struct QsGraph *graph);

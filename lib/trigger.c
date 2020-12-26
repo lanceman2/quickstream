@@ -35,7 +35,7 @@ bool CheckAndQueueTrigger(struct QsTrigger *t) {
     if(t->checkTrigger && !t->checkTrigger(t->userData)) return false;
 
     // Now Queue it
-    if(t->kind != QsStream)
+    if(t->kind < QsStreamSource)
         WaitingToFirstJob(t);
     else
         WaitingToLastJob(t);
@@ -241,9 +241,10 @@ void TriggerStart(struct QsTrigger *t) {
             QueueUpSetterFromGetter(s, s->parameter.first);
         }
         break;
-        case QsStream:
+        case QsStreamSource:
+        case QsStreamIO:
         {
-            ASSERT(0, "WRITE THIS CODE");
+            ERROR("WRITE THIS CODE");
         }
         break;
     }
@@ -273,9 +274,10 @@ void TriggerStop(struct QsTrigger *t) {
         case QsSetterTrigger:
             ((struct QsSetter *)t->userData)->trigger = 0;
         break;
-        case QsStream:
+        case QsStreamSource:
+        case QsStreamIO:
         {
-            ASSERT(0, "WRITE THIS CODE");
+            ERROR("WRITE THIS CODE");
         }
         break;
     }

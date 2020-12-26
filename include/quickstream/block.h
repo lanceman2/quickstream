@@ -22,8 +22,10 @@ enum QsParameterType {
     QsNone = 0,
     QsDouble,
     QsFloat,
-    QsUint64
+    QsUint64,
+    QsString
 };
+
 
 
 /** The default input read promise

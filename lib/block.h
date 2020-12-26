@@ -115,7 +115,7 @@ struct QsSimpleBlock {
     uint32_t numPassThroughs;
     struct QsPassThrough {
         uint32_t inputPortNum;
-        uint32_t outputPortNum; // Can be QS_OUTPUT_PORT_UNSTATED???
+        uint32_t outputPortNum;
     } *passThroughs;
 
     // A doubly linked list of triggers.  The block is responsible for
@@ -138,6 +138,16 @@ struct QsSimpleBlock {
     // list.
     struct QsTrigger *firstJob, *lastJob;
 
+    // This is the trigger that is associated with stream input and
+    // output if there is any.  streamTrigger stays 0 if there is no
+    // stream input and output.
+    //
+    // The stream trigger seems to be special.  It always gets queued
+    // last, so that other things can control the stream without delay.
+    // It will call the users flow() and flush() functions.
+    struct QsTrigger *streamTrigger;
+    //
+    bool userMadeTrigger;
 
     // The threadPool that can run this block's trigger actions.
     struct QsThreadPool *threadPool;
@@ -359,8 +369,8 @@ struct QsOutput {  // points to reader filter blocks
     // running the flow, so we can be sure that the addresses of these
     // inputs is not being changed before running flow by editing the
     // stream connections.  To make this array we need to search all the
-    // simple blocks in the graph.
-    //
+    // simple blocks in the graph.  See MakeOuputInputsArray() in
+    // ringBuffers.c.
     struct QsInput **inputs;
     //
     uint32_t numInputs; // length of inputs (readers) array
