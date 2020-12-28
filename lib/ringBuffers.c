@@ -97,7 +97,8 @@ void GetBuffer(struct QsBuffer *buffer,
     // There can only be at most one input that has pass-through write
     // access to a pass-through buffer per block output-to-inputs
     // connection stage.  There can be any number of connection
-    // pass-through buffer stages.  So we keep 
+    // pass-through buffer stages.  So we keep going, calling GetBuffer()
+    // and adding the needed buffer lengths via recursion.
     struct PassThroughPair p = IsPassThrough(b, output);
     if(p.input) {
         // We recurse.  This "input" is passing to a block downstream.
@@ -118,25 +119,34 @@ void GetBuffer(struct QsBuffer *buffer,
         GetBuffer(buffer, p.input->block, mapLength, 
                 overhangLength, p.output);
 
+        // We popped up of the recurring call that made a mapping at some
+        // point.  Now we can get the initialize read and write pointers
+        // to the ring buffer.
+
         p.input->readPtr = p.output->writePtr =
             buffer->end - buffer->mapLength;
 
-        // This is the next output.
+        // This is the next output in which we need to do these crap for
+        // it's inputs that have no ring buffers yet.
         output = p.output;
 
     } else {
 
-        // This buffer does not pass-through this block "b" and its' output.
-        // This block "b" is at the end of a "pass-through" buffer chain.
+        // This buffer does not pass-through this block "b" and its'
+        // output.  This block, "b", and output, is at the end of a
+        // "pass-through" buffer chain, and we have added all the buffer
+        // length numbers from all the outputs and inputs that share this
+        // buffer; so we can make the ring buffer memory mappings.
         buffer->mapLength = mapLength;
         buffer->overhangLength = overhangLength;
 
-        uint8_t *x =
-            makeRingBuffer(&buffer->mapLength, &buffer->overhangLength);
-        buffer->end = x + buffer->mapLength;
+        buffer->end =
+            makeRingBuffer(&buffer->mapLength, &buffer->overhangLength) +
+            buffer->mapLength;
     }
 
-    // Finish inputs readPtr data that this buffer feeds.
+    // Now that we have a mapping, i.e. the ring buffer addresses, so we
+    // finish initializing inputs' readPtr data that this output feeds. 
     //
     // We assume that there are no loops in the block stream graph,
     // otherwise this will blow the function call stack.
@@ -150,11 +160,17 @@ void GetBuffer(struct QsBuffer *buffer,
         struct QsSimpleBlock *smB = input->block;
         for(uint32_t j = smB->numOutputs - 1; j != -1; --j) {
             struct QsOutput *o = smB->outputs + j;
-            if(o->buffer)
-                // We have been to this block, smB, before via a different
-                // input to this block, smB.
-                break;
-            GetBuffer(0, smB, o->maxWrite, o->maxWrite, o);
+            // We may have been to this block, smB, before via a different
+            // input to this block, smB.  Hence if ... if is good.
+            // https://www.youtube.com/watch?v=nqerQZObl58
+            // Hercules.
+            if(!o->buffer)
+                // We keep going down the stream in all paths.  This will
+                // get all buffers.  Note: we are using/building the
+                // function call stack to traverse to each leaf (block
+                // sink) in the flow graph.   There are no loops, so
+                // this will terminate at a sink block.
+                GetBuffer(0, smB, o->maxWrite, o->maxWrite, o);
         }
     }
 }
