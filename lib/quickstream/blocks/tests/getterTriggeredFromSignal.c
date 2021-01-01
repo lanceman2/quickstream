@@ -70,6 +70,8 @@ int declare(void) {
 
 int start(uint32_t numInPorts, uint32_t numOutPorts) {
 
+    ERROR();
+
     count = 0;
 
     if(qsParameterNumConnections(getter) == 0) return 0;

@@ -20,15 +20,17 @@
 //
 
 
+// In declare() or being called from inside the quickstream library.
+
 #define GET_SIMPLEBLOCK_IN_DECLARE(b) \
     do {\
         ASSERT(mainThread == pthread_self(), "Not graph main thread");\
-        if(b) {\
+        if(b && b->inWhichCallback != _QS_IN_NONE) {\
             struct QsBlock *creatorB = GetBlock();\
             ASSERT(creatorB->inWhichCallback == _QS_IN_DECLARE,\
                 "%s() must be called from declare()", __func__);\
             ASSERT(creatorB == b || creatorB->graph == b->graph);\
-        } else {\
+        } else if(!b) {\
             b = GetBlock();\
             ASSERT(b->inWhichCallback == _QS_IN_DECLARE,\
                 "%s() must be called from declare()", __func__);\

@@ -116,9 +116,14 @@ struct QsGraph {
 };
 
 
+// Allocate output data and check for loops.
+extern
+int StreamsInit(struct QsGraph *g);
+
+
 // Allocate stream ring buffers and ...
 extern
-int StreamsStart(struct QsGraph *g);
+void StreamsStart(struct QsGraph *g);
 
 
 // Free the stream ring buffers and ...

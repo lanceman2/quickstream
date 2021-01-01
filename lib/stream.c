@@ -680,8 +680,15 @@ FreeFlowInputArgs(struct QsSimpleBlock *b) {
 }
 
 
-// Allocate stream ring buffers and ...
-int StreamsStart(struct QsGraph *g) {
+// Check the streams for loops and allocate output/input data structures;
+// all but the ring buffers.  Ring buffers must be made after all the
+// block start()s are called.
+//
+// This also allocates the arrays of function parameters that are passed
+// to flow() and flush() calls, in AllocateFlowInputArgs() and
+// AllocateFlowOutputArgs().
+//
+int StreamsInit(struct QsGraph *g) {
 
     DASSERT(g);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
@@ -756,8 +763,8 @@ int StreamsStart(struct QsGraph *g) {
 
     // dummy iterator, s
     struct  QsSimpleBlock **s = g->sources;
-    
-    // Check the stream graph has no loops.
+
+    // Check that the stream graph has no loops, if it does we fail.
     struct QsSimpleBlock *b = *s;
     for(; b; b = *(++s))
         if(HaveLoops(b, g->numFilters, 0))
@@ -799,34 +806,22 @@ int StreamsStart(struct QsGraph *g) {
         }
     }
 
+    return 0;
+}
 
-    // This is where we must call the block's start() functions so that
-    // they can request read and write buffer lengths via
-    // qsCreateOutputBuffer(), qsSetInputReadPromise(), and
-    // qsSetInputThreshold() where the QsOutput and QsInput data has been
-    // allocated just above to stove lengths in, hence the size of the
-    // ring buffers can be set indirectly by the block's requests, and the
-    // ring buffers are mmapped after this in CreateRingBuffers().
-    //
-    int ret = 0;
-    for(struct QsBlock *B = g->firstBlock; B; B = B->next)
-        if((ret = RunStartOrStop(B, B->start, "start", _QS_IN_START)))
-            break;
-    //
-    if(ret < 0) {
-        // One of the block's start() calls returned less than 0.
-        g->flowState = QsGraphFailed;
-        // TODO: Free stuff.
-#ifdef DEBUG
-        memset(g->sources, 0, numSources*sizeof(*g->sources));
-#endif
-        free(g->sources);
-        g->sources = 0;
-        g->numFilters = 0;
-        RemoveOutputInputsArray(g);
-        return -1;
+
+// Allocate stream ring buffers and mmap() them, and queue the stream
+// sources.
+void StreamsStart(struct QsGraph *g) {
+
+
+    if(g->numFilters == 0) {
+        DASSERT(g->sources == 0);
+        // There are no streams.
+        return;
     }
 
+    DASSERT(g->sources);
 
     // Allocate buffers and map ring buffers, now that we know the sizes.
     CreateRingBuffers(g);
@@ -836,7 +831,9 @@ int StreamsStart(struct QsGraph *g) {
     // We did not do this when we created them because of the failure
     // modes above.
     //
-    s = g->sources;
+    // dummy iterator, s
+    struct  QsSimpleBlock **s = g->sources;
+    //
     for(struct QsSimpleBlock *b = *s; b; b = *(++s)) {
         DASSERT(b->streamTrigger);
         if(b->streamTrigger->kind == QsStreamSource)
@@ -848,8 +845,6 @@ int StreamsStart(struct QsGraph *g) {
             // Now queue the job for a worker.
             CheckAndQueueTrigger(b->streamTrigger);
     }
-
-    return 0; // success
 }
 
 

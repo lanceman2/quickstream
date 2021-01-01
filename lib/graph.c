@@ -280,9 +280,45 @@ int qsGraphReady(struct QsGraph *graph) {
         return -1; // error
     }
 
+    // Check the streams for loops and allocate output/input data structures;
+    // all but the ring buffers.  Ring buffers must be made after all the
+    // block start()s are called.
+    if(StreamsInit(graph)) return -1; // error
 
-    // Allocate stream buffers
-    if(StreamsStart(graph)) return -1; // error
+
+    // Start all triggers in all blocks.
+    for(struct QsBlock *b = graph->firstBlock; b; b = b->next) {
+        if(b->isSuperBlock) continue;
+
+        for(struct QsTrigger *t = ((struct QsSimpleBlock *)b)->waiting;
+                t; t = t->next)
+            TriggerStart(t);
+    }
+
+
+    // This is where we must call the block's start() functions so that
+    // they can request read and write buffer lengths via
+    // qsCreateOutputBuffer(), qsSetInputReadPromise(), and
+    // qsSetInputThreshold() where the QsOutput and QsInput data has been
+    // allocated just above to stow lengths in, hence the size of the
+    // ring buffers can be set indirectly by the block's requests, and the
+    // ring buffers are mmapped after this in StreamsStart().
+    //
+    int ret = 0;
+    for(struct QsBlock *B = graph->firstBlock; B; B = B->next)
+        if((ret = RunStartOrStop(B, B->start, "start", _QS_IN_START)))
+            break;
+    //
+    if(ret < 0) {
+        // One of the block's start() calls returned less than 0.  We are
+        // screwed.  It's a block writer option to bail like this via a
+        // start() return value less than 0.
+        graph->flowState = QsGraphFailed;
+        return -1;
+    }
+
+    // Allocate stream buffers and mmap() the ring buffers.
+    StreamsStart(graph);
 
 
     // At this point all simple blocks in this graph should have a thread
@@ -332,16 +368,6 @@ int qsGraphRun(struct QsGraph *graph) {
     DASSERT((graph->threadPools->maxThreads == 0 &&
                 graph->threadPools->next == 0) ||
         graph->threadPools->maxThreads != 0);
-
-    // Start all triggers in all blocks.
-    for(struct QsBlock *b = graph->firstBlock; b; b = b->next) {
-        if(b->isSuperBlock) continue;
-
-        for(struct QsTrigger *t = ((struct QsSimpleBlock *)b)->waiting;
-                t; t = t->next)
-            TriggerStart(t);
-    }
-
 
     graph->flowState = QsGraphFlowing;
 

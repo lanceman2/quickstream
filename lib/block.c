@@ -460,6 +460,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
                     sizeof(maxWrite), 0 /*setCallback*/, b,
                     &maxWrite) == 0) {
             qsBlockUnload(b);
+            b->inWhichCallback = 0;
             return 0;
         }
     }
