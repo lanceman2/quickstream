@@ -79,17 +79,20 @@ void GetBuffer(struct QsBuffer *buffer,
         output->buffer = buffer;
     }
 
-    size_t maxRead = 0;
+    output->maxLength = output->maxWrite;
 
     for(uint32_t i = output->numInputs - 1; i != -1; --i) {
-        if(maxRead < output->inputs[i]->maxRead)
-            maxRead = output->inputs[i]->maxRead;
+        if(output->maxLength < output->inputs[i]->maxRead)
+            output->maxLength = output->inputs[i]->maxRead;
         output->inputs[i]->buffer = buffer;
     }
-    // Add a reader length to the buffer mapping sizes.
-    mapLength += maxRead;
-    if(overhangLength < maxRead)
-        overhangLength = maxRead;
+    // output->maxLength is now a maximum of the maxWrite and all maxRead
+    // lengths; whatever one was largest at this pass-through level.
+    //
+    // Add a length to the buffer mapping sizes.
+    mapLength += output->maxLength;
+    if(overhangLength < output->maxLength)
+        overhangLength = output->maxLength;
 
     // TODO: If we allowed loops in the stream we'd have to change this
     // function.
@@ -104,10 +107,6 @@ void GetBuffer(struct QsBuffer *buffer,
         // We recurse.  This "input" is passing to a block downstream.
         DASSERT(p.input->block != b);
         DASSERT(p.input->feederBlock == b);
-        // Add a writer length to the buffer mapping sizes.
-        mapLength += p.output->maxWrite;
-        if(overhangLength < p.output->maxWrite)
-            overhangLength = p.output->maxWrite;
 
         // We will be passing data through this buffer in the block
         // that contains p.input and p.output.
@@ -119,9 +118,9 @@ void GetBuffer(struct QsBuffer *buffer,
         GetBuffer(buffer, p.input->block, mapLength, 
                 overhangLength, p.output);
 
-        // We popped up of the recurring call that made a mapping at some
-        // point.  Now we can get the initialize read and write pointers
-        // to the ring buffer.
+        // We popped out of the recurring call that made a mapping at some
+        // point.  Now we can initialize the read and write pointers to
+        // the ring buffer.
 
         p.input->readPtr = p.output->writePtr =
             buffer->end - buffer->mapLength;
@@ -168,8 +167,8 @@ void GetBuffer(struct QsBuffer *buffer,
                 // We keep going down the stream in all paths.  This will
                 // get all buffers.  Note: we are using/building the
                 // function call stack to traverse to each leaf (block
-                // sink) in the flow graph.   There are no loops, so
-                // this will terminate at a sink block.
+                // sink) in the flow graph.   There are no loops, so this
+                // recursion will terminate at a sink block.
                 GetBuffer(0, smB, o->maxWrite, o->maxWrite, o);
         }
     }

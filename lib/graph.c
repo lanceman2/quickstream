@@ -59,7 +59,6 @@ struct QsGraph *qsGraphCreate(void) {
 }
 
 
-static inline
 int RunStartOrStop(struct QsBlock *b,
         int (*st)(uint32_t numIn, uint32_t numOut),
         const char *funcName, uint32_t cbType) {
@@ -303,7 +302,6 @@ int qsGraphReady(struct QsGraph *graph) {
     }
 
 
-
     if(graph->threadPools->maxThreads != 0) {
 
         CHECK(pthread_mutex_init(&graph->mutex, 0));
@@ -342,18 +340,6 @@ int qsGraphRun(struct QsGraph *graph) {
         for(struct QsTrigger *t = ((struct QsSimpleBlock *)b)->waiting;
                 t; t = t->next)
             TriggerStart(t);
-    }
-
-    ret = 0;
-    for(struct QsBlock *b = graph->firstBlock; b; b = b->next)
-        if((ret = RunStartOrStop(b, b->start, "start", _QS_IN_START)))
-            break;
-
-    if(ret < 0) {
-        // One of the block's start() calls returned less than 0.
-        graph->flowState = QsGraphFailed;
-        // TODO: Free stuff.
-        return ret;
     }
 
 

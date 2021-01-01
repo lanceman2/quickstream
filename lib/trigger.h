@@ -23,10 +23,17 @@ enum QsTriggerKind {
 
 // TODO: Replace the word trigger with work, job or event???
 //
+// Not likely to happen, but we keep this note so developers can get an
+// idea of what the hell a trigger is.  The English language does not have
+// a word for a trigger-event-to-job-work-thingy.  It's all those things
+// and it starts with a trigger.
+//
 // We trigger work and the job is what we work on with a worker thread
 // from the thread pool that the block is assigned to.
 //
-// Trigger becomes a job and then goes back to being a trigger.
+// Trigger becomes a job and then goes back to being a trigger again and
+// waits for another triggered event which queues up a job and bla bla
+// bla.
 //
 // We trigger a job.
 //
@@ -81,6 +88,11 @@ struct QsTrigger {
     // stop will be quick, and do near nothing.  No worker threads will
     // get launched is there are no source triggers in the graph.
     bool isSource;
+
+    // This is only a quickstream internal flag, that marks that we keep
+    // the threadPool mutex lock while calling the callback() of this
+    // struct.  Clearly API users can't set this flag.
+    bool keepLockInCallback;
 
     // TODO:
     //

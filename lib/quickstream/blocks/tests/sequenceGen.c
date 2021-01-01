@@ -44,7 +44,6 @@ int start(uint32_t numInputs, uint32_t numOutputs) {
             numOutputs, sizeof(*rs));
 
     for(uint32_t i=0; i<numOutputs; ++i) {
-        qsCreateOutputBuffer(i, maxWrite);
         // Initialize the random string generator.
         randomString_init(rs + i, i/*seed*/);
     }

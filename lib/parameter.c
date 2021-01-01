@@ -591,6 +591,7 @@ int SetterTriggerCB(struct QsSetter *s) {
 }
 
 
+#if 0 // NOT USED ??
 // This is called when the value is changed in a connected group of parameters that
 // has a constant parameter in the group.
 //static
@@ -601,6 +602,8 @@ void PushContantValues(struct QsConstant *c, void *value) {
     // MORE HEREEEEEEEEEEEEEEEEEEEEEEEEEEEE
 
 }
+#endif
+
 
 void qsParameterDisconnect(struct QsParameter *p, struct QsParameter *p1) {
 
@@ -811,6 +814,7 @@ int qsParameterSetValue(struct QsParameter *p, const void *value) {
             DASSERT(i->value == p->value);
             DASSERT(pthread_getspecific(_qsGraphKey) == 0);
             if(!setCallback) continue;
+
             CHECK(pthread_setspecific(_qsGraphKey, &i->block->block));
             setCallback(i, i->value, userData);
             CHECK(pthread_setspecific(_qsGraphKey, 0));
@@ -971,6 +975,9 @@ int PrintParameterCB(const char *pname, struct QsParameter *p,
             break;
         case QsUint64:
             fprintf(file, "QsUint64 %4zu ", p->size);
+            break;
+        case QsSize:
+            fprintf(file, "QsSize   %4zu ", p->size);
             break;
         case QsString:
             fprintf(file, "QsString %4zu ", p->size);

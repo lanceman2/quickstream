@@ -31,6 +31,9 @@ struct QsTrigger;
 #define _QS_IN_START            ((uint32_t) 0x9f1e3b8b)
 // in stop()
 #define _QS_IN_STOP             ((uint32_t) 0xdb85f71d)
+// in flow() or flush()
+#define _QS_IN_FLOW             ((uint32_t) 0xd013136c)
+//a51a86db83a245a7bdfa281f41a248546a644bb04
 
 
 
@@ -144,7 +147,7 @@ struct QsSimpleBlock {
     //
     // The stream trigger seems to be special.  It always gets queued
     // last, so that other things can control the stream without delay.
-    // It will call the users flow() and flush() functions.
+    // It will call the users flow() and/or flush() functions.
     struct QsTrigger *streamTrigger;
     //
     bool userMadeTrigger;
@@ -161,28 +164,41 @@ struct QsSimpleBlock {
     bool blockInThreadPoolQueue;
 
 
-    // The number of inputs can change before start and after stop, so can
-    // maxThread in the stream and so jobs and these input() arguments are
-    // all reallocated at qsStreamLaunch().
+    // We use the threadPool mutex to protect the following bool and
+    // pointer values in this comment block like thingy. //
+    //
+    // We cannot call flow() or flush() more than once at a time, so we
+    // need a flag to know when a thread is claiming the right to be
+    // calling flow() or flush().  Hence we cannot queue a flow()/flush()
+    // call while this flag is set, and the thread that set this flag
+    // must be the thread to queue the flow()/flush() trigger just after
+    // their flow() or flush() call.
+    //
+    bool callingFlow; // flag that calling flow() or flush()
+    //
+    // The number of inputs can change before start and after stop, and so
+    // these flow() arguments are all reallocated at qsGraphRun().
     //
     // The inputBuffers[i], inputLens[i] i=0,1,2,..N-1 numInputs pointer
     // values can only be changed in qsOutput() by the feeding filter
-    // block's thread.  If the feeding filter block can have more than one
-    // thread than the thread that is changing them will lock the output
-    // mutex.
+    // block's thread.
     //
-    // The arguments to pass to the input() call.  All are indexed by
+    // The arguments to pass to the flow() call.  All are indexed by
     // input port number
     void **inputBuffers; // allocated after start and freed at stop size_t
     size_t *inputLens;   // allocated after start and freed at stop
-
+    //
     // advanceLens is the length in bytes that the filter block advanced
     // the input buffers, indexed by input port number.
     size_t *advanceLens; // allocated after start and freed at stop
     //
     // outputLens from qsOuput() and qsGetOutputBuffer() calls from in
     // filter flow().   Length of this array is filter block numOutputs.
-    size_t *outputLens; // amount output was advanced in input() call.
+    //
+    // outputLens[i] is the amount output was advanced in flow() or
+    // flush() call, for output channel i.
+    size_t *outputLens;
+
 
     // This will be the pthread_getspecific() data for each flow thread.
     // Each thread just calls the filter (QsSimpleBlock) flow() function.
@@ -252,8 +268,8 @@ struct QsInput {
     uint8_t *readPtr;
 
     // readLength is the number of bytes to the write pointer at this
-    // pass-through level.  Accessing readLength requires a stream mutex
-    // lock.
+    // pass-through level.  Accessing readLength requires a threadPool
+    // mutex lock.
     size_t readLength;
 
     // The filter block that is reading.
@@ -265,7 +281,7 @@ struct QsInput {
     // This buffer struct does not change at flow-time.
     struct QsBuffer *buffer;
 
-    // This threshold will trigger a block->input() call, independent of
+    // This threshold will trigger a block->flow() call, independent of
     // the other inputs.
     //
     // The block->flow() may just return without advancing any input or
@@ -341,9 +357,17 @@ struct QsOutput {  // points to reader filter blocks
 
     // The block that owns this output promises to not write more than
     // maxWrite bytes to the buffer.  Also applies to pass-through
-    // writing.
+    // buffer writing.
     //
     size_t maxWrite;
+
+    // The maximum of maxWrite and maxRead for all block reader's of this
+    // output.
+    //
+    // This is used to calculate the ring buffer size and than is used to
+    // determine if writing to the buffer is blocked by buffer being
+    // full.
+    size_t maxLength;
 
 
     // readers is where the output data flows to.

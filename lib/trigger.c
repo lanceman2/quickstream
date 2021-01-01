@@ -29,7 +29,7 @@ bool CheckAndQueueTrigger(struct QsTrigger *t) {
 
     DASSERT(t);
     DASSERT(t->isInJobQueue == false);
-    //DASSERT(t->checkTrigger);
+    DASSERT(t->isRunning);
 
     // First check
     if(t->checkTrigger && !t->checkTrigger(t->userData)) return false;

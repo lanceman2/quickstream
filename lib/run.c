@@ -28,17 +28,21 @@
 static inline
 bool CallTriggerCallback(struct QsTrigger *t, struct QsThreadPool *tp) {
 
-
     // TODO: The callback() may need to be called more than once,
     // which is why we made this function.
 
-    CHECK(pthread_mutex_unlock(tp->mutex));
+    if(!t->keepLockInCallback)
+        CHECK(pthread_mutex_unlock(tp->mutex));
+
     DASSERT(pthread_getspecific(_qsGraphKey) == 0);
     CHECK(pthread_setspecific(_qsGraphKey, t->block));
-    // This is the call of a function in a simple block module.
+    // This is the call of a function in a simple block module or
+    // a wrapper that calls it.
     int ret = t->callback(t->userData);
     CHECK(pthread_setspecific(_qsGraphKey, 0));
-    CHECK(pthread_mutex_lock(tp->mutex));
+
+    if(!t->keepLockInCallback)
+        CHECK(pthread_mutex_lock(tp->mutex));
 
     // The block can change the trigger from this return value, ret.
     if(ret == 0)
@@ -253,8 +257,8 @@ void *runWorker(struct QsThreadPool *tp) {
 
     while(WaitForWork(tp)) {
         struct QsSimpleBlock *b;
-        // If WaitForWork() kept us here, then there must be work
-        // in the thread pool queue of blocks:
+        // If WaitForWork() kept us here, then there must be work in the
+        // thread pool queue for at least one of the blocks.
         DASSERT(tp->first);
         DASSERT(tp->last);
         bool sourceTriggersChanged = false;

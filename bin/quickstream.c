@@ -181,6 +181,7 @@ int main(int argc, const char * const *argv) {
                         case QsNone:
                         case QsFloat:
                         case QsUint64:
+                        case QsSize:
                             ASSERT(0, "Write this code");
                         break;
                     }

@@ -18,6 +18,8 @@
 // The parameter owner block must be a simple block.
 //
 //
+
+
 #define GET_SIMPLEBLOCK_IN_DECLARE(b) \
     do {\
         ASSERT(mainThread == pthread_self(), "Not graph main thread");\
@@ -33,4 +35,3 @@
         }\
         ASSERT(b->isSuperBlock == false);\
     } while(0)
-

@@ -23,6 +23,7 @@ enum QsParameterType {
     QsDouble,
     QsFloat,
     QsUint64,
+    QsSize,
     QsString
 };
 
@@ -435,14 +436,14 @@ void qsSetInputReadPromise(uint32_t inputPortNum, size_t len);
 
 /** Create an output buffer that is associated with the listed ports
 
- qsOutputBufferCreate() can only be called in the block's start()
- function.  If qsOutputBufferCreate() is not called for a given port
- number an output buffer will be created with the maxWrite parameter set
- to the default value of QS_DEFAULTMAXWRITE.
+ qsSetOutputMaxWrite() can only be called in the block's start() function.
+ If qsSetOutputMaxWrite() is not called for a given port number an output
+ buffer will be created with the maxWrite parameter set to the default
+ value of QS_DEFAULTMAXWRITE.
  
  The total amount of memory allocated for this ring buffer depends on
  maxWrite, and other parameters set by other blocks that may be
- accessing this buffer down stream.
+ accessing this buffer down stream and up stream.
 
  \param outputPortNum the output port number that the block will use to
  write to this buffer via qsGetOutputBuffer() and qsOutput().
@@ -454,7 +455,20 @@ void qsSetInputReadPromise(uint32_t inputPortNum, size_t len);
  \memberof CBlockAPI
  */
 extern
-void qsCreateOutputBuffer(uint32_t outputPortNum, size_t maxWriteLen);
+void qsSetOutputMaxWrite(uint32_t outputPortNum, size_t maxWriteLen);
+
+/**
+ If qsSetOutputMaxWrite() is not called in the block's start() function than
+ the maximum output write length may be set by the block user.
+
+ \param outputPortNum the output port number that the block will use to
+ write to this buffer via qsGetOutputBuffer() and qsOutput().
+
+ \return the maximum output write length for the given port number, or 0 if
+ there is no output port with that port number.
+ */
+extern
+size_t qsGetOutputMaxWrite(uint32_t outputPortNum);
 
 
 /** pair input and output ports as to use "pass-through" buffer
@@ -622,7 +636,7 @@ void destroy(void);
  the "smarter" blocks in the stream graph.
 
  The following functions may only be called in the block's start()
- function: qsCreateOutputBuffer(), qsCreatePassThroughBuffer(),
+ function: qsSetOutputMaxWrite(), qsCreatePassThroughBuffer(),
  qsSetInputThreshold(), and qsSetInputReadPromise().
  *
  \param numInPorts is the number of input buffers in the inBuffers input
@@ -676,7 +690,7 @@ int stop(uint32_t numInPorts, uint32_t numOutPorts);
  the "smarter" blocks in the stream.
 
  The following functions may only be called in the block's start()
- function: qsCreateOutputBuffer(), qsCreatePassThroughBuffer(),
+ function: qsSetOutputMaxWrite(), qsCreatePassThroughBuffer(),
  qsSetInputThreshold(), qsSetInputReadPromise(), and
  qsGetBlockName().
 

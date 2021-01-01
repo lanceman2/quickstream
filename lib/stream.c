@@ -25,6 +25,7 @@
 
 #include "debug.h"
 #include "Dictionary.h"
+#include "parameter.h"
 #include "block.h"
 #include "graph.h"
 #include "trigger.h"
@@ -307,6 +308,378 @@ int IsSource(const struct QsSimpleBlock *b) {
 }
 
 
+// We have a threadPool mutex lock when this is called.
+static bool
+CheckBlockFlowCallable(struct QsSimpleBlock *b) {
+
+    if(b->callingFlow)
+        // This filter block has a worker thread actively calling flow(),
+        // so there is no need to queue a worker for it.  It will just
+        // keep on working until working or queuing is not necessary, so
+        // we don't and can't queue it now.
+        return false;
+
+    // If any outputs are clogged than we cannot call flow().
+    for(uint32_t i = b->numOutputs-1; i != -1; --i) {
+        struct QsOutput *output = b->outputs + i;
+        for(uint32_t j = output->numInputs-1; j != -1; --j)
+            if(output->inputs[j]->readLength >= output->maxLength)
+                // We have at least one clogged output reader.  It has a
+                // full amount that it can read.  And so we will not be
+                // able to call flow().  Otherwise we could overrun the
+                // read pointer with the write pointer.
+                return false;
+    }
+
+    // If any input meets the threshold we can call flow() for this filter
+    // block, b, we return true.  If this filter block, b, decides that
+    // this one simple threshold condition is not enough then that filter
+    // block's flow() call can just do nothing and than this will try
+    // again later when another feeding filter block returns from a flow()
+    // call and we do this again.
+    for(uint32_t i = b->numInputs-1; i != -1; --i) {
+        struct QsInput *input = b->inputs + i;
+        if(input->readLength >= input->threshold)
+            return true;
+    }
+
+    if(b->numInputs == 0)
+        // We have no inputs so the inputs are not a restriction.
+        return true;
+
+    return false;
+}
+
+
+// This does a lot.
+//
+// Returns true to continue calling flow() or flush().
+//
+static bool
+IsFlowable(struct QsSimpleBlock *b) {
+
+    // Both the inputs and the outputs must be "OK" in order to call
+    // flow() after this call.
+    //
+    // If after all this looping/checking inputs and outputs we have all 3
+    // of these bools true (in addition to the non-zero flow() return),
+    // we can then continue to call flow() for this filter block.
+    //
+    // 1. inputAdvanced will be changed to true if:
+    //
+    //    a) one of the b->advanceLens[] has a non-zero value, otherwise
+    //       there was no input consumed by the last flow() call, or 
+    //
+    //    b) there was added input data in at least one port since the
+    //       last flow() call for this block, or
+    //
+    //    c) this filter block is a source that has no input ports.
+    //
+    bool inputAdvanced = (!b->numInputs)?true:false;
+    //
+    // 2. inputsFeeding will be changed to true if:
+    //
+    //    a) one input threshold is met, or
+    //
+    //    b) this is a source that has no input ports.
+    //
+    bool inputsFeeding = (!b->numInputs)?true:false;
+    //
+    // 3. allOutputsHungry will be changed to false if one output is full;
+    //    We cannot continue to run flow() if one output is full, because
+    //    that may cause a circular buffer overrun.
+    //
+    bool allOutputsHungry = true;
+
+    // In addition to setting these flags we need to move the stream
+    // pointers and stuff, to make the stream graph run.
+    
+
+    // Advance the output write pointers and see if we can write more.
+    //
+    // To be able to write more we must be able to write maxLength to all
+    // output readers; because that's what this API promises the filter
+    // block it can do.
+    //
+    // And grow the reader filter block's readLength.
+    for(uint32_t i=b->numOutputs-1; i!=-1; --i) {
+
+        struct QsOutput *output = b->outputs + i;
+
+        // This should have been checked already in qsGetOutputBuffer()
+        // and in qsOutput() hence the DASSERT() and not ASSERT().  Check
+        // that the filter block, b, did not write more than promised.
+        DASSERT(b->outputLens[i] <= output->maxWrite,
+                "Filter block \"%s\" wrote %zu which is greater"
+                " than the %zu promised",
+                b->block.name, b->outputLens[i], output->maxWrite);
+
+        // Advance write pointer.
+        output->writePtr += b->outputLens[i];
+        if(output->writePtr >= output->buffer->end) {
+            output->writePtr -= output->buffer->mapLength;
+            DASSERT(output->writePtr < output->buffer->end);
+        }
+
+        for(uint32_t j = output->numInputs-1; j != -1; --j) {
+            struct QsInput *input = output->inputs[j];
+            // Grow the reader filter block's readLength.  We may not
+            // write to the current working job, but the readLength will
+            // be either added to the working job, or it will become a
+            // stream queued job later.
+            //
+            // Tally the read length in the filter block (not b) we are
+            // feeding.  input->readLength is the length that the input
+            // can read in a flow() call.
+            input->readLength += b->outputLens[i];
+
+            if(input->readLength >= output->maxLength && allOutputsHungry)
+                // We have at least one clogged output reader.  It has
+                // a full amount that it can read.  And so we will not
+                // be continuing to call flow().  Otherwise we could
+                // overrun the read pointer with the write pointer.
+                allOutputsHungry = false;
+        }
+    }
+
+
+    // Advance the read pointers that feed this block, b; and tally the
+    // readers remaining length.
+    for(uint32_t i = b->numInputs-1; i != -1; --i) {
+        struct QsInput *input = b->inputs + i;
+
+        if((b->advanceLens[i] || input->readLength > b->inputLens[i]
+                    ) && !inputAdvanced)
+            inputAdvanced = true;
+
+
+        // The last time we had the stream mutex lock this was true, but
+        // readLength may have changed while this thread was calling the
+        // block's, b, flow() function:
+        //
+        // We had:
+        // b->inputLens[i] = b->inputs[i]->readLength;
+        //
+        // b->inputs[i]->readLength may have increased.
+
+        DASSERT(b->advanceLens[i] <= b->inputLens[i]);
+        DASSERT(b->inputLens[i] <= input->readLength);
+
+        if(b->inputLens[i] >= input->maxRead)
+            // This block filter module is not written correctly.
+            ASSERT(b->advanceLens[i],
+                    "The filter block \"%s\" did not keep it's read promise"
+                    " for input port %" PRIu32,
+                    b->block.name, i);
+
+        // Advance read pointer 
+        input->readPtr += b->advanceLens[i];
+        // Record the length that we have left to read up to the write
+        // pointer (at this pass-through level).
+        //
+        // b is the reading filter.
+        input->readLength -= b->advanceLens[i];
+
+        if(input->readPtr >= input->buffer->end) {
+            // Wrap the read pointer back in the circular buffer back
+            // toward the start.
+            input->readPtr -= input->buffer->mapLength;
+            DASSERT(input->readPtr < input->buffer->end);
+        }
+
+        if(!inputsFeeding && input->readLength >= input->threshold)
+            // The amount of input data left meets the needed threshold in
+            // at least one input.  If the threshold condition is more
+            // complex than the filter block will not eat the data we send
+            // by just not advancing the buffer.
+            inputsFeeding = true;
+    }
+
+
+    return (inputAdvanced && inputsFeeding && allOutputsHungry);
+}
+
+
+// This function is the source stream using the QsTrigger utility to make
+// a "source trigger" abstraction which is underneath a block source which
+// calls a blocking read(2) or something like that.  The writer of the
+// the filter block was too much of a dumb ass to use the epoll_wait(2)
+// wrapper thingy.  It's not as fucking stupid as GNU radio's one thread
+// per block idea.
+//
+// Returns 1 to have source flow() stopped being called for this flow
+// cycle.
+//
+// Returns 0 to keep running in this flow cycle.
+//
+// This needs to let other blocks get worker threads by not looping
+// forever.  Even when there is only one worker thread, that will
+// naturally happen when the output quick-stream gets clogged with too
+// much data.  The ring buffer settings with determine when that is.
+// Adjusting the ring buffer settings can optimise performance, and here
+// is where that happens.
+//
+static
+int StreamFlow_callback(struct QsSimpleBlock *b) {
+
+    // We have threadPool mutex lock now ...
+
+    DASSERT(b->flow);
+    DASSERT(b->callingFlow == false);
+
+    // Mark that no other worker thread should call this block's flow() or
+    // queue up this block's stream flow() call.  There is no need to queue
+    // it up, because it is actively running flow() until it can't.
+    //
+    // TODO: Can b->block.inWhichCallback = _QS_IN_FLOW replace this?
+    //
+    b->callingFlow = true;
+
+    int ret;
+
+    do {
+
+        // Ready the arguments for calling flow():
+        for(uint32_t i = b->numInputs-1; i != -1; --i) {
+            b->inputLens[i] = b->inputs[i].readLength;
+            b->advanceLens[i] = 0;
+            b->inputBuffers[i] = b->inputs[i].readPtr;
+        }
+        for(uint32_t i = b->numOutputs-1; i != -1; --i)
+            b->outputLens[i] = 0;
+
+        DASSERT(b->block.inWhichCallback == 0);
+        b->block.inWhichCallback = _QS_IN_FLOW;
+
+
+        ///////////////////// UNLOCK ////////////////////////
+        CHECK(pthread_mutex_unlock(b->threadPool->mutex));
+        // and now we don't have the lock.
+
+        ret = b->flow(b->inputBuffers, b->inputLens,
+                b->numInputs, b->numOutputs);
+
+        ///////////////////// LOCK //////////////////////////
+        CHECK(pthread_mutex_lock(b->threadPool->mutex));
+        // now we have the lock again.
+
+        DASSERT(b->block.inWhichCallback == _QS_IN_FLOW);
+        b->block.inWhichCallback = 0;
+
+        // Add jobs to the stream job queue if we can, for filters we are
+        // feeding.
+        for(uint32_t i = b->numOutputs-1; i != -1; --i) {
+            struct QsOutput *output = b->outputs + i;
+            for(uint32_t j = output->numInputs-1; j != -1; --j)
+                if(CheckBlockFlowCallable(output->inputs[j]->block))
+                    CheckAndQueueTrigger(output->inputs[j]->
+                            block->streamTrigger);
+        }
+
+        // Add jobs to the stream job queue if we can, for filters that are
+        // feeding this filter, b.
+        for(uint32_t i = b->numInputs-1; i != -1; --i)
+            if(CheckBlockFlowCallable(b->inputs[i].feederBlock))
+                CheckAndQueueTrigger(b->inputs[i].feederBlock->
+                        streamTrigger);
+
+
+    } while(IsFlowable(b) && ret == 0);
+
+
+    // Release the claim on the flow so another thread may queue this
+    // block for another flow() or flush() call at a later time.
+    b->callingFlow = false;
+
+
+    if(ret) {
+        if(ret > 0)
+            DSPEW("Finished calling source block \"%s\" flow",
+                    b->block.name);
+        else
+            ERROR("source block \"%s\" flow returned error",
+                    b->block.name);
+    }
+
+    // Return:
+    //   0   to continue regular running
+    //   > 0 to stop triggering this block
+    //   < 0 on error
+
+    return ret;
+}
+
+
+static void
+AllocateFlowOutputArgs(struct QsSimpleBlock *b) {
+
+    if(b->numOutputs == 0) return;
+
+    DASSERT(b->outputLens == 0);
+    b->outputLens = calloc(b->numOutputs, sizeof(*b->outputLens));
+    ASSERT(b->outputLens, "calloc(%" PRIu32 ",%zu) failed",
+            b->numOutputs, sizeof(*b->outputLens));
+}
+
+
+static void
+FreeFlowOutputArgs(struct QsSimpleBlock *b) {
+
+    if(b->numOutputs == 0) return;
+
+    DASSERT(b->outputLens);
+#ifdef DEBUG
+    memset(b->outputLens, 0, b->numOutputs*sizeof(*b->outputLens));
+#endif
+    free(b->outputLens);
+    b->outputLens = 0;
+}
+
+
+static void
+AllocateFlowInputArgs(struct QsSimpleBlock *b) {
+
+    if(b->numInputs == 0) return;
+
+    DASSERT(b->advanceLens == 0);
+    b->advanceLens = calloc(b->numInputs, sizeof(*b->advanceLens));
+    ASSERT(b->advanceLens, "calloc(%" PRIu32 ",%zu) failed",
+            b->numInputs, sizeof(*b->advanceLens));
+
+    DASSERT(b->inputBuffers == 0);
+    b->inputBuffers = calloc(b->numInputs, sizeof(*b->inputBuffers));
+    ASSERT(b->inputBuffers, "calloc(%" PRIu32 ",%zu) failed",
+            b->numInputs, sizeof(*b->inputBuffers));
+
+    DASSERT(b->inputLens == 0);
+    b->inputLens = calloc(b->numInputs, sizeof(*b->inputLens));
+    ASSERT(b->inputLens, "calloc(%" PRIu32 ",%zu) failed",
+            b->numInputs, sizeof(*b->inputLens));
+}
+
+
+static void
+FreeFlowInputArgs(struct QsSimpleBlock *b) {
+
+    if(b->numInputs == 0) return;
+
+    DASSERT(b->advanceLens);
+    DASSERT(b->inputBuffers);
+    DASSERT(b->inputLens);
+#ifdef DEBUG
+    memset(b->advanceLens, 0, b->numInputs*sizeof(*b->advanceLens));
+    memset(b->inputBuffers, 0, b->numInputs*sizeof(*b->inputBuffers));
+    memset(b->inputLens, 0, b->numInputs*sizeof(*b->inputLens));
+#endif
+    free(b->advanceLens);
+    b->advanceLens = 0;
+    free(b->inputBuffers);
+    b->inputBuffers = 0;
+    free(b->inputLens);
+    b->inputLens = 0;
+}
+
+
 // Allocate stream ring buffers and ...
 int StreamsStart(struct QsGraph *g) {
 
@@ -322,23 +695,33 @@ int StreamsStart(struct QsGraph *g) {
     for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
         if(b->isSuperBlock) continue;
         struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
+        AllocateFlowInputArgs(smB);
+        AllocateFlowOutputArgs(smB);
         if(IsSource(smB)) {
             ++numSources;
             if(!smB->userMadeTrigger) {
                 DASSERT(smB->streamTrigger == 0);
                 smB->streamTrigger = AllocateTrigger(
                         sizeof(struct QsStreamSource),
-                        smB, QsStreamSource, 0/*callback*/,
+                        smB, QsStreamSource,
+                        (int (*)(void *))StreamFlow_callback,
                         smB/*userData*/, 0/*checkTrigger*/,
                         true/*isSource*/);
+                // Set this flag that is what it says, keep the threadPool
+                // mutex lock when calling the callback().  The callback()
+                // == StreamFlow_callback() knows about the lock and
+                // unlocks and locks it when it needs to.
+                smB->streamTrigger->keepLockInCallback = true;
             }
+            DASSERT(smB->numOutputs);
         } else if(smB->numInputs || smB->numOutputs) {
             DASSERT(smB->streamTrigger == 0);
-                smB->streamTrigger = AllocateTrigger(
-                        sizeof(struct QsStreamIO),
-                        smB, QsStreamSource, 0/*callback*/,
-                        smB/*userData*/, 0/*checkTrigger*/,
-                        false/*isSource*/);
+            smB->streamTrigger = AllocateTrigger(
+                    sizeof(struct QsStreamIO),
+                    smB, QsStreamIO,
+                    (int (*)(void *))StreamFlow_callback,
+                    smB/*userData*/, 0/*checkTrigger*/,
+                    false/*isSource*/);
         }
         if(smB->numInputs || smB->numOutputs)
             ++g->numFilters; // has input and/or output
@@ -392,10 +775,79 @@ int StreamsStart(struct QsGraph *g) {
         return -1;
     }
 
-    // Allocate buffers and map ring buffers
+
+    // Set the maxWrite for all outputs from the "OutputMaxWrite"
+    // parameter.  This can be overwritten in the block's start()
+    // function.  It's a common parameter that the end user can set for
+    // all simple blocks.  "OutputMaxWrite" ends up being a reserved
+    // and universal simple block parameter.
+    for(struct QsBlock *B = g->firstBlock; B; B = B->next) {
+        if(B->isSuperBlock) continue;
+        b = (struct QsSimpleBlock *) B;
+        for(uint32_t i = b->numOutputs-1; i != -1; --i) {
+            size_t maxWrite = 0;
+            struct QsParameter *p = qsParameterGetPointer(B,
+                    "OutputMaxWrite", false/*is setter?*/);
+            DASSERT(p);
+            DASSERT(p->size == sizeof(maxWrite));
+            qsParameterGetValue(p, &maxWrite);
+            if(maxWrite == 0)
+                // 0 will not work.  TODO: but maybe it can be a special
+                // value.
+                maxWrite = QS_DEFAULTMAXWRITE;
+            b->outputs[i].maxWrite = maxWrite;
+        }
+    }
+
+
+    // This is where we must call the block's start() functions so that
+    // they can request read and write buffer lengths via
+    // qsCreateOutputBuffer(), qsSetInputReadPromise(), and
+    // qsSetInputThreshold() where the QsOutput and QsInput data has been
+    // allocated just above to stove lengths in, hence the size of the
+    // ring buffers can be set indirectly by the block's requests, and the
+    // ring buffers are mmapped after this in CreateRingBuffers().
+    //
+    int ret = 0;
+    for(struct QsBlock *B = g->firstBlock; B; B = B->next)
+        if((ret = RunStartOrStop(B, B->start, "start", _QS_IN_START)))
+            break;
+    //
+    if(ret < 0) {
+        // One of the block's start() calls returned less than 0.
+        g->flowState = QsGraphFailed;
+        // TODO: Free stuff.
+#ifdef DEBUG
+        memset(g->sources, 0, numSources*sizeof(*g->sources));
+#endif
+        free(g->sources);
+        g->sources = 0;
+        g->numFilters = 0;
+        RemoveOutputInputsArray(g);
+        return -1;
+    }
+
+
+    // Allocate buffers and map ring buffers, now that we know the sizes.
     CreateRingBuffers(g);
 
-
+    // Queue up jobs for all the QsStreamSource trigger source blocks.
+    //
+    // We did not do this when we created them because of the failure
+    // modes above.
+    //
+    s = g->sources;
+    for(struct QsSimpleBlock *b = *s; b; b = *(++s)) {
+        DASSERT(b->streamTrigger);
+        if(b->streamTrigger->kind == QsStreamSource)
+            //
+            // Setup flow() arguments for this source block.
+            //
+            // outputLens[] are all 0 so we already have it done.
+            //
+            // Now queue the job for a worker.
+            CheckAndQueueTrigger(b->streamTrigger);
+    }
 
     return 0; // success
 }
@@ -416,10 +868,12 @@ void StreamStop(struct QsGraph *g) {
 
     RemoveOutputInputsArray(g);
 
-    // Remove the stream triggers.
+    // Free Args arrays and remove the stream triggers
     for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
         if(b->isSuperBlock) continue;
         struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
+        FreeFlowInputArgs(smB);
+        FreeFlowOutputArgs(smB);
         if(smB->streamTrigger) {
             FreeTrigger(smB->streamTrigger);
             smB->streamTrigger = 0;

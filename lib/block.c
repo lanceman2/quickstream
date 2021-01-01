@@ -11,7 +11,7 @@
 
 #include "../include/quickstream/builder.h"
 #include "../include/quickstream/app.h"
-
+#include "../include/quickstream/block.h"
 
 #include "debug.h"
 #include "trigger.h"
@@ -132,6 +132,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // 7. Get callbacks
     // 8. Call declare()
     // 9. Add cleanup callback for block's entry in graph block Dictionary
+    // 10. Add built-in parameters
 
     DASSERT(graph);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
@@ -440,8 +441,29 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
             ((b->isSuperBlock)?"SUPER":"simple"),
             b->name, path);
 
-
     free(path);
+
+
+    ///////////////////////////////////////////////////////////////////
+    // 10. Add built-in parameters
+    ///////////////////////////////////////////////////////////////////
+
+    if(!b->isSuperBlock) {
+
+        // This adds the option for builders to set the output maxWrite
+        // for all output ports.  This can be overridden in the block
+        // start().  The user sets the parameter "OutputMaxWrite" and that
+        // is set for all output ports for the block before the start()
+        // function is called; hence the start() can override it.
+        size_t maxWrite = QS_DEFAULTMAXWRITE;
+        if(qsParameterConstantCreate(b, "OutputMaxWrite", QsSize,
+                    sizeof(maxWrite), 0 /*setCallback*/, b,
+                    &maxWrite) == 0) {
+            qsBlockUnload(b);
+            return 0;
+        }
+    }
+
 
     return (struct QsBlock *) b;
 }
@@ -546,41 +568,6 @@ void qsBlockUnload(struct QsBlock *b) {
     }
 
     qsBlockUnload_noDestory(b);
-}
-
-
-int qsBlockPassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum) {
-
-    struct QsBlock *b = 0;
-    GET_SIMPLEBLOCK_IN_DECLARE(b);
-    struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b; 
-
-    // Make sure that we do not have conflict with a previous pass-through
-    // list.
-    for(uint32_t i = 0; i < smB->numPassThroughs; ++i) {
-        if(smB->passThroughs[i].inputPortNum == inputPortNum) {
-            ERROR("Block \"%s\" input port %" PRIu32
-                    " is already a pass-through",
-                    b->name, inputPortNum);
-            return 1;
-        }
-        if(smB->passThroughs[i].outputPortNum == outputPortNum) {
-            ERROR("Block \"%s\" output port %" PRIu32
-                    " is already a pass-through",
-                    b->name, outputPortNum);
-            return 1;
-        }
-    }
-
-    ++smB->numPassThroughs;
-    smB->passThroughs = realloc(smB->passThroughs,
-            smB->numPassThroughs*sizeof(*smB->passThroughs));
-    ASSERT(smB->passThroughs, "realloc(,%zu) failed",
-            smB->numPassThroughs*sizeof(*smB->passThroughs));
-    smB->passThroughs[smB->numPassThroughs - 1].inputPortNum = inputPortNum;
-    smB->passThroughs[smB->numPassThroughs - 1].outputPortNum = outputPortNum;
-
-    return 0;
 }
 
 

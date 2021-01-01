@@ -58,9 +58,6 @@ int start(uint32_t numInputs, uint32_t numOutputs) {
             ASSERT(compare[i], "calloc(1,%zu) failed", maxWrite + 1);
         }
 
-    for(uint32_t i=0; i<numOutputs; ++i)
-        qsCreateOutputBuffer(i, maxWrite);
-
     rs = calloc(numInputs, sizeof(*rs));
     ASSERT(rs, "calloc(%" PRIu32 ",%zu) failed",
             numInputs, sizeof(*rs));

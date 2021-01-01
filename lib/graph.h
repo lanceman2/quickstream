@@ -127,6 +127,12 @@ void StreamStop(struct QsGraph *g);
 
 
 extern
+int RunStartOrStop(struct QsBlock *b,
+        int (*st)(uint32_t numIn, uint32_t numOut),
+        const char *funcName, uint32_t cbType);
+
+
+extern
 void CreateRingBuffers(struct QsGraph *graph);
 
 
