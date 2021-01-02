@@ -110,18 +110,6 @@ struct QsBlock;
 struct QsParameter;
 
 
-/** Kind of parameter
-
- There are 3 kinds of parameters.
- */
-enum QsParameterKind {
-
-    QsConstant, /** Gets pushed to setters, but not at flow-time */
-    QsGetter,   /** Gets pushed to setters at flow-time */
-    QsSetter    /** Is set from constant and getter */
-};
-
-
 /** bit flag used to mark the use of regular expressions to find
  * parameter with qsParameter functions
  */
@@ -174,58 +162,6 @@ struct QsBlock *qsGraphGetBlockByName(const struct QsGraph *graph,
         const char *bname);
 
 
-/** get a block name from the block pointer
-
- \param block is a pointer to the block.  If block is 0
- the current running block is used.
-
- \return a pointer to the block name string.
- The returned memory is managed by the block object.
- Do not write to it.
- */
-extern
-const char *qsBlockGetName(const struct QsBlock *block);
-
-
-/** Get a pointer to a shared parameter object
-
- \param block the block which owns the parameter we are seeking.
- See qsBlockGetName().  If \p block is 0 the current running block
- will be used.
-
- \param pname is the name of the parameter, which is unique for a given
- block.
-
- \param isSetter is true than we are looking for a setter parameter,
- else we are looking for a setter parameter.  A getter parameter and a
- setter parameter may have the same name.  But a getter and constant
- parameter may not have the same name.
-
- \return a pointer to the parameter object, or 0 if not found.
- */
-extern
-struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
-        const char *pname, bool isSetter);
-
-
-
-/** Get kind of parameter
- */
-extern
-enum QsParameterKind qsParameterGetKind(const struct QsParameter *p);
-
-
-
-/** Get the value entry size of a parameter object
-:e 
- \param p is a pointer to the parameter object.
-
- \return the value entry size of a parameter object.
-
- */
-extern
-size_t qsParameterGetSize(const struct QsParameter *p);
-
 
 /** Get the name of a parameter object
 
@@ -236,17 +172,6 @@ size_t qsParameterGetSize(const struct QsParameter *p);
  */
 extern
 const char *qsParameterGetName(const struct QsParameter *p);
-
-
-/** Get the type of a parameter object
-
- \param p is a pointer to the parameter object.
-
- \return the type of a parameter object.
- 
- */
-extern
-enum QsParameterType qsParameterGetType(const struct QsParameter *p);
 
 
 // Called when graph is paused.  Parameter, p, must be a constant or a

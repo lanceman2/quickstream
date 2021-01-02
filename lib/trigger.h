@@ -14,9 +14,15 @@ enum QsTriggerKind {
     QsSignal,   // OS signal trigger callback
 
     // Stream triggers go after all others.  So we can tell they are for
-    // streams by the greater value QsStream
+    // streams by the greater value
 
+    // QsStreamSource is a source trigger that needs to be queued any time
+    // that the output is not clogged and flow() is happy.
+    //
     QsStreamSource, // QsStreamSource must be first of streams triggers.
+
+    // QsStreamIO is a trigger that is queued any time there is enough
+    // input and none of the outputs are clogged and flow() is happy.
     QsStreamIO
 };
 

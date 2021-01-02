@@ -10,8 +10,8 @@
 #include "../lib/debug.h"
 
 #include "../include/quickstream/app.h"
-#include "../include/quickstream/builder.h"
 #include "../include/quickstream/block.h"
+#include "../include/quickstream/builder.h"
 
 #include "getOpt.h"
 #include "../lib/quickstream/misc/qsOptions.h"
@@ -178,10 +178,26 @@ int main(int argc, const char * const *argv) {
                                 return 1; // error
                         }
                         break;
+                        case QsSize:
+                        {
+                            char *endptr = 0;
+                            size_t val = strtoul(argv[i+2], &endptr, 10);
+                            if(argv[i+2] == endptr) {
+                                fprintf(stderr, "--parameter-set %s "
+                                        "%s %s\n"
+                                        "  Failed to convert %s "
+                                        "to unsigned long\n",
+                                        argv[i], argv[i+1],
+                                        argv[i+2], argv[i+2]);
+                                return 1;
+                            }
+                            if(qsParameterSetValue(p, &val))
+                                return 1; // error
+                        }
+                        break;
                         case QsNone:
                         case QsFloat:
                         case QsUint64:
-                        case QsSize:
                             ASSERT(0, "Write this code");
                         break;
                     }

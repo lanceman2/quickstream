@@ -5,28 +5,20 @@
 
 // This is the default total output length to all output channels
 // for a given stream run.
-#define DEFAULT_TOTAL_LENGTH   ((size_t) 800000)
+#define DEFAULT_TOTAL_LENGTH   ((size_t) 8000)
 
 
-static size_t maxWrite;
-static size_t totalOut, count;
+static size_t maxWrite = 0;
+static size_t totalOut = DEFAULT_TOTAL_LENGTH, count;
 static struct RandomString *rs;
+
+
 
 int declare(void) {
 
-    return 0; // success
-}
-
-
-int construct(void) {
-
-    DSPEW();
-
-    maxWrite = QS_DEFAULTMAXWRITE;
-    totalOut = DEFAULT_TOTAL_LENGTH;
-
-    ASSERT(maxWrite);
-    ASSERT(totalOut);
+    qsParameterConstantCreate(0, "totalOut",
+            QsSize, sizeof(totalOut), 0/*setCallback*/,
+            0/*userData*/, &totalOut);
 
     return 0; // success
 }
@@ -34,10 +26,12 @@ int construct(void) {
 
 int start(uint32_t numInputs, uint32_t numOutputs) {
 
+    // This is a source filter block
     ASSERT(numInputs == 0);
     ASSERT(numOutputs);
 
     DSPEW("%" PRIu32 " outputs", numOutputs);
+
 
     rs = calloc(numOutputs, sizeof(*rs));
     ASSERT(rs, "calloc(%" PRIu32 ",%zu) failed",
@@ -48,7 +42,11 @@ int start(uint32_t numInputs, uint32_t numOutputs) {
         randomString_init(rs + i, i/*seed*/);
     }
 
+    qsParameterGetValueByName("totalOut", &totalOut, sizeof(totalOut));
+    qsParameterGetValueByName("OutputMaxWrite", &maxWrite, sizeof(maxWrite));
 
+
+    // Bytes out so far in this run.
     count = 0;
 
     return 0; // success
@@ -68,7 +66,7 @@ int flow(void *buffers[], const size_t lens[],
         count += len;
     else {
         len = totalOut - count;
-        ret = 1; // Last time calling input().
+        ret = 1; // Last time calling flow() for this run.
     }
 
     if(len == 0) return 1; // We're done.

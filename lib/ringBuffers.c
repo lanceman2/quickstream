@@ -16,8 +16,8 @@
 #include <pthread.h>
 
 #include "../include/quickstream/app.h"
-#include "../include/quickstream/builder.h"
 #include "../include/quickstream/block.h"
+#include "../include/quickstream/builder.h"
 
 #include "debug.h"
 #include "Dictionary.h"
@@ -142,6 +142,7 @@ void GetBuffer(struct QsBuffer *buffer,
         buffer->end =
             makeRingBuffer(&buffer->mapLength, &buffer->overhangLength) +
             buffer->mapLength;
+        output->writePtr = buffer->end - buffer->mapLength;
     }
 
     // Now that we have a mapping, i.e. the ring buffer addresses, so we

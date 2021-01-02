@@ -8,8 +8,8 @@
 #include <pthread.h>
 
 #include "../include/quickstream/app.h" // public interfaces
-#include "../include/quickstream/builder.h" // public interfaces
 #include "../include/quickstream/block.h" // public interfaces
+#include "../include/quickstream/builder.h" // public interfaces
 
 
 #include "debug.h"

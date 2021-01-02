@@ -243,9 +243,6 @@ void TriggerStart(struct QsTrigger *t) {
         break;
         case QsStreamSource:
         case QsStreamIO:
-        {
-            ERROR("WRITE THIS CODE");
-        }
         break;
     }
 }
@@ -276,9 +273,6 @@ void TriggerStop(struct QsTrigger *t) {
         break;
         case QsStreamSource:
         case QsStreamIO:
-        {
-            ERROR("WRITE THIS CODE");
-        }
         break;
     }
 

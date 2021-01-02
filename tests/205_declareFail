@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Checking that loading a block that fails to declare() does not leak
+# memory.
+
+
+if ! ../bin/quickstream\
+ --block tests/declareFail ; then
+    exec ./success
+fi
+
+exit 1

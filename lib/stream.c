@@ -20,8 +20,8 @@
 #include <pthread.h>
 
 #include "../include/quickstream/app.h"
-#include "../include/quickstream/builder.h"
 #include "../include/quickstream/block.h"
+#include "../include/quickstream/builder.h"
 
 #include "debug.h"
 #include "Dictionary.h"
@@ -110,7 +110,7 @@ int qsBlockConnect(struct QsBlock *_from, struct QsBlock *_to,
                 (from->numOutputs - oldNum)*sizeof(*to->outputs));
         // Initialize all the outputs that we just added with the
         // output defaults that are not zero.
-        for(uint32_t i = oldNum - 1; i < from->numOutputs; ++i)
+        for(uint32_t i = oldNum; i < from->numOutputs; ++i)
             from->outputs[i].maxWrite = QS_DEFAULT_OUTPUT_MAXWRITE;
     }
 
@@ -133,7 +133,7 @@ int qsBlockConnect(struct QsBlock *_from, struct QsBlock *_to,
                 (to->numInputs - oldNum)*sizeof(*to->inputs));
         // Initialize all the inputs that we just added with the
         // input defaults that are not zero.
-        for(uint32_t i = oldNum - 1; i < to->numInputs; ++i) {
+        for(uint32_t i = oldNum; i < to->numInputs; ++i) {
             struct QsInput *input = to->inputs + i;
             input->threshold = QS_DEFAULT_INPUT_THRESHOLD;
             input->maxRead = QS_DEFAULT_INPUT_MAXREAD;
@@ -309,15 +309,18 @@ int IsSource(const struct QsSimpleBlock *b) {
 
 
 // We have a threadPool mutex lock when this is called.
-static bool
+static inline bool
 CheckBlockFlowCallable(struct QsSimpleBlock *b) {
 
-    if(b->callingFlow)
+    DASSERT(b->streamTrigger);
+
+    if(b->callingFlow || !b->streamTrigger->isRunning)
         // This filter block has a worker thread actively calling flow(),
         // so there is no need to queue a worker for it.  It will just
         // keep on working until working or queuing is not necessary, so
         // we don't and can't queue it now.
         return false;
+
 
     // If any outputs are clogged than we cannot call flow().
     for(uint32_t i = b->numOutputs-1; i != -1; --i) {
@@ -330,6 +333,7 @@ CheckBlockFlowCallable(struct QsSimpleBlock *b) {
                 // read pointer with the write pointer.
                 return false;
     }
+
 
     // If any input meets the threshold we can call flow() for this filter
     // block, b, we return true.  If this filter block, b, decides that
@@ -536,6 +540,7 @@ int StreamFlow_callback(struct QsSimpleBlock *b) {
     b->callingFlow = true;
 
     int ret;
+    bool isFlowable;
 
     do {
 
@@ -548,7 +553,7 @@ int StreamFlow_callback(struct QsSimpleBlock *b) {
         for(uint32_t i = b->numOutputs-1; i != -1; --i)
             b->outputLens[i] = 0;
 
-        DASSERT(b->block.inWhichCallback == 0);
+        DASSERT(b->block.inWhichCallback == _QS_IN_NONE);
         b->block.inWhichCallback = _QS_IN_FLOW;
 
 
@@ -564,27 +569,33 @@ int StreamFlow_callback(struct QsSimpleBlock *b) {
         // now we have the lock again.
 
         DASSERT(b->block.inWhichCallback == _QS_IN_FLOW);
-        b->block.inWhichCallback = 0;
+        b->block.inWhichCallback = _QS_IN_NONE;
+
+        isFlowable = IsFlowable(b);
 
         // Add jobs to the stream job queue if we can, for filters we are
         // feeding.
         for(uint32_t i = b->numOutputs-1; i != -1; --i) {
             struct QsOutput *output = b->outputs + i;
-            for(uint32_t j = output->numInputs-1; j != -1; --j)
-                if(CheckBlockFlowCallable(output->inputs[j]->block))
-                    CheckAndQueueTrigger(output->inputs[j]->
-                            block->streamTrigger);
+            for(uint32_t j = output->numInputs-1; j != -1; --j) {
+                struct QsSimpleBlock *smB = output->inputs[j]->block;
+                if(CheckBlockFlowCallable(smB) &&
+                        !smB->streamTrigger->isInJobQueue)
+                    CheckAndQueueTrigger(smB->streamTrigger);
+            }
         }
 
         // Add jobs to the stream job queue if we can, for filters that are
         // feeding this filter, b.
-        for(uint32_t i = b->numInputs-1; i != -1; --i)
-            if(CheckBlockFlowCallable(b->inputs[i].feederBlock))
-                CheckAndQueueTrigger(b->inputs[i].feederBlock->
-                        streamTrigger);
+        for(uint32_t i = b->numInputs-1; i != -1; --i) {
+            struct QsSimpleBlock *smB = b->inputs[i].feederBlock;
+            if(CheckBlockFlowCallable(smB) &&
+                        !smB->streamTrigger->isInJobQueue)
+                CheckAndQueueTrigger(smB->streamTrigger);
+        }
 
 
-    } while(IsFlowable(b) && ret == 0);
+    } while(isFlowable && ret == 0);
 
 
     // Release the claim on the flow so another thread may queue this
@@ -729,6 +740,7 @@ int StreamsInit(struct QsGraph *g) {
                     (int (*)(void *))StreamFlow_callback,
                     smB/*userData*/, 0/*checkTrigger*/,
                     false/*isSource*/);
+            smB->streamTrigger->keepLockInCallback = true;
         }
         if(smB->numInputs || smB->numOutputs)
             ++g->numFilters; // has input and/or output
@@ -837,10 +849,6 @@ void StreamsStart(struct QsGraph *g) {
     for(struct QsSimpleBlock *b = *s; b; b = *(++s)) {
         DASSERT(b->streamTrigger);
         if(b->streamTrigger->kind == QsStreamSource)
-            //
-            // Setup flow() arguments for this source block.
-            //
-            // outputLens[] are all 0 so we already have it done.
             //
             // Now queue the job for a worker.
             CheckAndQueueTrigger(b->streamTrigger);

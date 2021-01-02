@@ -1,0 +1,27 @@
+#!/bin/bash
+
+set -ex
+
+# This test must be consistent with 403_simpleStreamFlow
+# It's the same but runs the stream twice with different OutputMaxWrite
+
+dataFile="data_$(basename $0)_test.tmp"
+if [ ! -e $dataFile ] ; then
+  cat data_403_simpleStreamFlow data_403_simpleStreamFlow > $dataFile
+fi
+
+tmpFile="data_$(basename $0).tmp"
+
+../bin/quickstream\
+ -v 3\
+ --threads 2\
+ --block tests/sequenceGen sequenceGen\
+ --block tests/stdout stdout\
+ --parameter-set sequenceGen totalOut 300\
+ --parameter-set sequenceGen OutputMaxWrite 1\
+ --connect sequenceGen 0 stdout 0\
+ --run\
+ --run > ${tmpFile}
+
+
+diff ${tmpFile} ${dataFile}

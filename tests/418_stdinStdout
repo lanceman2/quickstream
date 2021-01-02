@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -ex
+
+
+inFile="data_$(basename $0)_in.tmp"
+outFile="data_$(basename $0)_out.tmp"
+
+dd if=/dev/urandom count=1300 of=$inFile
+
+
+../bin/quickstream\
+ -v 3\
+ --threads 2\
+ --block tests/stdin stdin\
+ --block tests/stdout stdout\
+ --connect stdin 0 stdout 0\
+ --run > ${outFile} < ${inFile}
+
+
+diff ${outFile} ${inFile}

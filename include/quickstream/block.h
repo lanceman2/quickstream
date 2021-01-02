@@ -9,6 +9,7 @@
 
 #include <stdlib.h>
 #include <inttypes.h>
+#include <stdbool.h>
 
 
 // QsParameter is the parameter queue
@@ -26,6 +27,19 @@ enum QsParameterType {
     QsSize,
     QsString
 };
+
+
+/** Kind of parameter
+
+ There are 3 kinds of parameters.
+ */
+enum QsParameterKind {
+
+    QsConstant, /** Gets pushed to setters, but not at flow-time */
+    QsGetter,   /** Gets pushed to setters at flow-time */
+    QsSetter    /** Is set from constant and getter */
+};
+
 
 
 
@@ -254,6 +268,17 @@ uint32_t qsParameterGetterPush(struct QsParameter *getter,
         const void *value);
 
 
+/** Get the type of a parameter object
+
+ \param p is a pointer to the parameter object.
+
+ \return the type of a parameter object.
+ 
+ */
+extern
+enum QsParameterType qsParameterGetType(const struct QsParameter *p);
+
+
 /** Get the last parameter value that was pushed or set
 
  Calling qsParameterGetValue() does not effect when and if a setter parameter's
@@ -268,6 +293,64 @@ uint32_t qsParameterGetterPush(struct QsParameter *getter,
 */
 extern void
 qsParameterGetValue(struct QsParameter *p, void *value);
+
+
+/** Get the value entry size of a parameter object
+
+ \param p is a pointer to the parameter object.
+
+ \return the value entry size of a parameter object.
+
+ */
+extern
+size_t qsParameterGetSize(const struct QsParameter *p);
+
+
+/** get a block name from the block pointer
+
+ \param block is a pointer to the block.  If block is 0
+ the current running block is used.
+
+ \return a pointer to the block name string.
+ The returned memory is managed by the block object.
+ Do not write to it.
+ */
+extern
+const char *qsBlockGetName(const struct QsBlock *block);
+
+
+/** Get a pointer to a shared parameter object
+
+ \param block the block which owns the parameter we are seeking.
+ See qsBlockGetName().  If \p block is 0 the current running block
+ will be used.
+
+ \param pname is the name of the parameter, which is unique for a given
+ block.
+
+ \param isSetter is true than we are looking for a setter parameter, else
+ we are not looking for a setter parameter.  A getter parameter and a
+ setter parameter may have the same name.  But a getter and constant
+ parameter may not have the same name.
+
+ \return a pointer to the parameter object, or 0 if not found.
+ */
+extern
+struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
+        const char *pname, bool isSetter);
+
+
+/** Get kind of parameter
+ */
+extern
+enum QsParameterKind qsParameterGetKind(const struct QsParameter *p);
+
+
+
+extern
+void
+qsParameterGetValueByName(const char *pname, void *value, size_t size);
+
 
 
 /*

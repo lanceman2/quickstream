@@ -9,7 +9,6 @@
 #include "../include/quickstream/block.h"
 #include "../include/quickstream/builder.h"
 
-
 #include "debug.h"
 #include "Dictionary.h"
 #include "parameter.h"
@@ -446,6 +445,9 @@ uint32_t qsParameterNumConnections(struct QsParameter *p) {
 struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
         const char *pname, bool isSetter) {
 
+    if(!block)
+        block = GetBlock();
+
     DASSERT(block);
     DASSERT(!block->isSuperBlock);
     
@@ -463,6 +465,17 @@ struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
         d = smB->getters;
 
     return (struct QsParameter *) qsDictionaryFind(d, pname);
+}
+
+
+void
+qsParameterGetValueByName(const char *pname, void *value, size_t size) {
+    struct QsParameter *p = qsParameterGetPointer(0, pname, 0);
+    ASSERT(p, "parameter named \"%s\" not found", pname);
+    ASSERT(size == p->size,
+            "parameter named \"%s\" is the wrong size",
+            pname);
+    qsParameterGetValue(p, value);
 }
 
 

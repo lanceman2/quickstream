@@ -91,6 +91,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
     struct QsGraph *graph = tp->graph;
     DASSERT(graph);
 
+
     bool haveSigTrigger =
         sig // there is one
         && sig->trigger.isRunning // it's in use now
@@ -255,7 +256,8 @@ void *runWorker(struct QsThreadPool *tp) {
     CHECK(pthread_mutex_lock(tp->mutex));
 
 
-    while(WaitForWork(tp)) {
+    while(tp->first || WaitForWork(tp)) {
+
         struct QsSimpleBlock *b;
         // If WaitForWork() kept us here, then there must be work in the
         // thread pool queue for at least one of the blocks.
@@ -372,21 +374,35 @@ int run(struct QsGraph *graph) {
     for(; b; b = b->next) {
         if(b->isSuperBlock) continue;
         struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
-        // There should be no triggered jobs yet.
-        DASSERT(smB->firstJob == 0);
-        DASSERT(smB->lastJob == 0);
-        struct QsTrigger *t = smB->waiting;
-        for(; t; t = t->next) {
-            DASSERT(t->block == smB);
-            if(t->isRunning && t->isSource)
+        // Triggers can move between the 2 lists: smB->waiting, and
+        // smB->firstJob
+        //
+        //    smB->waiting = triggers not queued now
+        //    smB->firstJob = triggers queued now
+        //
+        struct QsTrigger *triggers[] = { smB->waiting, smB->firstJob};
+        int i = 0;
+        for(; i < 2 ; ++i) {
+            struct QsTrigger *t = triggers[i];
+            for(; t; t = t->next) {
+                DASSERT(t->block == smB);
+                if(t->isRunning && t->isSource)
+                    // We have at least one source trigger to run.
+                    break;
+            }
+            if(t)
                 // We have at least one source trigger to run.
                 break;
         }
-        if(t)
+        if(i<2)
             // We have at least one source trigger to run.
             break;
+        // Else we looped through all triggers in this block, b, and found
+        // no sources that can run.
     }
     if(!b) {
+        // We looped through all triggers in all blocks and found no
+        // sources that can run.
         NOTICE("No source triggers found, nothing to run");
         // There is nothing to run.
         return 1;

@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <pthread.h>
 
 #include "../include/quickstream/block.h" // public interfaces

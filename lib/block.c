@@ -9,9 +9,9 @@
 #include <setjmp.h>
 #include <pthread.h>
 
-#include "../include/quickstream/builder.h"
 #include "../include/quickstream/app.h"
 #include "../include/quickstream/block.h"
+#include "../include/quickstream/builder.h"
 
 #include "debug.h"
 #include "trigger.h"

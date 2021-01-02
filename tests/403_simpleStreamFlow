@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -ex
+
+
+dataFile="data_$(basename $0)"
+tmpFile="${dataFile}.tmp"
+
+../bin/quickstream\
+ -v 3\
+ --threads 2\
+ --block tests/sequenceGen sequenceGen\
+ --block tests/stdout stdout\
+ --parameter-set sequenceGen totalOut 300\
+ --parameter-set sequenceGen OutputMaxWrite 100\
+ --connect sequenceGen 0 stdout 0\
+ --run > ${tmpFile}
+
+diff ${tmpFile} ${dataFile}
