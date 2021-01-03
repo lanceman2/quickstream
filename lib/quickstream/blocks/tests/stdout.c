@@ -29,15 +29,17 @@ int flow(void *buffers[], const size_t lens[],
     ASSERT(numInputs == 1);  // user error
     ASSERT(numOutputs == 0); // user error
 
-    size_t ret = fwrite(buffers[0], 1, lens[0], stdout);
+    size_t len = lens[0];
+
+    size_t ret = fwrite(buffers[0], 1, len, stdout);
 
     qsAdvanceInput(0, ret);
 
     //fflush(stdout);
 
-    if(ret != lens[0]) {
+    if(ret != len) {
         ERROR("fwrite(%p,1,%zu,stdout) failed",
-            buffers[0], lens[0]);
+            buffers[0], len);
         return -1; // fail
     }
 
