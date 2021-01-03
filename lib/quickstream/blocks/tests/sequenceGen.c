@@ -43,6 +43,7 @@ int start(uint32_t numInputs, uint32_t numOutputs) {
     }
 
     qsParameterGetValueByName("totalOut", &totalOut, sizeof(totalOut));
+    if(totalOut == 0) totalOut = -1; // large amount
     qsParameterGetValueByName("OutputMaxWrite", &maxWrite, sizeof(maxWrite));
 
 

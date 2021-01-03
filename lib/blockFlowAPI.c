@@ -93,7 +93,7 @@ void qsAdvanceInput(uint32_t inputPortNum, size_t len) {
 }
 
 
-int qsBlockPassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum) {
+int qsPassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum) {
 
     struct QsBlock *b = 0;
     GET_SIMPLEBLOCK_IN_DECLARE(b);

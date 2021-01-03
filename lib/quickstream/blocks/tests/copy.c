@@ -1,0 +1,50 @@
+#include <string.h>
+
+#include "../../../../include/quickstream/block.h"
+#include "../../../../lib/debug.h"
+
+#define DEFAULT_SEEDOFFSET ((size_t) 0)
+
+
+static size_t maxWrite = 0;
+
+
+int declare(void) {
+
+
+    return 0; // success
+}
+
+
+int start(uint32_t numInputs, uint32_t numOutputs) {
+
+    ASSERT(numInputs);
+    ASSERT(numInputs == numOutputs);
+
+    DSPEW("%" PRIu32 " inputs  %" PRIu32 " outputs",
+            numInputs, numOutputs);
+
+    qsParameterGetValueByName("OutputMaxWrite", &maxWrite, sizeof(maxWrite));
+
+    return 0; // success
+}
+
+
+int flow(void *buffers[], const size_t lens[],
+        uint32_t numInputs, uint32_t numOutputs) {
+
+    for(uint32_t i=0; i<numInputs; ++i) {
+
+        size_t len = lens[i];
+        if(len > maxWrite)
+            len = maxWrite;
+        else if(len == 0)
+            continue;
+
+        memcpy(qsGetOutputBuffer(i), buffers[i], len);
+        qsAdvanceInput(i, len);
+        qsOutput(i, len);
+    }
+
+    return 0;
+}

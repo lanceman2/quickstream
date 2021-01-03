@@ -584,7 +584,7 @@ size_t qsGetOutputMaxWrite(uint32_t outputPortNum);
  \memberof CBlockAPI
  */
 extern
-int qsBlockPassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum);
+int qsPassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum);
 
 
 /** Get the name of the block
@@ -719,7 +719,7 @@ void destroy(void);
  the "smarter" blocks in the stream graph.
 
  The following functions may only be called in the block's start()
- function: qsSetOutputMaxWrite(), qsCreatePassThroughBuffer(),
+ function: qsSetOutputMaxWrite(), qsPassThroughBuffer(),
  qsSetInputThreshold(), and qsSetInputReadPromise().
  *
  \param numInPorts is the number of input buffers in the inBuffers input
@@ -773,7 +773,7 @@ int stop(uint32_t numInPorts, uint32_t numOutPorts);
  the "smarter" blocks in the stream.
 
  The following functions may only be called in the block's start()
- function: qsSetOutputMaxWrite(), qsCreatePassThroughBuffer(),
+ function: qsSetOutputMaxWrite(), qsPassThroughBuffer(),
  qsSetInputThreshold(), qsSetInputReadPromise(), and
  qsGetBlockName().
 

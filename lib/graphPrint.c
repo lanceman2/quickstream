@@ -206,7 +206,6 @@ void PrintGetterToSetterConnections(const struct QsGraph *g, FILE *file,
 }
 
 
-
 static
 int PrintParameterConnectionDotContent(const char *key,
         const struct QsParameter *p,
@@ -358,11 +357,26 @@ int qsGraphPrintDot(const struct QsGraph *g, FILE *f) {
             "      \"%d:%s:%" PRIu32 ":floW\" "
                   "[label=\"%" PRIu32 "\",shape=diamond];\n",
                     graphNum, b->name, i, i);
+
             if(smB->numInputs == 0 && smB->numOutputs == 0)
                 fprintf(f,
             "      \"%d:%s:%" PRIu32 ":floW\" "
                   "[label=\"no stream\nconnections\"];\n",
                     graphNum, b->name, 0);
+            else if(smB->numInputs && smB->numOutputs) { 
+                // Draw the pass-through buffer connections
+                for(uint32_t i = 0; i < smB->numPassThroughs; ++i)
+                    if(smB->passThroughs[i].inputPortNum <
+                            smB->numInputs &&
+                        smB->passThroughs[i].outputPortNum <
+                            smB->numOutputs)
+                            fprintf(f,
+            "      \"%d:%s:Input%" PRIu32 "\" -> "
+                    "\"%d:%s:%" PRIu32 ":floW\" "
+                    "[color=blue];\n",
+                    graphNum, b->name, smB->passThroughs[i].inputPortNum,
+                    graphNum, b->name, smB->passThroughs[i].outputPortNum);
+            }
             fprintf(f,
             "    }\n");
         }

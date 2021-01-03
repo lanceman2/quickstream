@@ -42,21 +42,24 @@ IsPassThrough(struct QsSimpleBlock *b, struct QsOutput *o) {
     p.input = 0;
     p.output = 0;
 
-    // Search this block's inputs and outputs for pass-through port
-    // numbers.
-    for(uint32_t i = b->numInputs - 1; i != -1; --i)
-        for(uint32_t j = b->numOutputs - 1; j != -1; --j) {
-            struct QsOutput *output = b->outputs + j;
-            if(output != o) continue;
-            for(uint32_t k = b->numPassThroughs - 1; k != -1; --k) {
-                struct QsPassThrough *pt = b->passThroughs + k;
-                if(pt->inputPortNum == i && pt->outputPortNum == j) {
-                    p.input = b->inputs + i;
-                    p.output = b->outputs + j;
-                    return p;
-                }
+    // Search this block's list of blocks that it feeds.
+    for(uint32_t i = o->numInputs - 1; i != -1; --i) {
+        struct QsSimpleBlock *smB = o->inputs[i]->block;
+        uint32_t inputPortNum = o->inputs[i]->inputPortNum;
+        uint32_t outputPortNum = o->inputs[i]->outputPortNum;
+        uint32_t j = smB->numPassThroughs - 1;
+        for(; j != -1; --j)
+            if(smB->passThroughs[j].inputPortNum == inputPortNum &&
+                    smB->passThroughs[j].outputPortNum == outputPortNum) {
+                p.input = smB->inputs + inputPortNum;
+                p.output = smB->outputs + outputPortNum;
+                break;
             }
-        }
+        if(j != -1)
+            // We found a matching pass-through pair in a block that b
+            // outputs to.
+            break;
+    }
 
     // We pass a copy of a struct PassThroughPair back.
     return p;
@@ -82,6 +85,8 @@ void GetBuffer(struct QsBuffer *buffer,
     output->maxLength = output->maxWrite;
 
     for(uint32_t i = output->numInputs - 1; i != -1; --i) {
+        DASSERT(output->inputs[i]->readPtr == 0);
+        DASSERT(output->inputs[i]->buffer == 0);
         if(output->maxLength < output->inputs[i]->maxRead)
             output->maxLength = output->inputs[i]->maxRead;
         output->inputs[i]->buffer = buffer;
@@ -105,6 +110,7 @@ void GetBuffer(struct QsBuffer *buffer,
     struct PassThroughPair p = IsPassThrough(b, output);
     if(p.input) {
         // We recurse.  This "input" is passing to a block downstream.
+        DASSERT(p.output);
         DASSERT(p.input->block != b);
         DASSERT(p.input->feederBlock == b);
 
@@ -115,19 +121,15 @@ void GetBuffer(struct QsBuffer *buffer,
         p.output->buffer = buffer;
         p.input->buffer = buffer;
 
+        // Get the buffer lengths tally for this block that is feed by
+        // block b.
         GetBuffer(buffer, p.input->block, mapLength, 
                 overhangLength, p.output);
 
         // We popped out of the recurring call that made a mapping at some
         // point.  Now we can initialize the read and write pointers to
         // the ring buffer.
-
-        p.input->readPtr = p.output->writePtr =
-            buffer->end - buffer->mapLength;
-
-        // This is the next output in which we need to do these crap for
-        // it's inputs that have no ring buffers yet.
-        output = p.output;
+        output->writePtr = buffer->end - buffer->mapLength;
 
     } else {
 
@@ -155,8 +157,11 @@ void GetBuffer(struct QsBuffer *buffer,
     // those buffers if they are not already made.
     //
     for(uint32_t i = output->numInputs - 1; i != -1; --i) {
+
         struct QsInput *input = output->inputs[i];
+        DASSERT(input->readPtr == 0);
         input->readPtr = buffer->end - buffer->mapLength;
+
         struct QsSimpleBlock *smB = input->block;
         for(uint32_t j = smB->numOutputs - 1; j != -1; --j) {
             struct QsOutput *o = smB->outputs + j;
@@ -171,6 +176,7 @@ void GetBuffer(struct QsBuffer *buffer,
                 // sink) in the flow graph.   There are no loops, so this
                 // recursion will terminate at a sink block.
                 GetBuffer(0, smB, o->maxWrite, o->maxWrite, o);
+            DASSERT(o->writePtr == o->buffer->end - o->buffer->mapLength);
         }
     }
 }
