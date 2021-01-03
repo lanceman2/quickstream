@@ -111,7 +111,7 @@ cat << EOF
 
     cd $PWD && make clean
 
-  to remove generated files from this test directory
+  to remove generated files from this tests directory
 
 EOF
 
