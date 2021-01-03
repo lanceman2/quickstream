@@ -359,8 +359,8 @@ CheckBlockFlowCallable(struct QsSimpleBlock *b) {
 //
 // Returns true to continue calling flow() or flush().
 //
-static bool
-IsFlowable(struct QsSimpleBlock *b) {
+static inline
+bool IsFlowableAndSetPointers(struct QsSimpleBlock *b) {
 
     // Both the inputs and the outputs must be "OK" in order to call
     // flow() after this call.
@@ -571,7 +571,7 @@ int StreamFlow_callback(struct QsSimpleBlock *b) {
         DASSERT(b->block.inWhichCallback == _QS_IN_FLOW);
         b->block.inWhichCallback = _QS_IN_NONE;
 
-        isFlowable = IsFlowable(b);
+        isFlowable = IsFlowableAndSetPointers(b);
 
         // Add jobs to the stream job queue if we can, for filters we are
         // feeding.
