@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -ex
+
+
+../bin/quickstream\
+ -v 3\
+ --threads 3\
+ --block tests/sequenceGen gen\
+ --block tests/sequenceCheck check00\
+ --block tests/sequenceCheck check01\
+ --block tests/sequenceCheck check10\
+ --block tests/sequenceCheck check11\
+ --parameter-set gen totalOut 300000\
+ --parameter-set gen OutputMaxWrite 4096\
+ --connect gen 0 check00 0\
+ --connect gen 1 check00 1\
+ --connect gen 0 check01 0\
+ --connect check00 0 check10 0\
+ --connect check10 0 check11 0\
+ --dot\
+ --run\
+ --run\
+ --run

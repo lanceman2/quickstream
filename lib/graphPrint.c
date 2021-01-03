@@ -304,12 +304,13 @@ void PrintStreamConnections(const struct QsGraph *graph, FILE *file,
             DASSERT(input->inputPortNum == i);
             DASSERT(input->feederBlock->outputs);
             DASSERT(input->feederBlock->numOutputs);
-            fprintf(file, "  \"%d:%s:%" PRIu32 ":floW\" -> \"%d:%s:Input%" PRIu32 "\""
-                    " [label=\"%" PRIu32 "\", color=red];\n",
+            fprintf(file, "  \"%d:%s:%" PRIu32
+                    ":floW\" -> \"%d:%s:Input%" PRIu32 "\""
+                    " [color=red];\n",
                     graphNum, input->feederBlock->block.name,
                     input->outputPortNum,
 
-                    graphNum, b->name, i, i);
+                    graphNum, b->name, i);
         }
     }
 }
