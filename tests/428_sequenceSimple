@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -ex
+
+
+../bin/quickstream\
+ -v 5\
+ --threads 2\
+ --block tests/sequenceGen gen\
+ --block tests/sequenceCheck check\
+ --connect gen 0 check 0\
+ --parameter-set gen totalOut 200000\
+ --parameter-set check seedOffset 0\
+ --run

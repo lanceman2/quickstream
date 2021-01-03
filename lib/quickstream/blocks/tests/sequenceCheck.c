@@ -3,36 +3,22 @@
 
 #include "Sequence.h"
 
-#define DEFAULT_SEEDOFFSET ((uint32_t) 0)
+#define DEFAULT_SEEDOFFSET ((size_t) 0)
 
 
-static size_t maxWrite;
+static size_t maxWrite = 0;
 static char **compare;
+
 static struct RandomString *rs;
-static const char *blockName;
-static uint32_t seedOffset = DEFAULT_SEEDOFFSET;
-static const char *seedsString = 0;
+
+static size_t seedOffset = DEFAULT_SEEDOFFSET;
 
 
 int declare(void) {
 
-    return 0; // success
-}
-
-
-int construct(void) {
-
-    DSPEW();
-
-    maxWrite = QS_DEFAULTMAXWRITE;
-
-    seedOffset = seedOffset;
-
-    seedsString = 0;
-
-    ASSERT(maxWrite);
-
-    blockName = qsBlockGetName(0);
+    qsParameterConstantCreate(0, "seedOffset",
+            QsSize, sizeof(seedOffset), 0/*setCallback*/,
+            0/*userData*/, &seedOffset);
 
     return 0; // success
 }
@@ -44,6 +30,10 @@ int start(uint32_t numInputs, uint32_t numOutputs) {
 
     DSPEW("%" PRIu32 " inputs  %" PRIu32 " outputs",
             numInputs, numOutputs);
+
+    qsParameterGetValueByName("OutputMaxWrite", &maxWrite, sizeof(maxWrite));
+    qsParameterGetValueByName("seedOffset", &seedOffset, sizeof(seedOffset));
+
 
     compare = calloc(numInputs, sizeof(*compare));
     ASSERT(compare, "calloc(%" PRIu32 ",%zu) failed",
@@ -66,21 +56,9 @@ int start(uint32_t numInputs, uint32_t numOutputs) {
     for(uint32_t i=0; i<numInputs; ++i)
         seeds[i] = i + seedOffset;
 
-    if(seedsString) {
-        unsigned int val;
-        const char *str = seedsString;
-        uint32_t i = 0;
-        while(i < numInputs && *str && sscanf(str, "%u", &val) == 1) {
-            seeds[i++] = val;
-            // Go to the next number in the string str.
-            while(*str && (*str >= '0' && *str <= '9')) ++str;
-            while(*str && (*str < '0' || *str > '9')) ++str;
-        }
-    }
-
     for(uint32_t i=0; i<numInputs; ++i) {
-        DSPEW("Filter \"%s\" Input port %" PRIu32 " seed=%" PRIu32,
-                blockName, i, seeds[i]);
+        DSPEW("Block \"%s\" Input port %" PRIu32 " seed=%" PRIu32,
+                qsBlockGetName(0), i, seeds[i]);
         // Initialize the random string generator.
         randomString_init(rs + i, seeds[i]);
     }
@@ -121,7 +99,7 @@ int flow(void *buffers[], const size_t lens[],
             // Check each character.  We like to know where it fails.
             ASSERT(comp[j] == in[j],
                     "%s Miss-match on input channel %" PRIu32,
-                    blockName, i);
+                    qsBlockGetName(0), i);
 
         if(i < numOutputs)
             qsOutput(i, len);
