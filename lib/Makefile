@@ -16,7 +16,8 @@ libquickstream.so_SOURCES :=\
  ringBuffers.c\
  mmapRingBuffer.c\
  blockFlowAPI.c\
- blockStartAPI.c
+ blockStartAPI.c\
+ blockDeclareAPI.c
 
 
 libquickstream.so_LDFLAGS := -lpthread -ldl -lrt

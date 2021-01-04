@@ -91,6 +91,68 @@ int qsBlockConnect(struct QsBlock *_from, struct QsBlock *_to,
                 to->inputs[toPortNum].outputPortNum);
         return -5; // error
     }
+
+    // There can be only one pass-through at each output port.
+    if(from->numOutputs > fromPortNum) {
+        // This output exists already and that's okay, output ports can
+        // have many connections, but only one connection may be a
+        // pass-through.
+        struct QsBlock *passThroughBlock = 0;
+        uint32_t ptInputPortNum = -1;
+        // Since the output's inputs are not allocated yet we need to
+        // search all blocks for a block that this is connecting to.
+        for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
+            if(b->isSuperBlock) continue;
+            // Check if block smB has a pass-through with this output
+            // feeding it.
+            struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
+            for(uint32_t i = smB->numInputs-1; i != -1; --i) {
+                struct QsInput *input = smB->inputs + i;
+                if(input->block == 0)
+                    // Some inputs may not be connected yet.  If they are
+                    // not connected then input->block == 0.
+                    continue;
+                DASSERT(input->block == smB);
+                DASSERT(input->feederBlock);
+                if(input->feederBlock == from &&
+                        input->outputPortNum == fromPortNum) {
+                    // "from" is feeding this input already on the port
+                    // fromPortNum.
+                    DASSERT(_from != b);
+                    for(uint32_t j = smB->numPassThroughs-1; j != -1;
+                            --j)
+                        if(smB->passThroughs[j].inputPortNum ==
+                                input->inputPortNum) {
+                            // "from" is feeding this input and this input
+                            // is "passing it through" to an output.
+                            //
+                            // Got one
+                            passThroughBlock = b;
+                            ptInputPortNum = input->inputPortNum;
+                            break;
+                        }
+                }
+            }
+        }
+
+        if(passThroughBlock) {
+            // We have one pass-through from another connection.
+            for(uint32_t i = to->numPassThroughs-1; i != -1; --i)
+                if(to->passThroughs[i].inputPortNum == toPortNum) {
+                    // Got two, shit...
+                    ERROR("Block \"%s\" output port %" PRIu32
+                        " cannot feed two pass-through "
+                        "inputs Block \"%s\" input port %" PRIu32
+                        " and Block \"%s\" input port %" PRIu32,
+                        _from->name, fromPortNum,
+                        passThroughBlock->name, ptInputPortNum,
+                        _to->name, toPortNum);
+                    return -6;
+                }
+        }
+    }
+
+
     // It's okay if an output port has a connection already.
 
     // Make sure that from->outputs has the needed number of ports.

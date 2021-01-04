@@ -35,8 +35,11 @@ struct PassThroughPair {
 };
 
 
+// The output linked list of pass-through outputs does not exist
+// yet; hence this stupid looping search.
+//
 static inline struct PassThroughPair
-IsPassThrough(struct QsSimpleBlock *b, struct QsOutput *o) {
+IsFeedingPassThrough(struct QsSimpleBlock *b, struct QsOutput *o) {
 
     struct PassThroughPair p;
     p.input = 0;
@@ -64,6 +67,24 @@ IsPassThrough(struct QsSimpleBlock *b, struct QsOutput *o) {
     // We pass a copy of a struct PassThroughPair back.
     return p;
 }
+
+
+// This determines if a block has a pass-through by looking at the
+// passThrough array and seeing if the inputs and outputs in that array
+// exist.  The output linked list of pass-through outputs does not exist
+// yet; hence this stupid looping search.
+static bool
+IsPassThrough(struct QsSimpleBlock *b, struct QsOutput *o) {
+
+    for(uint32_t i = b->numInputs-1; i != -1; --i)
+        for(uint32_t j = b->numPassThroughs - 1; j != -1; --j)
+            if(b->passThroughs[j].inputPortNum == i &&
+                    b->numOutputs > b->passThroughs[j].outputPortNum)
+                return true;
+
+    return false;
+}
+
 
 
 static
@@ -107,7 +128,7 @@ void GetBuffer(struct QsBuffer *buffer,
     // connection stage.  There can be any number of connection
     // pass-through buffer stages.  So we keep going, calling GetBuffer()
     // and adding the needed buffer lengths via recursion.
-    struct PassThroughPair p = IsPassThrough(b, output);
+    struct PassThroughPair p = IsFeedingPassThrough(b, output);
     if(p.input) {
         // We recurse.  This "input" is passing to a block downstream.
         DASSERT(p.output);
@@ -165,18 +186,17 @@ void GetBuffer(struct QsBuffer *buffer,
         struct QsSimpleBlock *smB = input->block;
         for(uint32_t j = smB->numOutputs - 1; j != -1; --j) {
             struct QsOutput *o = smB->outputs + j;
-            // We may have been to this block, smB, before via a different
-            // input to this block, smB.  Hence if ... if is good.
-            // https://www.youtube.com/watch?v=nqerQZObl58
-            // Hercules.
-            if(!o->buffer)
-                // We keep going down the stream in all paths.  This will
-                // get all buffers.  Note: we are using/building the
-                // function call stack to traverse to each leaf (block
-                // sink) in the flow graph.   There are no loops, so this
+
+            if(!o->buffer && !IsPassThrough(smB, o))
+                // We keep going down the stream in all paths except that
+                // the pass-through will get done later in the top
+                // pass-through feeder block.
+                //
+                // This will get all buffers.  Note: we are using/building
+                // the function call stack to traverse to each leaf (block
+                // sink) in the flow graph.  There are no loops, so this
                 // recursion will terminate at a sink block.
                 GetBuffer(0, smB, o->maxWrite, o->maxWrite, o);
-            DASSERT(o->writePtr == o->buffer->end - o->buffer->mapLength);
         }
     }
 }

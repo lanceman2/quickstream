@@ -1,0 +1,26 @@
+#!/bin/bash
+
+set -ex
+
+
+../bin/quickstream\
+ -v 4\
+ --threads 0\
+ --block tests/sequenceGen gen\
+ --block tests/passThrough p0\
+ --block tests/passThrough p1\
+ --block tests/copy c\
+ --block tests/sequenceCheck check\
+ --block tests/stdout stdout\
+ --parameter-set gen totalOut 3000\
+ --parameter-set gen OutputMaxWrite 100\
+ --parameter-set p0 OutputMaxWrite 4\
+ --connect gen 0 p0 0\
+ --connect gen 1 p0 1\
+ --connect p0 0 p1 0\
+ --connect p1 0 c 0\
+ --connect p0 1 c 1\
+ --connect c 1 check 1\
+ --connect c 0 check 0\
+ --connect c 0 stdout 0\
+ --run

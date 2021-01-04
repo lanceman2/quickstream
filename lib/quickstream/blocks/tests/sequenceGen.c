@@ -70,7 +70,7 @@ int flow(void *buffers[], const size_t lens[],
         ret = 1; // Last time calling flow() for this run.
     }
 
-    if(len == 0) return 1; // We're done.
+    //if(len == 0) return 1; // We're done.
 
     for(uint32_t i=0; i<numOutputs; ++i) {
         void *out = qsGetOutputBuffer(i);
