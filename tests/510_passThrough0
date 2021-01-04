@@ -12,9 +12,9 @@ set -ex
  --block tests/copy c\
  --block tests/sequenceCheck check\
  --block tests/stdout stdout\
- --parameter-set gen totalOut 3000\
- --parameter-set gen OutputMaxWrite 100\
- --parameter-set p0 OutputMaxWrite 4\
+ --parameter-set gen totalOut 3001\
+ --parameter-set gen OutputMaxWrite 123\
+ --parameter-set p0 OutputMaxWrite 5\
  --connect gen 0 p0 0\
  --connect p0 0 p1 0\
  --connect p1 0 c 0\
