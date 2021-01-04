@@ -50,6 +50,9 @@ int triggerCallback(struct QsParameter *p) {
         // Stop using the itimer
         return 1; // 1 = stop calling this callback
     }
+
+
+
     return 0;
 }
 

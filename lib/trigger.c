@@ -29,7 +29,8 @@ bool CheckAndQueueTrigger(struct QsTrigger *t) {
 
     DASSERT(t);
     DASSERT(t->isInJobQueue == false);
-    DASSERT(t->isRunning);
+    DASSERT(t->isRunning, "Block %s t->kind=%d",
+            t->block->block.name, t->kind);
 
     // First check
     if(t->checkTrigger && !t->checkTrigger(t->userData)) return false;
@@ -110,31 +111,31 @@ void FreeTrigger(struct QsTrigger *t) {
 // We may have just one of these:
 struct QsSignal *sig = 0;
 
+//jmp_buf jmpEnv;
 
 static
 void SigAction(int signum) {
 
     DASSERT(sig);
 
-    if(sig->aboutToPause && sig->thread != pthread_self()) {
-        // This thread is not the thread that should act on this trigger
-        // event.  Send the signal to a particular thread.
-        // The thread sig->thread is waiting on a blocking call
-        // to get this signal and jump it to acting on it.
-//ERROR("signaling thread");
-        CHECK(pthread_kill(sig->thread, sig->signum));
+    if(sig->triggered)
+        // The signals are coming so fast that we have not acted on the
+        // last signal; i.e. we are over-run with signals.
         return;
-    }
-
-    // TODO: This print is not good in this signal catcher.
-    //WARN("CAUGHT signal %d", signum);
-
-    // This is an atomic set:
-    sig->triggered = 1;
 
     if(sig->aboutToPause) {
 
-        //WARN("JUMPING");
+        if(sig->thread != pthread_self()) {
+            // This thread is not the thread that should act on this trigger
+            // event.  Send the signal to a particular thread.
+            // The thread sig->thread is waiting on a blocking call
+            // to get this signal and jump it to acting on it.
+            CHECK(pthread_kill(sig->thread, sig->signum));
+            return;
+        }
+
+        // This is an atomic set:
+        sig->triggered = 1;
 
         // Because AboutToPause is set we are guaranteed that we are in
         // the void Pause(struct QsThreadPool *tp) function from file

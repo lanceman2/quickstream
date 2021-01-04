@@ -330,6 +330,8 @@ int qsGraphReady(struct QsGraph *graph) {
     // configuration thing we need to allocate this array separate from
     // allocating the thread pool.
     for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
+        // initialize the doneRunning flag.  We are not done running.
+        tp->doneRunning = false;
         if(tp->maxThreads == 0) continue;
         DASSERT(tp->threads == 0);
         tp->threads = calloc(tp->maxThreads, sizeof(*tp->threads));
@@ -409,7 +411,9 @@ int qsGraphWait(struct QsGraph *graph) {
         // way out, but we don't need to wait if there are no worker
         // threads any more.
         graph->masterWaiting = true;
+        DSPEW("Master thread waiting");
         CHECK(pthread_cond_wait(&graph->cond, &graph->mutex));
+        DSPEW("Master thread woke");
         graph->masterWaiting = false;
         DASSERT(graph->numWorkingThreads == 0);
     }
@@ -436,9 +440,9 @@ int qsGraphWait(struct QsGraph *graph) {
         DASSERT(tp->threads);
         DASSERT(tp->maxThreads);
         DASSERT(tp->numThreads != 0);
-        // looping backwards on i
-        for(uint32_t i = tp->numThreads - 1; i != -1; --i) {
+        for(uint32_t i = 0; i < tp->numThreads; ++i) {
             if(!tp->threads[i].hasLaunched) break;
+            DSPEW("JOINING thread %" PRIu32, i);
             // Join a worker thread:
             CHECK(pthread_join(tp->threads[i].thread, 0));
         }

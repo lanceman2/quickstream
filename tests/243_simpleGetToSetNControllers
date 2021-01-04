@@ -2,12 +2,42 @@
 
 set -ex
 
-# We run a few variations of threads and number of runs.
+
+if [ -n "$VALGRIND_RUN" ] ; then
+    # valgrind can't run a multi-threaded
+    # version of this successfully.
+    # Running GDB with multi-threaded programs and valgrind
+    # may be helpful, but mostly drives you insane.
+    #
+    # https://www.valgrind.org/docs/manual/manual-core.html#manual-core.pthreads
+    numThreads=0
+
+else
+    numThreads=4
+fi
+
 
 # the block tests/setter prints to stdout.
 
 dataFile="data_$(basename $0)"
 tmpFile="${dataFile}.tmp"
+
+
+../bin/quickstream\
+ -v 5\
+ --threads $numThreads\
+ --block tests/getterTriggeredFromSignal getter\
+ --block tests/setter setter\
+ --block tests/setter setter2\
+ --block tests/setter setter3\
+ --block tests/dummy\
+ --connect-parameters getter getter setter setter\
+ --connect-parameters getter getter setter2 setter\
+ --connect-parameters getter getter setter3 setter\
+ --run\
+ --run\
+ --run
+
 
 ../bin/quickstream\
  -v 3\
@@ -20,7 +50,7 @@ tmpFile="${dataFile}.tmp"
 
 ../bin/quickstream\
  -v 3\
- --threads 5\
+ --threads 0\
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
  --block tests/setter setter2\

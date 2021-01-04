@@ -8,7 +8,7 @@ tmpFile="${dataFile}.tmp"
 
 ../bin/quickstream\
  -v 3\
- --threads 2\
+ --threads 1\
  --block tests/sequenceGen sequenceGen\
  --block tests/stdout stdout\
  --parameter-set sequenceGen totalOut 300\

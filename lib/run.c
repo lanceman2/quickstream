@@ -28,10 +28,9 @@
 static inline
 bool CallTriggerCallback(struct QsTrigger *t, struct QsThreadPool *tp) {
 
-    // TODO: The callback() may need to be called more than once,
-    // which is why we made this function.
 
     if(!t->keepLockInCallback)
+        // For this case the callback will not unlock the mutex.
         CHECK(pthread_mutex_unlock(tp->mutex));
 
     DASSERT(pthread_getspecific(_qsGraphKey) == 0);
@@ -42,6 +41,7 @@ bool CallTriggerCallback(struct QsTrigger *t, struct QsThreadPool *tp) {
     CHECK(pthread_setspecific(_qsGraphKey, 0));
 
     if(!t->keepLockInCallback)
+        // For this case the callback will not lock the mutex.
         CHECK(pthread_mutex_lock(tp->mutex));
 
     // The block can change the trigger from this return value, ret.
@@ -84,10 +84,20 @@ bool CallTriggerCallback(struct QsTrigger *t, struct QsThreadPool *tp) {
 // Hence this is called with a thread pool mutex lock and returns with a
 // thread pool mutex lock.
 //
+// returns true if there is work to do, else returns false.
+//
 static inline
 bool WaitForWork(struct QsThreadPool *tp) {
 
     DASSERT(tp);
+
+    if(tp->doneRunning) {
+        DASSERT(tp->first == 0);
+        // Some worker thread in this pool has determined that we are done
+        // running for this run.
+        return false;
+    }
+
     struct QsGraph *graph = tp->graph;
     DASSERT(graph);
 
@@ -141,7 +151,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
         //
         // Tests show that we need to use sigsetjmp(), and setjmp() will
         // not work.  Shit happens.
-        
+
         if(sigsetjmp(sig->jmpEnv, 1/*save sigs*/)) {
 
             // CAUTION: this is a "jump to" point in the code.  The
@@ -164,6 +174,12 @@ bool WaitForWork(struct QsThreadPool *tp) {
             DASSERT(sig->triggered);
             ASSERT(CheckAndQueueTrigger((struct QsTrigger *) sig));
             --graph->numIdleThreads;
+            --tp->numIdleThreads;
+
+            DSPEW("ThreadPool has %" PRIu32 " idle threads out of %"
+                    PRIu32,
+                    tp->numIdleThreads, tp->numThreads);
+
             return tp->first;
         }
 
@@ -172,6 +188,8 @@ bool WaitForWork(struct QsThreadPool *tp) {
         // set just below.  Incrementing the numIdleThreads counter after
         // sig->aboutToPause is set would be a disaster.
         ++graph->numIdleThreads;
+        ++tp->numIdleThreads;
+
         // What thread may do this jump.
         sig->thread = pthread_self();
 
@@ -196,13 +214,20 @@ bool WaitForWork(struct QsThreadPool *tp) {
             // falsely incremented the numIdleThreads counter.  So it
             // looks like we never were idle.
             --graph->numIdleThreads;
+            --tp->numIdleThreads;
+
             return tp->first;
         }
-    } else
+
+    } else {
         // There is no jump set, hence this will not get fucked by
         // incrementing this counter.
         ++graph->numIdleThreads;
+        ++tp->numIdleThreads;
+    }
 
+    DSPEW("ThreadPool has %" PRIu32 " idle threads out of %" PRIu32,
+            tp->numIdleThreads, tp->numThreads);
 
     // We cannot set --graph->numIdleThreads in this "jump from zone";
     // that would make it not possible to know if it was decremented,
@@ -241,8 +266,31 @@ bool WaitForWork(struct QsThreadPool *tp) {
     }
 
     --graph->numIdleThreads;
+    --tp->numIdleThreads;
+
+    DSPEW("ThreadPool has %" PRIu32 " idle threads out of %" PRIu32,
+            tp->numIdleThreads, tp->numThreads);
+
 
     return tp->first;
+}
+
+
+static void *runWorker(struct QsThreadPool *tp);
+
+
+// We need the graph/threadPool mutex locked to call this.
+static
+void LaunchWorkerThread(struct QsThreadPool *tp) {
+
+    CHECK(pthread_create(&(tp->threads[tp->numThreads].thread), 0,
+                (void* (*)(void *)) runWorker, tp));
+    ++tp->graph->numWorkingThreads;
+    DSPEW("There are now %" PRIu32 " worker threads",
+            tp->graph->numWorkingThreads);
+    // Mark this thread to be joined when we finish running.
+    tp->threads[tp->numThreads].hasLaunched = true;
+    ++tp->numThreads;
 }
 
 
@@ -258,23 +306,45 @@ void *runWorker(struct QsThreadPool *tp) {
 
     while(tp->first || WaitForWork(tp)) {
 
-        struct QsSimpleBlock *b;
         // If WaitForWork() kept us here, then there must be work in the
         // thread pool queue for at least one of the blocks.
         DASSERT(tp->first);
         DASSERT(tp->last);
+
+        struct QsSimpleBlock *b;
+        // If WaitForWork() kept us here, then there must be work in the
+        // thread pool queue for at least one of the blocks.
+
         bool sourceTriggersChanged = false;
 
-        do {
+        if(tp->first->next) {
+            // We have even more work to do.
+            if(tp->numIdleThreads)
+                // wake an idle thread.
+                //
+                // man pthread_cond_signal says: If several threads are
+                // waiting on cond, exactly one is restarted, but it is
+                // not specified which.  So this should wake just one,
+                // very cool.
+                CHECK(pthread_cond_signal(&tp->cond));
+
+            else if(tp->numThreads < tp->maxThreads)
+                // Launch another worker thread.
+                LaunchWorkerThread(tp);
+
+            // Else we are at our limit of worker threads.
+        }
+
+
+        while(tp->first) {
+
             // Loop over blocks:
             //
             b = PopBlockFromThreadPoolQueue(tp);
             // We call callbacks for this block, b:
             DASSERT(b);
-            // ... and there must be at least one trigger that we can pop.
-            DASSERT(b->firstJob);
 
-            do {
+            while(b->firstJob) {
                 // Loop over triggers in the block
                 //
                 struct QsTrigger *t = PopJobBackToTriggers(b);
@@ -283,9 +353,9 @@ void *runWorker(struct QsThreadPool *tp) {
                 if(CallTriggerCallback(t, tp))
                     sourceTriggersChanged = true;
 
-            } while(b->firstJob); // end loop over triggers in block
+            } // end loop over triggers in block
 
-        } while(tp->first);// end loop over blocks in thread pool
+        }// end loop over blocks in thread pool
 
 
         // At this point there are no triggered jobs in this thread pool
@@ -329,16 +399,23 @@ void *runWorker(struct QsThreadPool *tp) {
                     // pool.
                     //
                     break;
-                }
-
+                } else
+                    ASSERT(0, "WRITE THIS CODE");
                 // TODO:  More CODE HEREEEEEEEEE
 
             }
 
         }
 
-    } // while(WaitForWork(tp)) loop
+    } // while(tp->first || WaitForWork(tp)) { // loop
 
+
+    if(!tp->doneRunning) {
+        DASSERT(tp->first == 0);
+        // This will let all threads in the pool that we have determined
+        // that there will be no more work for this thread pool.
+        tp->doneRunning = true;
+    }
 
     if(tp->maxThreads == 0) {
         // this is the case of the main thread running the flow stream.
@@ -353,6 +430,14 @@ void *runWorker(struct QsThreadPool *tp) {
     if(graph->numWorkingThreads == 0 && graph->masterWaiting)
         // Last one out signal the main thread.
         CHECK(pthread_cond_signal(&graph->cond));
+    else if(tp->numIdleThreads) {
+        ERROR("                         SIGNALING tp COND");
+        CHECK(pthread_cond_broadcast(&tp->cond));
+    }
+
+    DSPEW("Thread exiting graph numWorkingThreads=%" PRIu32
+            "  tp numIdleThreads=%" PRIu32,
+        graph->numWorkingThreads, tp->numIdleThreads);
 
     CHECK(pthread_mutex_unlock(tp->mutex));
 
@@ -436,12 +521,9 @@ int run(struct QsGraph *graph) {
             DASSERT(tp->threads);
             DASSERT(tp->maxThreads);
             DASSERT(tp->numThreads == 0);
-            tp->numThreads = 1;
-            // Launch a worker thread:
-            CHECK(pthread_create(&tp->threads->thread, 0,
-                        (void* (*)(void *)) runWorker, tp));
-            ++graph->numWorkingThreads;
-            tp->threads->hasLaunched = true;
+            DASSERT(tp->numIdleThreads == 0);
+
+            LaunchWorkerThread(tp);
         }
         CHECK(pthread_mutex_unlock(&graph->mutex));
     }

@@ -54,6 +54,8 @@ struct QsThreadPool {
     // Need mutex to access.
     //
     struct QsSimpleBlock *first, *last;
+
+    bool doneRunning;
 };
 
 

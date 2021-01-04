@@ -6,6 +6,23 @@ set -ex
 
 # the block tests/setter prints to stdout.
 
+if [ -n "$VALGRIND_RUN" ] ; then
+    # valgrind can't run a multi-threaded
+    # version of this successfully.
+    # Running GDB with multi-threaded programs and valgrind
+    # may be helpful, but mostly drives you insane.
+    #
+    # https://www.valgrind.org/docs/manual/manual-core.html#manual-core.pthreads
+    t0=0
+    t1=0
+    t2=0
+
+else
+    t0=2
+    t1=3
+    t2=4
+fi
+
 dataFile="data_$(basename $0)"
 tmpFile="${dataFile}.tmp"
 
@@ -27,7 +44,7 @@ tmpFile="${dataFile}.tmp"
  --run >> $tmpFile
 
 ../bin/quickstream\
- --threads 1\
+ --threads $t0\
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
  --block tests/dummy\
@@ -35,7 +52,7 @@ tmpFile="${dataFile}.tmp"
  --run >> $tmpFile
 
 ../bin/quickstream\
- --threads 1\
+ --threads $t1\
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
  --block tests/dummy\
@@ -44,7 +61,7 @@ tmpFile="${dataFile}.tmp"
  --run >> $tmpFile
 
 ../bin/quickstream\
- --threads 4\
+ --threads 0\
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
  --block tests/dummy\
@@ -52,7 +69,7 @@ tmpFile="${dataFile}.tmp"
  --run >> $tmpFile
 
 ../bin/quickstream\
- --threads 4\
+ --threads $t2\
  --block tests/getterTriggeredFromSignal getter\
  --block tests/setter setter\
  --block tests/dummy\

@@ -885,6 +885,8 @@ void QueueUpSetterFromGetter(struct QsSetter *s, struct QsParameter *p) {
 
     CHECK(pthread_mutex_lock(s->mutex));
 
+    struct QsTrigger *trigger = s->trigger;
+
     if(!s->haveValueQueued) {
         // queue up this event.
         //
@@ -892,7 +894,7 @@ void QueueUpSetterFromGetter(struct QsSetter *s, struct QsParameter *p) {
         CHECK(pthread_mutex_lock(&
                 ((struct QsBlock *)p->block)->graph->mutex));
 
-        if(!s->trigger) {
+        if(!trigger || !trigger->isRunning) {
             // The trigger is off for one of two reasons:
             //   1. We let triggers be freed at flow time.
             //   2. We also let triggers be stopped at flow time.
@@ -909,7 +911,7 @@ void QueueUpSetterFromGetter(struct QsSetter *s, struct QsParameter *p) {
         }
 
         // Queue a job for this trigger.
-        CheckAndQueueTrigger(s->trigger);
+        CheckAndQueueTrigger(trigger);
 
         CHECK(pthread_mutex_unlock(&
                 ((struct QsBlock *)p->block)->graph->mutex));
@@ -917,7 +919,7 @@ void QueueUpSetterFromGetter(struct QsSetter *s, struct QsParameter *p) {
     }
 
     memcpy(s->parameter.value, p->value, p->size);
-        
+
     CHECK(pthread_mutex_unlock(s->mutex)); 
 }
 
