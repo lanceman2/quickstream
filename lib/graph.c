@@ -232,7 +232,7 @@ int qsGraphReady(struct QsGraph *graph) {
         // Check for an invalid graph thread pools case.
         for(struct QsThreadPool *tp = graph->threadPools; tp;
                 tp = tp->next)
-            if(tp->numThreads == 0) {
+            if(tp->maxThreads == 0) {
                 haveZeroMaxThreads = true;
                 break;
             }
@@ -244,6 +244,7 @@ int qsGraphReady(struct QsGraph *graph) {
             ERROR("Mick says: \"You can't always get what you want.\""
                     "You have a thread pool with 0 threads and more than"
                     " one thread pool total.");
+            DASSERT(0);
             // We may yet recover from this, if they reconfigure the
             // thread pools.
             return -1; // error
