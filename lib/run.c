@@ -318,7 +318,7 @@ void *runWorker(struct QsThreadPool *tp) {
         bool sourceTriggersChanged = false;
 
         if(tp->first->next) {
-            // We have even more work to do.
+            // We have more than one block to work on.
             if(tp->numIdleThreads)
                 // wake an idle thread.
                 //
@@ -336,16 +336,15 @@ void *runWorker(struct QsThreadPool *tp) {
         }
 
 
-        while(tp->first) {
-
+        do {
             // Loop over blocks:
             //
             b = PopBlockFromThreadPoolQueue(tp);
             // We call callbacks for this block, b:
             DASSERT(b);
+            DASSERT(b->firstJob);
 
-            while(b->firstJob) {
-
+            do {
                 // This thread is now dedicated to finishing all jobs in
                 // the b->firstJob queue.
                 b->busy = true;
@@ -358,14 +357,14 @@ void *runWorker(struct QsThreadPool *tp) {
                 if(CallTriggerCallback(t, tp))
                     sourceTriggersChanged = true;
 
-            } // end loop over triggers in block
+            } while(b->firstJob);// end loop over triggers in block
 
             // All the jobs for this block are done, so now any worker
             // thread can queue the block into the threadPool queue
             // again.
             b->busy = false;
 
-        }// end loop over blocks in thread pool
+        } while(tp->first); // end loop over blocks queued in thread pool
 
 
         // At this point there are no triggered jobs in this thread pool
