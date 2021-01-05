@@ -55,7 +55,7 @@ struct QsThreadPool {
     //
     struct QsSimpleBlock *first, *last;
 
-    bool doneRunning;
+    bool finishingRunning;
 };
 
 

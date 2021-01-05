@@ -330,8 +330,8 @@ int qsGraphReady(struct QsGraph *graph) {
     // configuration thing we need to allocate this array separate from
     // allocating the thread pool.
     for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
-        // initialize the doneRunning flag.  We are not done running.
-        tp->doneRunning = false;
+        // initialize the finishingRunning flag.  We are not done running.
+        tp->finishingRunning = false;
         if(tp->maxThreads == 0) continue;
         DASSERT(tp->threads == 0);
         tp->threads = calloc(tp->maxThreads, sizeof(*tp->threads));

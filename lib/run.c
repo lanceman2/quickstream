@@ -91,7 +91,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
 
     DASSERT(tp);
 
-    if(tp->doneRunning) {
+    if(tp->finishingRunning) {
         DASSERT(tp->first == 0);
         // Some worker thread in this pool has determined that we are done
         // running for this run.
@@ -253,9 +253,17 @@ bool WaitForWork(struct QsThreadPool *tp) {
     // they should not, and we could have the program stuck in this next
     // function call forever.  The fix is a jump in the signal handler.
 
-    // pause/wait.  Mutex unlock inside pthread_cond_wait()
-    CHECK(pthread_cond_wait(&tp->cond, tp->mutex));
-    //pause();
+
+    do {
+        // pause/wait.  Mutex unlock inside pthread_cond_wait()
+        CHECK(pthread_cond_wait(&tp->cond, tp->mutex));
+        //pause();
+        //
+        // This can wake up and find no work because another thread did
+        // the work for us between the time a job is posted and the time
+        // this thread wakes.
+        //
+    } while(!tp->finishingRunning && tp->first == 0);
 
 
     if(haveSigTrigger) {
@@ -286,11 +294,46 @@ void LaunchWorkerThread(struct QsThreadPool *tp) {
     CHECK(pthread_create(&(tp->threads[tp->numThreads].thread), 0,
                 (void* (*)(void *)) runWorker, tp));
     ++tp->graph->numWorkingThreads;
-    DSPEW("There are now %" PRIu32 " worker threads",
+    INFO("There are now %" PRIu32 " worker threads",
             tp->graph->numWorkingThreads);
     // Mark this thread to be joined when we finish running.
     tp->threads[tp->numThreads].hasLaunched = true;
     ++tp->numThreads;
+}
+
+
+static inline
+void CheckMakeWorkerThreads(struct QsThreadPool *tp) {
+
+    if(tp->finishingRunning
+            || tp->first == 0 // 1 block not queued
+            || tp->first->next == 0 // 2 blocks not queued 
+
+#if 0
+    // We can add the requirement of having 3 blocks queued to add or wake
+    // up more threads.  Simple tests do not seem to show much performance
+    // change.  Any more than this and we'll add a queue count variable in
+    // place of checking N-1 next pointers.
+
+            || tp->first->next->next == 0 // 3 blocks not queued
+#endif
+            )
+        // There is 0 or 1 (or 2) blocks in the job queue.
+        return;
+
+    // We have more than one block to work on.
+    if(tp->numIdleThreads)
+        // wake an idle thread.
+        //
+        // man pthread_cond_signal says: If several threads are
+        // waiting on cond, exactly one is restarted, but it is
+        // not specified which.  So this should wake just one,
+        // very cool.
+        CHECK(pthread_cond_signal(&tp->cond));
+        //
+    else if(tp->numThreads < tp->maxThreads)
+        // Launch another worker thread.
+        LaunchWorkerThread(tp);
 }
 
 
@@ -317,24 +360,6 @@ void *runWorker(struct QsThreadPool *tp) {
 
         bool sourceTriggersChanged = false;
 
-        if(tp->first->next) {
-            // We have more than one block to work on.
-            if(tp->numIdleThreads)
-                // wake an idle thread.
-                //
-                // man pthread_cond_signal says: If several threads are
-                // waiting on cond, exactly one is restarted, but it is
-                // not specified which.  So this should wake just one,
-                // very cool.
-                CHECK(pthread_cond_signal(&tp->cond));
-
-            else if(tp->numThreads < tp->maxThreads)
-                // Launch another worker thread.
-                LaunchWorkerThread(tp);
-
-            // Else we are at our limit of worker threads.
-        }
-
 
         do {
             // Loop over blocks:
@@ -343,6 +368,8 @@ void *runWorker(struct QsThreadPool *tp) {
             // We call callbacks for this block, b:
             DASSERT(b);
             DASSERT(b->firstJob);
+
+            CheckMakeWorkerThreads(tp);
 
             do {
                 // This thread is now dedicated to finishing all jobs in
@@ -419,11 +446,11 @@ void *runWorker(struct QsThreadPool *tp) {
     } // while(tp->first || WaitForWork(tp)) { // loop
 
 
-    if(!tp->doneRunning) {
+    if(!tp->finishingRunning) {
         DASSERT(tp->first == 0);
         // This will let all threads in the pool that we have determined
         // that there will be no more work for this thread pool.
-        tp->doneRunning = true;
+        tp->finishingRunning = true;
     }
 
     if(tp->maxThreads == 0) {
@@ -439,12 +466,11 @@ void *runWorker(struct QsThreadPool *tp) {
     if(graph->numWorkingThreads == 0 && graph->masterWaiting)
         // Last one out signal the main thread.
         CHECK(pthread_cond_signal(&graph->cond));
-    else if(tp->numIdleThreads) {
-        ERROR("                         SIGNALING tp COND");
+    else if(tp->numIdleThreads)
         CHECK(pthread_cond_broadcast(&tp->cond));
-    }
 
-    DSPEW("Thread exiting graph numWorkingThreads=%" PRIu32
+
+    INFO("Thread exiting graph numWorkingThreads=%" PRIu32
             "  tp numIdleThreads=%" PRIu32,
         graph->numWorkingThreads, tp->numIdleThreads);
 
