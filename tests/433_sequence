@@ -2,10 +2,16 @@
 
 set -ex
 
+if [ -n "$VALGRIND_RUN" ] ; then
+    # valgrind cannot handle the threading code.
+    numThreads=0
+else
+    numThreads=3
+fi
 
 ../bin/quickstream\
  -v 3\
- --threads 3\
+ --threads $numThreads\
  --block tests/sequenceGen gen\
  --block tests/sequenceCheck check00\
  --block tests/sequenceCheck check01\

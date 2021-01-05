@@ -325,13 +325,15 @@ int qsGraphReady(struct QsGraph *graph) {
     // pool assigned to it.
 
 
+    // Initialize this flag, which says that there are source triggers
+    // running.
+    graph->finishingRunning = false;
+
     // The thread pools need an array of pthread_t so they can
     // pthread_join() later.  Since the maximum number of threads is a
     // configuration thing we need to allocate this array separate from
     // allocating the thread pool.
     for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
-        // initialize the finishingRunning flag.  We are not done running.
-        tp->finishingRunning = false;
         if(tp->maxThreads == 0) continue;
         DASSERT(tp->threads == 0);
         tp->threads = calloc(tp->maxThreads, sizeof(*tp->threads));

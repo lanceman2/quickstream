@@ -2,10 +2,25 @@
 
 set -ex
 
+if [ -n "$VALGRIND_RUN" ] ; then
+    # valgrind can't run a multi-threaded
+    # version of this successfully.
+    # Running GDB with multi-threaded programs and valgrind
+    # may be helpful, but mostly drives you insane.
+    #
+    # I think that the tests/getterTriggeredFromSignal block gets hosed by
+    # running with valgrind, if there are many threads.
+    #
+    # https://www.valgrind.org/docs/manual/manual-core.html#manual-core.pthreads
+    nt=0
+else
+    nt=4
+fi
+
 
 ../bin/quickstream\
  -v 5\
- --threads 3\
+ --threads $nt\
  --block tests/sequenceGen gen\
  --block tests/copy c0\
  --block tests/copy c1\

@@ -91,13 +91,6 @@ bool WaitForWork(struct QsThreadPool *tp) {
 
     DASSERT(tp);
 
-    if(tp->finishingRunning) {
-        DASSERT(tp->first == 0);
-        // Some worker thread in this pool has determined that we are done
-        // running for this run.
-        return false;
-    }
-
     struct QsGraph *graph = tp->graph;
     DASSERT(graph);
 
@@ -263,7 +256,18 @@ bool WaitForWork(struct QsThreadPool *tp) {
         // the work for us between the time a job is posted and the time
         // this thread wakes.
         //
-    } while(!tp->finishingRunning && tp->first == 0);
+        // We do not let threads exit until graph->numIdleThreads ==
+        // graph->numWorkingThreads; because we do not have any smarts as
+        // to knowing how worker threads get jammed and unjammed as the
+        // stream flows.  A good case to not let worker threads exit, when
+        // finishing running, is large batch processing streams where the
+        // sources may be done running very quickly, but down stream is
+        // large and complex.  In that case for most of the running time
+        // the graph source triggers would not be active.
+        //
+    } while(tp->first == 0 /*there is no job*/ &&
+            (graph->numIdleThreads != graph->numWorkingThreads
+            || !graph->finishingRunning));
 
 
     if(haveSigTrigger) {
@@ -305,8 +309,7 @@ void LaunchWorkerThread(struct QsThreadPool *tp) {
 static inline
 void CheckMakeWorkerThreads(struct QsThreadPool *tp) {
 
-    if(tp->finishingRunning
-            || tp->first == 0 // 1 block not queued
+    if(tp->first == 0 // 1 block not queued
             || tp->first->next == 0 // 2 blocks not queued 
 
 #if 0
@@ -351,8 +354,8 @@ void *runWorker(struct QsThreadPool *tp) {
 
         // If WaitForWork() kept us here, then there must be work in the
         // thread pool queue for at least one of the blocks.
-        DASSERT(tp->first);
         DASSERT(tp->last);
+
 
         struct QsSimpleBlock *b;
         // If WaitForWork() kept us here, then there must be work in the
@@ -398,26 +401,20 @@ void *runWorker(struct QsThreadPool *tp) {
         // queue.  So for whatever reason this thread pool needs to wait
         // for work.
 
-        if(sourceTriggersChanged) {
+        if(sourceTriggersChanged && !graph->finishingRunning) {
+
+            DASSERT(!graph->finishingRunning);
             // Assess what will WaitForWork() should do now.  This is a
             // transient case, so the below loops do not happen often.
             //
-            // Hence, check if we have any running source triggers in this
-            // pool.
+            // Hence, check if we have any running source triggers in all
+            // pools.  Hence all blocks in the graph.
             //
-            // TODO: If triggers every have the ability to be "turned on"
-            // by setting QsTrigger::isRunning at run/flow time then we'll
-            // need to make this looping below faster by adding more
-            // stupid lists to the data structures.
-            //
-            // The thread pool does not have a list of all blocks that it
-            // services, so we use the block list in the graph to search
-            // all blocks and find ones that use this thread pool.
             struct QsBlock *b = tp->graph->firstBlock;
             for(; b; b = b->next) {
                 if(b->isSuperBlock) continue;
                 struct QsSimpleBlock *smB = (struct QsSimpleBlock *)b;
-                if(smB->threadPool != tp) continue;
+                // Search all waiting triggers in this simple block.
                 struct QsTrigger *t = smB->waiting;
                 for(; t; t = t->next)
                     if(t->isRunning && t->isSource)
@@ -426,36 +423,43 @@ void *runWorker(struct QsThreadPool *tp) {
                 if(t)
                     // got a usable source trigger
                     break;
-            }
-            if(!b) {
-                if(tp->maxThreads == 0 || tp->graph->threadPools->next == 0) {
-                    // Do not have a usable source trigger in this thread
-                    // pool and we have no queued jobs, and we only have
-                    // the main thread running this or just one thread
-                    // pool.
-                    //
+                if(smB->threadPool == tp) continue;
+                // Search all queue triggers in this simple block: There
+                // will be none in the current thread pool, tp, but there
+                // may be some in blocks from other thread pools.
+                t = smB->firstJob;
+                for(; t; t = t->next)
+                    if(t->isRunning && t->isSource)
+                        // got a usable source trigger
+                        break;
+                if(t)
+                    // got a usable source trigger
                     break;
-                } else
-                    ASSERT(0, "WRITE THIS CODE");
-                // TODO:  More CODE HEREEEEEEEEE
-
             }
 
+            if(!b) {
+                // We found no usable source trigger in all thread pools.
+                if(tp->maxThreads == 0)
+                    // There was no threads other then the main thread.
+                    // We are done running.
+                    break;
+                graph->finishingRunning = true;
+            }
         }
 
-    } // while(tp->first || WaitForWork(tp)) { // loop
+        if(graph->finishingRunning &&
+                graph->numIdleThreads == graph->numWorkingThreads-1)
+            // All of the threads, but this one, are idle, so
+            // we can return.
+            break;
+
+    } // while(tp->first || WaitForWork(tp)) {
 
 
-    if(!tp->finishingRunning) {
-        DASSERT(tp->first == 0);
-        // This will let all threads in the pool that we have determined
-        // that there will be no more work for this thread pool.
-        tp->finishingRunning = true;
-    }
 
     if(tp->maxThreads == 0) {
-        // this is the case of the main thread running the flow stream.
-        // And so in a sense there are no worker threads.
+        // This is the case of the main thread running the flow stream.
+        // And so, in a sense, there are no worker threads.
         CHECK(pthread_mutex_unlock(tp->mutex));
         return 0;
     }
@@ -467,8 +471,8 @@ void *runWorker(struct QsThreadPool *tp) {
         // Last one out signal the main thread.
         CHECK(pthread_cond_signal(&graph->cond));
     else if(tp->numIdleThreads)
-        CHECK(pthread_cond_broadcast(&tp->cond));
-
+        // Signal the next worker to leave.
+        CHECK(pthread_cond_signal(&tp->cond));
 
     INFO("Thread exiting graph numWorkingThreads=%" PRIu32
             "  tp numIdleThreads=%" PRIu32,

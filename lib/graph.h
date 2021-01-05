@@ -113,6 +113,10 @@ struct QsGraph {
     uint32_t numIdleThreads;
 
     bool canHaveStreamLoops;
+
+    // This gets set when sources have stopped feeding jobs in all thread
+    // pools; jobs will still be generated but not from source triggers.
+    bool finishingRunning;
 };
 
 
