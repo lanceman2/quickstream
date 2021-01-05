@@ -250,7 +250,7 @@ int qsGraphReady(struct QsGraph *graph) {
 
     // It could easily happen that there is a thread pool with no assigned
     // blocks for it to run.  Thread pools like that are of no use, and
-    // just waist memory and add extra code to let them exist.  Design
+    // just waste memory and add extra code to let them exist.  Design
     // decision: We choice to make them disappear here with just a
     // warning.
     for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
