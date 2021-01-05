@@ -62,7 +62,6 @@ bool CheckAndQueueTrigger(struct QsTrigger *t,
         // have an idle worker thread woken from a wait
         // (pthread_cond_wait()) call or launch another thread.
         CheckMakeWorkerThreads(t->block->threadPool);
-ERROR();
     }
 
     return true;
