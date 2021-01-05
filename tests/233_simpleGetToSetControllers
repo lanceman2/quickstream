@@ -12,11 +12,13 @@ if [ -n "$VALGRIND_RUN" ] ; then
     # Running GDB with multi-threaded programs and valgrind
     # may be helpful, but mostly drives you insane.
     #
+    # I think that the tests/getterTriggeredFromSignal block gets hosed by
+    # running with valgrind, if there are many threads.
+    #
     # https://www.valgrind.org/docs/manual/manual-core.html#manual-core.pthreads
     t0=0
     t1=0
     t2=0
-
 else
     t0=2
     t1=3

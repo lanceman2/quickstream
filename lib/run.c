@@ -345,15 +345,25 @@ void *runWorker(struct QsThreadPool *tp) {
             DASSERT(b);
 
             while(b->firstJob) {
+
+                // This thread is now dedicated to finishing all jobs in
+                // the b->firstJob queue.
+                b->busy = true;
                 // Loop over triggers in the block
                 //
                 struct QsTrigger *t = PopJobBackToTriggers(b);
                 DASSERT(t);
 
+                // This is where we work for the block
                 if(CallTriggerCallback(t, tp))
                     sourceTriggersChanged = true;
 
             } // end loop over triggers in block
+
+            // All the jobs for this block are done, so now any worker
+            // thread can queue the block into the threadPool queue
+            // again.
+            b->busy = false;
 
         }// end loop over blocks in thread pool
 

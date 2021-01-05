@@ -30,10 +30,14 @@ tmpFile="${dataFile}.tmp"
  --block tests/setter setter\
  --block tests/setter setter2\
  --block tests/setter setter3\
+ --block tests/setter setter4\
+ --block tests/setter setter5\
  --block tests/dummy\
  --connect-parameters getter getter setter setter\
  --connect-parameters getter getter setter2 setter\
  --connect-parameters getter getter setter3 setter\
+ --connect-parameters getter getter setter4 setter\
+ --connect-parameters getter getter setter5 setter\
  --run\
  --run\
  --run

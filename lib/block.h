@@ -152,6 +152,19 @@ struct QsSimpleBlock {
     //
     bool userMadeTrigger;
 
+    // busy means that a worker thread is working on emptying the
+    // "firstJob" queue.  And jobs added to this block should not queue
+    // the block in the threadPool "first" and "last" queue, because the
+    // worker thread that is working on jobs for this block now will
+    // just use the block's "firstJob"/"lastJob" queue to get jobs.
+    // The worker thread working on this block will not stop working on
+    // this block until the "firstJob"/"lastJob" queue is empty.
+    //
+    // TODO: This busy flag could become a counter if we wanted to have
+    // multi-threads blocks.  It would be compared with a maxThreads for
+    // the block.
+    bool busy;
+
     // The threadPool that can run this block's trigger actions.
     struct QsThreadPool *threadPool;
 

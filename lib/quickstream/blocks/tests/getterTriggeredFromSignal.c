@@ -32,7 +32,8 @@ int stopItimer(void) {
 static
 double val = 0.034;
 
-
+#define COUNT_MAX  (9)
+//#define COUNT_MAX  (900000)
 
 static
 int triggerCallback(struct QsParameter *p) {
@@ -44,13 +45,11 @@ int triggerCallback(struct QsParameter *p) {
 
     val += 2.0;
 
-
-    if(count > 9) {
+    if(count > COUNT_MAX) {
         stopItimer();
         // Stop using the itimer
         return 1; // 1 = stop calling this callback
     }
-
 
 
     return 0;
@@ -72,8 +71,6 @@ int declare(void) {
 }
 
 int start(uint32_t numInPorts, uint32_t numOutPorts) {
-
-    ERROR();
 
     count = 0;
 

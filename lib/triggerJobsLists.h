@@ -41,10 +41,11 @@ void _FinishQueuingJob(struct QsSimpleBlock *b, struct QsTrigger *t) {
 
     t->isInJobQueue = true;
 
-    // Since blocks can have more than one trigger this block
-    // could have been in its' thread pool job queue already,
-    // hence the if().
-    if(b->blockInThreadPoolQueue == false)
+    // Since blocks can have more than one trigger this block could have
+    // been in its' thread pool job queue already, hence the if().  We
+    // also do not queue the block if there is a worker thread busy
+    // working on that block.
+    if(b->blockInThreadPoolQueue == false && b->busy == false)
         AddBlockToThreadPoolQueue(b);
 }
 
