@@ -1,4 +1,5 @@
 #include <string.h>
+#include <unistd.h>
 
 #include "../../../../include/quickstream/block.h"
 #include "../../../../lib/debug.h"
@@ -7,9 +8,16 @@
 
 
 static size_t maxWrite = 0;
+static useconds_t usec = 0;
 
 
 int declare(void) {
+
+    double sec = 0;
+     qsParameterConstantCreate(0, "sleep", QsDouble,
+            sizeof(double),
+            0, 0, &sec);
+
 
 
     return 0; // success
@@ -25,6 +33,9 @@ int start(uint32_t numInputs, uint32_t numOutputs) {
             numInputs, numOutputs);
 
     qsParameterGetValueByName("OutputMaxWrite", &maxWrite, sizeof(maxWrite));
+    double sec = 0;
+    qsParameterGetValueByName("sleep", &sec, sizeof(sec));
+    usec = (sec * 1000000);
 
     return 0; // success
 }
@@ -40,6 +51,8 @@ int flow(void *buffers[], const size_t lens[],
             len = maxWrite;
         else if(len == 0)
             continue;
+
+        if(usec) usleep(usec);
 
         memcpy(qsGetOutputBuffer(i), buffers[i], len);
         qsAdvanceInput(i, len);

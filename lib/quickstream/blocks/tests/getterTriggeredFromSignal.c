@@ -51,7 +51,6 @@ int triggerCallback(struct QsParameter *p) {
         return 1; // 1 = stop calling this callback
     }
 
-
     return 0;
 }
 

@@ -10,7 +10,7 @@ dd if=/dev/urandom count=1300 of=$inFile
 
 
 ../bin/quickstream\
- -v 3\
+ -v 5\
  --threads 5\
  --block tests/stdin stdin\
  --block tests/copy c0\

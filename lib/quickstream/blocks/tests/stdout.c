@@ -26,21 +26,19 @@ int flow(void *buffers[], const size_t lens[],
     DASSERT(lens);    // quickstream code error
     DASSERT(lens[0]); // quickstream code error
 
-    ASSERT(numInputs == 1);  // user error
-    ASSERT(numOutputs == 0); // user error
+    for(uint32_t i = 0; i < numInputs; ++i) {
 
-    size_t len = lens[0];
+        size_t len = lens[i];
 
-    size_t ret = fwrite(buffers[0], 1, len, stdout);
+        size_t ret = fwrite(buffers[i], 1, len, stdout);
 
-    qsAdvanceInput(0, ret);
+        qsAdvanceInput(i, ret);
 
-    //fflush(stdout);
-
-    if(ret != len) {
-        ERROR("fwrite(%p,1,%zu,stdout) failed",
-            buffers[0], len);
-        return -1; // fail
+        if(ret != len) {
+            ERROR("fwrite(%p,1,%zu,stdout) failed",
+                buffers[i], len);
+            return -1; // fail
+        }
     }
 
     return 0; // success
