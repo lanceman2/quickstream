@@ -228,19 +228,16 @@ int qsGraphReady(struct QsGraph *graph) {
         // Make a default thread pool.
         qsGraphThreadPoolCreate(graph, QS_DEFAULT_MAXTHREADS);
     else {
-        bool haveZeroMaxThreads = false;
+        struct QsThreadPool *tp = graph->threadPools;
         // Check for an invalid graph thread pools case.
-        for(struct QsThreadPool *tp = graph->threadPools; tp;
-                tp = tp->next)
-            if(tp->maxThreads == 0) {
-                haveZeroMaxThreads = true;
+        for(;tp ;tp = tp->next)
+            if(tp->maxThreads == 0)
                 break;
-            }
 
-        if(haveZeroMaxThreads && graph->threadPools->next) {
+        if(tp && graph->threadPools->next) {
             // We have a main thread running a thread pool and at the same
             // time we have yet another thread pool.  That hurts my head
-            // too much to think about.  So fuck it.
+            // too much to think about; so fuck it.
             ERROR("Mick says: \"You can't always get what you want.\""
                     "You have a thread pool with 0 threads and more than"
                     " one thread pool total.");
