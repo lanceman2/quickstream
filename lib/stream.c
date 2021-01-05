@@ -643,7 +643,7 @@ int StreamFlow_callback(struct QsSimpleBlock *b) {
                 struct QsSimpleBlock *smB = output->inputs[j]->block;
                 if(CheckBlockFlowCallable(smB) &&
                         !smB->streamTrigger->isInJobQueue)
-                    CheckAndQueueTrigger(smB->streamTrigger);
+                    CheckAndQueueTrigger(smB->streamTrigger, b->threadPool);
             }
         }
 
@@ -653,7 +653,7 @@ int StreamFlow_callback(struct QsSimpleBlock *b) {
             struct QsSimpleBlock *smB = b->inputs[i].feederBlock;
             if(CheckBlockFlowCallable(smB) &&
                         !smB->streamTrigger->isInJobQueue)
-                CheckAndQueueTrigger(smB->streamTrigger);
+                CheckAndQueueTrigger(smB->streamTrigger, b->threadPool);
         }
 
 
@@ -913,7 +913,7 @@ void StreamsStart(struct QsGraph *g) {
         if(b->streamTrigger->kind == QsStreamSource)
             //
             // Now queue the job for a worker.
-            CheckAndQueueTrigger(b->streamTrigger);
+            CheckAndQueueTrigger(b->streamTrigger, b->threadPool);
     }
 }
 

@@ -11,8 +11,9 @@
 
 #include "debug.h"
 #include "Dictionary.h"
-#include "parameter.h"
 #include "block.h"
+#include "threadPool.h"
+#include "parameter.h"
 #include "graph.h"
 #include "trigger.h"
 #include "GET_BLOCK.h"
@@ -911,7 +912,7 @@ void QueueUpSetterFromGetter(struct QsSetter *s, struct QsParameter *p) {
         }
 
         // Queue a job for this trigger.
-        CheckAndQueueTrigger(trigger);
+        CheckAndQueueTrigger(trigger, trigger->block->threadPool);
 
         CHECK(pthread_mutex_unlock(&
                 ((struct QsBlock *)p->block)->graph->mutex));

@@ -195,6 +195,8 @@ struct QsStreamFdWrite {
 };
 
 
+struct QsThreadPool;
+
 
 extern
 void TriggerStart(struct QsTrigger *t);
@@ -209,7 +211,7 @@ void FreeTrigger(struct QsTrigger *t);
 
 
 extern
-bool CheckAndQueueTrigger(struct QsTrigger *t);
+bool CheckAndQueueTrigger(struct QsTrigger *t, struct QsThreadPool *tp);
 
 extern
 void *AllocateTrigger(size_t size, struct QsSimpleBlock *b,

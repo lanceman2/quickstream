@@ -16,16 +16,28 @@
 #include "threadPool.h"
 #include "triggerJobsLists.h"
 #include "graph.h"
+#include "run.h"
 
 
 // This checks if the trigger fired and queues up the job for the block.
+//
+// We must have the graph->mutex lock to call this.
 //
 // It's an error to call this if the trigger is in the job queue.
 //
 // Returns true if the trigger is turned into a job in the queue and
 // false if not.
 //
-bool CheckAndQueueTrigger(struct QsTrigger *t) {
+//
+// t  is the trigger thingy we wish to queue a job for.
+//
+// tp is the thread pool that has the thread that called this function.
+//    If tp is not the same thread pool that the trigger belongs to we
+//    need to let that other thread pool know.
+//
+//
+bool CheckAndQueueTrigger(struct QsTrigger *t,
+        struct QsThreadPool *tp) {
 
     DASSERT(t);
     DASSERT(t->isInJobQueue == false);
@@ -35,11 +47,23 @@ bool CheckAndQueueTrigger(struct QsTrigger *t) {
     // First check
     if(t->checkTrigger && !t->checkTrigger(t->userData)) return false;
 
+
     // Now Queue it
     if(t->kind < QsStreamSource)
         WaitingToFirstJob(t);
     else
         WaitingToLastJob(t);
+
+
+    if(tp != t->block->threadPool) {
+        // The thread that is queuing this job is not in the same
+        // threadPool as the block that owns this trigger.  So, we must
+        // check that the threadPool that the block belongs to needs to
+        // have an idle worker thread woken from a wait
+        // (pthread_cond_wait()) call or launch another thread.
+        CheckMakeWorkerThreads(t->block->threadPool);
+ERROR();
+    }
 
     return true;
 }

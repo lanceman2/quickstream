@@ -114,7 +114,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
         // over-run condition and a race condition.
 
         // Do a check first to avoid the system call below in sigsetjmp().
-        if(CheckAndQueueTrigger((struct QsTrigger *) sig))
+        if(CheckAndQueueTrigger((struct QsTrigger *) sig, tp))
             // Okay cool, we got a signal and we have a job to work on.
             // There is no need to pause/wait.
             return tp->first;
@@ -165,7 +165,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
             // consistent.  Wow, it's fuck'n magic.
             //
             DASSERT(sig->triggered);
-            ASSERT(CheckAndQueueTrigger((struct QsTrigger *) sig));
+            ASSERT(CheckAndQueueTrigger((struct QsTrigger *) sig, tp));
             --graph->numIdleThreads;
             --tp->numIdleThreads;
 
@@ -194,7 +194,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
         //
         // We need to check if we got a signal just before we where
         // setting the flag above.  This fixes a race condition.
-        if(CheckAndQueueTrigger((struct QsTrigger *) sig)) {
+        if(CheckAndQueueTrigger((struct QsTrigger *) sig, tp)) {
             // We have a signal event to respond to.  If we got more than
             // one signal that's just an over-run condition; the computer
             // runs to slowly and there's nothing that can fix that but a
@@ -274,7 +274,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
         // Flag to signal trigger's signal handler not to jump now.
         sig->aboutToPause = 0;
         // Check if we had a signal event for this sig trigger.
-        CheckAndQueueTrigger((struct QsTrigger *) sig);
+        CheckAndQueueTrigger((struct QsTrigger *) sig, tp);
     }
 
     --graph->numIdleThreads;
@@ -288,11 +288,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
 }
 
 
-static void *runWorker(struct QsThreadPool *tp);
-
-
 // We need the graph/threadPool mutex locked to call this.
-static
 void LaunchWorkerThread(struct QsThreadPool *tp) {
 
     CHECK(pthread_create(&(tp->threads[tp->numThreads].thread), 0,
@@ -306,43 +302,8 @@ void LaunchWorkerThread(struct QsThreadPool *tp) {
 }
 
 
-static inline
-void CheckMakeWorkerThreads(struct QsThreadPool *tp) {
-
-    if(tp->first == 0 // 1 block not queued
-            || tp->first->next == 0 // 2 blocks not queued 
-
-#if 0
-    // We can add the requirement of having 3 blocks queued to add or wake
-    // up more threads.  Simple tests do not seem to show much performance
-    // change.  Any more than this and we'll add a queue count variable in
-    // place of checking N-1 next pointers.
-
-            || tp->first->next->next == 0 // 3 blocks not queued
-#endif
-            )
-        // There is 0 or 1 (or 2) blocks in the job queue.
-        return;
-
-    // We have more than one block to work on.
-    if(tp->numIdleThreads)
-        // wake an idle thread.
-        //
-        // man pthread_cond_signal says: If several threads are
-        // waiting on cond, exactly one is restarted, but it is
-        // not specified which.  So this should wake just one,
-        // very cool.
-        CHECK(pthread_cond_signal(&tp->cond));
-        //
-    else if(tp->numThreads < tp->maxThreads)
-        // Launch another worker thread.
-        LaunchWorkerThread(tp);
-}
-
-
 // Each worker thread will call this:
 //
-static
 void *runWorker(struct QsThreadPool *tp) {
 
     struct QsGraph *graph = tp->graph;
@@ -467,16 +428,21 @@ void *runWorker(struct QsThreadPool *tp) {
     // This thread is no longer a working thread so un-count it.
     --graph->numWorkingThreads;
 
+
     if(graph->numWorkingThreads == 0 && graph->masterWaiting)
         // Last one out signal the main thread.
         CHECK(pthread_cond_signal(&graph->cond));
-    else if(tp->numIdleThreads)
-        // Signal the next worker to leave.
-        CHECK(pthread_cond_signal(&tp->cond));
+    else 
+        for(struct QsThreadPool *ttp = graph->threadPools;
+                ttp; ttp = ttp->next)
+            if(ttp->numIdleThreads)
+                // Signal the next worker to leave.
+                CHECK(pthread_cond_signal(&ttp->cond));
+
 
     INFO("Thread exiting graph numWorkingThreads=%" PRIu32
-            "  tp numIdleThreads=%" PRIu32,
-        graph->numWorkingThreads, tp->numIdleThreads);
+            "  tp(%p) numIdleThreads=%" PRIu32,
+        graph->numWorkingThreads, tp, tp->numIdleThreads);
 
     CHECK(pthread_mutex_unlock(tp->mutex));
 
