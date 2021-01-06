@@ -6,7 +6,7 @@ set -ex
 
 # the block tests/setter prints to stdout.
 
-if [ -n "$VALGRIND_RUN" ] ; then
+if [ -n "$VaLGRIND_RuN" ] ; then
     # valgrind can't run a multi-threaded
     # version of this successfully.
     # Running GDB with multi-threaded programs and valgrind

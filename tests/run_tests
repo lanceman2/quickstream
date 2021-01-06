@@ -11,9 +11,9 @@ shopt -s nullglob
 
 program="./run_tests"
 
-VALGRIND_RUN=${VALGRIND_RUN:=""}
+VaLGRIND_RuN=${VaLGRIND_RuN:=""}
 
-[ -n "${VALGRIND_RUN}" ] && program="./valgrind_run_tests"
+[ -n "${VaLGRIND_RuN}" ] && program="./valgrind_run_tests"
 
 
 for i in "$@" ; do
@@ -74,8 +74,8 @@ echo "  ================================================"
 echo "                RUNNING $num TESTS"
 echo "  ================================================"
 for run in "${tests[@]}" ; do
-    echo "   [ $i / $num ] === running: $run"
-    if ${VALGRIND_RUN} ./$run ; then
+    echo "   [ $i / $num ] === running: ${VaLGRIND_RuN} ./$run"
+    if ${VaLGRIND_RuN} ./$run ; then
         let pass=$pass+1
         echo "$run === PASSED"
         passPrograms="$passPrograms ./$run"
@@ -89,7 +89,7 @@ for run in "${tests[@]}" ; do
 done
 
 withValgrind="WITHOUT VALGRIND"
-if [ -n "$VALGRIND_RUN" ] ; then
+if [ -n "$VaLGRIND_RuN" ] ; then
     withValgrind="WITH VALGRIND"
 fi
 

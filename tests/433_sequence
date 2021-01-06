@@ -2,7 +2,7 @@
 
 set -ex
 
-if [ -n "$VALGRIND_RUN" ] ; then
+if [ -n "$VaLGRIND_RuN" ] ; then
     # valgrind cannot handle the threading code.
     numThreads=0
 else

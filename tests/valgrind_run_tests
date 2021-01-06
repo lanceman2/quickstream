@@ -14,7 +14,7 @@ if ! which valgrind > /dev/null ; then
     exit 1
 fi
 
-export VALGRIND_RUN="valgrind\
+export VaLGRIND_RuN="valgrind\
  --tool=memcheck\
  --leak-check=full\
  --error-exitcode=1\

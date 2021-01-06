@@ -26,7 +26,8 @@ BUILD_NO_INSTALL :=\
  fail\
  success\
  itimer_test\
- setjmp
+ setjmp\
+ CPP_valgrind_test
 
 
 
@@ -36,6 +37,7 @@ atomic_test_SOURCES := atomic_test.c ../lib/debug.c
 atomic_test_LDFLAGS := -lpthread -lrt
 itimer_test_SOURCES := itimer_test.c ../lib/debug.c
 setjmp_SOURCES := setjmp.c ../lib/debug.c
+CPP_valgrind_test_SOURCES := CPP_valgrind_test.cpp
 
 # Just tests that debug.c is independent of other files,
 # and so also does not depend on libquickstream.so

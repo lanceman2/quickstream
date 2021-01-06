@@ -944,7 +944,7 @@ int construct(void) {
 int flow(void *buffers[], const size_t lens[],
         uint32_t numInPorts, uint32_t numOutPorts) {
 
-    ret = f->flow(buffers, lens, numInPorts, numOutPorts);
+    int ret = f->flow(buffers, lens, numInPorts, numOutPorts);
 
     if(ret == _QS_FLOW_DOES_NOT_EXIST)
         return 1;
@@ -956,7 +956,7 @@ int flow(void *buffers[], const size_t lens[],
 int flush(void *buffers[], const size_t lens[],
         uint32_t numInPorts, uint32_t numOutPorts) {
 
-    ret = f->flush(buffers, lens, numInPorts, numOutPorts);
+    int ret = f->flush(buffers, lens, numInPorts, numOutPorts);
 
     if(ret == _QS_FLUSH_TO_FLOW)
         return flow(buffers, lens, numInPorts, numOutPorts);
@@ -975,11 +975,10 @@ int stop(uint32_t numInPorts, uint32_t numOutPorts) {
     return f->stop(numInPorts, numOutPorts);
 }
 
-int destroy(void) {
+void destroy(void) {
 
     delete f;
     f = 0;
-    return 0;
 }
 
 
