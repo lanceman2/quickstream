@@ -1,4 +1,4 @@
-SUBDIRS := tests
+SUBDIRS := tests uhd
 
 INSTALL_DIR = $(PREFIX)/lib/quickstream/blocks
 

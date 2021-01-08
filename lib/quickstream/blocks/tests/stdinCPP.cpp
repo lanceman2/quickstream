@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "../../../../include/quickstream/block.h"
+#include "../../../../include/quickstream/block.hpp"
 #include "../../../../lib/debug.h"
 
 

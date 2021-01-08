@@ -12,7 +12,8 @@ SUBDIRS :=\
  lib/quickstream/misc\
  bin\
  lib/quickstream/blocks\
- share/doc/quickstream
+ share/doc/quickstream\
+ share/bash-completion/completions
 
 
 ifneq ($(wildcard quickbuild.make),quickbuild.make)
