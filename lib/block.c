@@ -36,6 +36,70 @@ int FindHandle_cb(const char *blockName, struct QsBlock *b, void **dlhh) {
 }
 
 
+void *GetDLHandle(const char *fileName, char **pathRet) {
+
+    char *path = GetPluginPath(QS_BLOCK_PREFIX, fileName, ".so");
+    *pathRet = path;
+
+    void *dlhandle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+    if(!dlhandle) {
+        WARN("dlopen(\"%s\",) failed: %s", path, dlerror());
+        free(path);
+        return 0;
+    }
+
+
+    ///////////////////////////////////////////////////////////////////
+    // check if already dlopen()ed and fix
+    ///////////////////////////////////////////////////////////////////
+
+    // HERE check if this DSO is already loaded in any graphs.  We can't
+    // load this DSO this way, if it's just getting functions for a block
+    // that already exists.  It must be loaded as an independent code that
+    // does not share addresses with symbols that are already loaded.
+    for(struct QsGraph *g = graphs; g; g = g->next)
+        qsDictionaryForEach(g->blocks,
+            (int (*) (const char *key, void *value,
+                void *userData)) FindHandle_cb, &dlhandle);
+
+    if(dlhandle == 0)
+        // This DSO was loaded already.  So we make a temporary copy of
+        // the DSO and load it as a different set of independent functions
+        // that do not share functions with a block that is already
+        // loaded.  The temporary file is automatically removed by the OS
+        // when this program exits.  This is a really cool trick.
+        //
+        // TODO: maybe dlmopen() can do better?
+        if((dlhandle = LoadDSOFromTmpFile(path)) == 0) {
+            free(path);
+            return 0;
+        }
+
+    return dlhandle;
+}
+
+
+// This is a little wrapper to get a function: construct(), start(),
+// stop(), or destroy() for a block using the "added handle" or the
+// dl handle that was used to get declare().
+//
+// Getting the "added handle" can fail.
+//
+static inline
+void *GetSymbol(struct QsBlock *b) {
+
+    void *dlhandle = 0;
+
+    if(b->runFilename && !b->runFiledlhandle) {
+
+
+    }
+
+    return dlhandle;
+}
+    
+
+
 static void qsSimpleBlockUnload(struct QsSimpleBlock *b) {
 
     qsDictionaryDestroy(b->getters); // getters and constants
@@ -120,19 +184,24 @@ void qsBlockUnload_noDestory(struct QsBlock *b) {
 }
 
 
+int qsAddRunFile(const char *filename, void *userData) {
+
+    return 0;
+}
+
+
 struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         const char *blockName_in) {
 
     // 1. Get unique block name
     // 2. dlopen()
-    // 3. check if already dlopen()ed and fix
-    // 4. see if isSuperBlock is defined and Allocate
-    // 5. Add block to graph's block Dictionary list
-    // 6. Add this block to the graph doubly linked list of blocks.
-    // 7. Get callbacks
-    // 8. Call declare()
-    // 9. Add cleanup callback for block's entry in graph block Dictionary
-    // 10. Add built-in parameters
+    // 3. see if isSuperBlock is defined and Allocate
+    // 4. Add block to graph's block Dictionary list
+    // 5. Add this block to the graph doubly linked list of blocks.
+    // 6. Get callbacks
+    // 7. Call declare()
+    // 8. Add cleanup callback for block's entry in graph block Dictionary
+    // 9. Add built-in parameters
 
     DASSERT(graph);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
@@ -234,47 +303,20 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // We now have what will be a valid block name.
 
 
-    char *path = GetPluginPath(QS_BLOCK_PREFIX, fileName, ".so");
-
-
     ///////////////////////////////////////////////////////////////////
     // 2. dlopen()
     ///////////////////////////////////////////////////////////////////
 
-    void *dlhandle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+    char *path;
+    void *dlhandle = GetDLHandle(fileName, &path);
     if(!dlhandle) {
-        WARN("dlopen(\"%s\",) failed: %s", path, dlerror());
         free(path);
         return 0;
     }
 
 
     ///////////////////////////////////////////////////////////////////
-    // 3. check if already dlopen()ed and fix
-    ///////////////////////////////////////////////////////////////////
-
-    // HERE check if this DSO is already loaded in any graphs.  We can't
-    // load this DSO this way, if it's just getting functions for a block
-    // that already exists.  It must be loaded as an independent code.
-    for(struct QsGraph *g = graphs; g; g = g->next)
-        qsDictionaryForEach(g->blocks,
-            (int (*) (const char *key, void *value,
-                void *userData)) FindHandle_cb, &dlhandle);
-
-    if(dlhandle == 0)
-        // This DSO was loaded already.  So we make a temporary copy of
-        // the DSO and load it as a different set of independent functions
-        // that do not share functions with a block that is already
-        // loaded.  The temporary file is automatically removed by the OS
-        // when this program exits.  This is a really cool trick.
-        if((dlhandle = LoadDSOFromTmpFile(path)) == 0) {
-            free(path);
-            return 0;
-        }
-
-
-    ///////////////////////////////////////////////////////////////////
-    // 4. see if isSuperBlock is defined and Allocate correct block type
+    // 3. see if isSuperBlock is defined and Allocate correct block type
     ///////////////////////////////////////////////////////////////////
 
     struct QsBlock *b;
@@ -313,7 +355,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
 
     ///////////////////////////////////////////////////////////////////
-    // 5. Add block to graph's block lists
+    // 4. Add block to graph's block lists
     ///////////////////////////////////////////////////////////////////
 
     struct QsDictionary *entry = 0;
@@ -323,7 +365,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
 
     ///////////////////////////////////////////////////////////////////
-    // 6. Add this block to the graph doubly linked list of blocks.
+    // 5. Add this block to the graph doubly linked list of blocks.
     ///////////////////////////////////////////////////////////////////
 
     // This list is used for calling start() in load order, and stop()
@@ -345,7 +387,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     }
 
     ///////////////////////////////////////////////////////////////////
-    // 7. Get callbacks
+    // 6. Get callbacks
     ///////////////////////////////////////////////////////////////////
 
     if(b->isSuperBlock) {
@@ -374,7 +416,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
 
     ///////////////////////////////////////////////////////////////////
-    // 8. Call declare()
+    // 7. Call declare()
     ///////////////////////////////////////////////////////////////////
 
     int (*declare)(void) = dlsym(dlhandle, "declare");
@@ -431,7 +473,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
 
     ///////////////////////////////////////////////////////////////////
-    // 9. Add cleanup callback for block's entry in graph block list
+    // 8. Add cleanup callback for block's entry in graph block list
     ///////////////////////////////////////////////////////////////////
 
     qsDictionarySetFreeValueOnDestroy(entry,
@@ -445,7 +487,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
 
     ///////////////////////////////////////////////////////////////////
-    // 10. Add built-in parameters
+    // 9. Add built-in parameters
     ///////////////////////////////////////////////////////////////////
 
     if(!b->isSuperBlock) {

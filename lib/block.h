@@ -81,6 +81,10 @@ struct QsBlock {
     // called any more; functions from the DSO, like start() and flow().
     void *dlhandle; // from dlopen()
 
+    // This is for qsAddRunFile().
+    void *runFiledlhandle;
+    const char *runFilename;
+
 
     // Some callbacks like boostrap(), construct() and destroy() we
     // do not same a pointer to, and dlsym() just before we call them.

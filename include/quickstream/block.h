@@ -144,6 +144,50 @@ enum QsParameterKind {
 */
 
 
+/** add a dynamic shared object (DSO) file to be loaded when running the
+ block
+
+ Adds an addition DSO plugin file and is used at run/flow time.
+
+ Whither or not adding the run/flow time file succeeds will not be known
+ when this function returns, we only determine if the file exists and is
+ executable.  The file is not loaded until the flow graph first runs.
+
+ This function can only be called in the plugin's declare() function.  The
+ added run/flow time plugin file will contain all other quickstream plugin
+ functions.
+
+ The search paths used to find the file are the same as those that where
+ used to load the DSO that has the function that called this function.
+
+ The point of this is to give the block developer a method to not load
+ libraries that are not needed until the flow graph runs.  It will
+ decrease the run-time object bloat of the quickstream builder program
+ which only needs to call the block's declare() functions.  The number
+ of unused libraries could get larger for each block that it connects,
+ where not for this method.
+
+ quickstream does not use another programming language like yml or XML to
+ define declarative block state.  The blocks are fully defined in the
+ programming language that the blocks are written in.  This simplifies the
+ internal structure of quickstream, compared to adding a parser and
+ another language to facilitate defining generic declarative block state.
+ Also this lets you write a complete fully working block with one C/C++
+ source file, and no other files, not 30 like in GNUradio.  I really don't
+ know how many files it takes to make a GNUradio block, I gave up on it at
+ some point.  It is just too fucking stupid.  At this time GNUradio has a
+ generic block generator program that is broken.  Hence, the tutorial on
+ building a GNUradio block is broken and I've given up on fixing bugs in
+ GNUradio, the code writers are fucking stupid-heads.  They do not know
+ what robust code is.  They have made the process of making a block so
+ complex that I find it easier to write my own streaming API than write a
+ GNUradio block.
+
+ \return 0 on success and -1 if the file can't be accessed, or -2
+ if the file is not executable.
+ */
+int qsAddRunFile(const char *filename, void *userData);
+
 
 /** create an input parameter, or setter parameter
 

@@ -3,8 +3,6 @@
 #include <errno.h>
 #include <string>
 
-#include <uhd/usrp/multi_usrp.hpp>
-
 #include "../../../../include/quickstream/block.h"
 #include "../../../../lib/debug.h"
 
@@ -50,53 +48,7 @@ extern "C" {
 
 
 
-// These will store values from before start() to initialize in start().
-// Not to be confused with what the current values are at running time.
-// They are just for initialize in start() that may be gotten from the
-// command line, or whatever.
-static std::vector<double> freq, rate, gain;
-
-
-static std::string uhd_args, subdev;
-static std::vector<size_t> channels; // USRP channels
-// This is the libuhd USRP channels not a quickstream channel.  It will be
-// the length of the std::vector<> variables above.
-static size_t numChannels = 0;
-
-
-// Stupid libuhd state; they spill into three objects that we need to
-// keep, because they are stupid-heads.
-//
-static uhd::usrp::multi_usrp::sptr usrp;
-static uhd::tx_streamer::sptr tx_stream;
-static uhd::tx_metadata_t tx_metadata;
-
-
-
 int declare(void) {
-
-    DSPEW("numChannels=%zu", numChannels);
-
-    return 0;
-}
-
-
-int start(uint32_t numInputs, uint32_t numOutputs) {
-
-
-    return 0;
-}
-
-
-int flow(void *buffers[], const size_t lens[],
-            uint32_t numInputs, uint32_t numOutputs) {
-
-
-    return 0;
-}
-
-
-int stop(uint32_t numInputs, uint32_t numOutputs) {
 
 
     return 0;
