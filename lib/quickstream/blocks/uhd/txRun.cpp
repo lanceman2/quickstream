@@ -90,7 +90,7 @@ int flow(void *buffers[], const size_t lens[],
             uint32_t numInputs, uint32_t numOutputs) {
 
 
-    return 0;
+    return 1;
 }
 
 

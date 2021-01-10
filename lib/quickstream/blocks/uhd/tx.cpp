@@ -52,6 +52,8 @@ extern "C" {
 
 int declare(void) {
 
+    qsAddRunFile("uhd/txRun.so", 0);
+
 
     return 0;
 }

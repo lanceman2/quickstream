@@ -17,8 +17,11 @@ UHD_CXXFLAGS := $(shell pkg-config uhd --cflags)
 
 
 tx.so_SOURCES := tx.cpp
-tx.so_LDFLAGS := $(UHD_LIBS)
-tx.so_CXXFLAGS := $(UHD_CXXFLAGS)
+
+
+txRun.so_SOURCES := txRun.cpp
+txRun.so_LDFLAGS := $(UHD_LIBS)
+txRun.so_CXXFLAGS := $(UHD_CXXFLAGS)
 
 
 

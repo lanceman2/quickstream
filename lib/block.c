@@ -46,6 +46,7 @@ int FindHandle_cb(const char *blockName, struct QsBlock *b, void **dlhh) {
 void *GetDLHandle(const char *fileName, char **pathRet) {
 
     char *path = GetPluginPath(QS_BLOCK_PREFIX, fileName, ".so");
+ERROR("path=%s", path);
     if(pathRet)
         *pathRet = path;
 

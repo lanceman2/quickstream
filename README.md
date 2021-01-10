@@ -8,7 +8,7 @@ data quickly flows between modules in a directed graph
 This is currently vapor-ware.
 
 Current development is on Debian 9 and Ubuntu 20.04 systems.  It's in a
-pre-alpha state.
+pre-alpha state.  It's design is starting to stabilize.
 
 Currently there is no tutorial, so this software package is pretty useless
 for anything but for the research and development of this package.
@@ -17,7 +17,6 @@ We are adopting **some** of the [GNU radio](https://gnuradio.org/) terminology.
 
 
 ## About quickstream
-
 
 quickstream is a flowgraph framework, a digital signal-processing system
 that operates within running processes;  in this case processes being work
@@ -69,7 +68,7 @@ the three classes of quickstream use:
 
   - **quickstream/app.h** for running flow graphs
 
-  - **quickstream/graph.h** for connecting blocks together to make larger
+  - **quickstream/builder.h** for connecting blocks together to make larger
     blocks
 
   - **quickstream/block.h** for building plugin module blocks
@@ -182,6 +181,25 @@ make install
 to install the stream software package in the prefix directory that you
 set above.
 
+If you just want to play around with quickstream without installing it,
+you can skip the *make install* step.  As we said before, all quickstream
+programs can run without being installed.  You might think that it would
+be a half-ass way to work on code, but you'd be wrong.  Compilers now
+have an option to do "relative path linking" of shared object libraries.
+Most software package developers just don't what this, and/or how to use
+these compiler options effectively.  Relative path shared object library
+linking is not that new, it's just not that well known and used yet.  It
+will be likely to catch on when software build systems start using it by
+default.  Using it is the difference to a program that can run and one the
+does not run due to a library linker/loader error.  GNU autotools (I think
+libtool) has a work-around hack that makes shell script wrappers that let
+run programs that other-wise do not run until you install them.
+Pain-in-the-ass.   CMake has a more in-your-face center-of-the-universe
+approach to the problem, that I'm not going into here.
+Bigger-pain-in-the-ass.  CMake is a bloat monster.  Not UNIX-like.  That
+can be okay when it works, but debugging it is so much fun.  It keeps
+people employed; right Bill.
+
 
 ### Making a Tarball Release
 
@@ -215,7 +233,7 @@ Then run:
 ./configure
 ```
 
-which the is famous GNU autotools generated *configure* script for this
+which is famous GNU autotools generated *configure* script for this
 package.  Then run:
 
 ```console
@@ -302,12 +320,12 @@ and your added costume files, you can run *./RepoClean*.  Do not run
 *./RepoClean* if you need a clean tarball form of the package source,
 use *make distclean* for that, or just keep the tarball around for that.
 
-quickbuild does not does not have much in the line of options parsing,
-which is fine for quickstream developers, but not so good for users;
-hence GNU autotools is the preferred build/install method.  The optional
-dependences that for not found when building with quickbuild will cause it
-to exclude building what it can't automatically, but the GNU autotools
-method adds configuration options.
+quickbuild does not have much in the line of options parsing, which is
+fine for quickstream developers, but not so good for users; hence GNU
+autotools is the preferred build/install method.  The optional dependences
+that for not found when building with quickbuild will cause it to exclude
+building what it can't automatically, but the GNU autotools method adds
+configuration options.
 
 
 ## quickstream is Generic
@@ -346,7 +364,12 @@ In this way threads do a lot less waiting for work, whereby eliminating
 the need for threads that do a lot of sleeping, whereby eliminating lots
 of system calls, and also eliminating inter thread contention, at runtime.
 Put another way, quickstream will run less threads and keep the threads
-busier by letting them migrate among the block modules.
+busier by letting them migrate among the block modules.  Yes, we knew
+you'd ask: "what about locking down cores to threads".  You have the
+option using the same code and interfaces to set thread cpu affinity.  The
+interface to adjusting thread cpu affinity is at the end user and the
+block assembler level; block writers are discouraged from setting thread
+cpu affinity, but there nothing to stop it if there is a driving need.
 
 
 ## Pass-through buffers
@@ -380,30 +403,29 @@ to use to do a particular task, the choose should be obvious (at this
 level).
 
 The intent is to construct a flow stream between blocks.  The blocks do
-not necessarily concern themselves with their neighboring blocks; the
-blocks just read input from input ports and write output to output ports,
-not necessarily knowing what is writing to them or what is reading from
-them; at least that is the mode of operation at this protocol (quickstream
-API) level.  The user may add more structure to that if they need to.
-It's like the other UNIX abstractions like sockets, file streams, and
-pipes, in that the type of data is of no concern in this quickstream
-API.
+not necessarily directly concern themselves with their neighboring blocks;
+the blocks just read input from input ports and write output to output
+ports, not necessarily knowing what is writing to them or what is reading
+from them; at least that is the mode of operation at this protocol
+(quickstream API) level.  The user may add more structure to that if they
+need to.  It's like the other UNIX abstractions like sockets, file
+streams, and pipes, in that the type of data in the stream is of no
+concern in this quickstream API.
 
-The default implementation a "quickstream" program runs as a single
-process and an on the fly adjustable number of worker threads.  The user
-may restrict the number of worker threads at or below a user specified
-maximum, which may be zero.  Having zero worker threads means that the
-main thread will run the stream flow.  Having one worker thread means that
-the one worker thread, only, will run the stream flow; but in that case
-the main thread will be available for other tasks while the stream is
-flowing/running.
+This implementation a "quickstream" program runs as a single process and
+an on the fly adjusted number of worker threads.  The user may restrict
+the number of worker threads at or below a user specified maximum, which
+may be zero.  Having zero worker threads means that the main thread will
+run the stream flow.  Having one worker thread means that the one worker
+thread, only, will run the stream flow; but in that case the main thread
+will be available for other tasks while the stream is flowing/running.
 
 
 ## Terminology
 
 To a very limited extend we follow de facto standard terms from [GNU
 radio](https://www.gnuradio.org/).  We avoided using GNU radio terminology
-which we found to be confusing.
+which we found to be confusing and not general enough.
 
 
 ### Graph
@@ -517,7 +539,8 @@ stream buffer flows.
 ### Filter
 
 or filter block.  A filter is a plugin block module that reads input
-and/or writes outputs in the stream via a flow() function.
+and/or writes outputs in the stream via a flow() function.  The analogous
+GNUradio function is work().
 
 
 ### Source
@@ -539,6 +562,18 @@ A single value or small data structure that can be shared between blocks
 via "get" or "set".  The parameters are owned by blocks, such that if the
 block that owns a parameter is destroyed than the parameters that it owns
 will be destroyed with it.
+
+This implementation of quickstream runs the parameter setting and getting
+queues with the same code that queues the stream flow functions.  So
+quickstream is at it's core using a simple event-driven architecture.
+The parameter modification events use the same queuing codes and data
+structures as the stream flow events, but with slightly different queuing
+priorities.  We were influenced by ideas from nodeJS.  We were turned off
+by Python when we found out by coding with libpython that Python threads
+do not run in parallel, WTF.  Don't get me wrong, Python is a far superior
+software project than quickstream, but fact is fact.  It begs the
+question, how does GNUradio handle stream flows with more than one python
+block.  Maybe I'm just a stupid-head.
 
 
 ### Channel
@@ -575,7 +610,13 @@ the same ideas.  We study them and learn.
 - **GNUradio** https://www.gnuradio.org/
 - **gstreamer** https://gstreamer.freedesktop.org/
 - **csdr** https://github.com/simonyiszk/csdr We like straight forward way
-  csdr uses UNIX pipe-line stream to make its flow stream.
+  csdr uses UNIX pipe-line stream to make its flow stream. Clearly not the
+  most high performance thing to do, but otherwise love it.  It's what I
+  do in my prototyping all the time.  When comparing it with quickstream
+  it begs the question could UNIX streams be rewritten with inter-process
+  shared memory, without kernel buffer to user buffer transfer.  It'd be
+  so much faster than the current standard UNIX pipe-lines.  Maybe another
+  day when I have another life-time to burn.
 
 
 ### What quickstream intends to do better
@@ -602,8 +643,9 @@ guessing which class to inherit.  No built-in inter-filter data typing.
 We provide just a modular streaming paradigm without a particular end
 application use case.  The idea of inter-module data types is not
 introduced in the flow() interfaces, that would limit it's use, and can be
-considered at a higher software interface layer.  In the future
-benchmarking will tell.  TODO: Add links here...
+considered at a higher software interface layer.
+
+In the future benchmarking will tell.  TODO: Add links here...
 
 
 ## A Typical quickstream Flow Graph
