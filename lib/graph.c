@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <dlfcn.h>
 #include <setjmp.h>
 #include <pthread.h>
 
@@ -214,6 +215,80 @@ void qsGraphDestroy(struct QsGraph *graph) {
     free(graph);
 }
 
+static inline
+int CheckCallConstruct(struct QsBlock *b) {
+
+    if(b->calledConstruct) return 0;
+
+    b->calledConstruct = true;
+  
+    void *dlhandle = b->runFileDLHandle;
+    if(!dlhandle) dlhandle = b->dlhandle;
+    DASSERT(dlhandle);
+
+    int (*construct)(void) = dlsym(dlhandle, "construct");
+    if(construct && construct())
+        return 1;
+    return 0;
+}
+
+
+// This gets the functions: construct(), start(), and stop(), for a block
+// using the "added handle" or the dl handle that was used to get
+// declare().
+//
+// Getting the "added handle" can fail.
+//
+// returns true on failure.
+//
+static inline
+bool SetupCallbacks(struct QsBlock *b) {
+
+    if(b->haveCheckedRunFileDLHandle)
+        // success.  We already did this.
+        return false;
+
+
+    // This section of code is only called once per block, but only if the
+    // stream runs.
+
+    b->haveCheckedRunFileDLHandle = true;
+
+    void *dlhandle = b->dlhandle;
+
+    DASSERT(dlhandle);
+    DASSERT(b->runFileDLHandle == 0);
+
+    if(b->runFilename) {
+
+        dlerror();
+        dlhandle = b->runFileDLHandle = GetDLHandle(b->runFilename, 0);
+
+        if(!b->runFileDLHandle) {
+            // This is a failure to get this block's code to run it.
+            // We are screwed.
+            ERROR("dlopen(\"%s\",0) failed: %s",
+                    b->runFilename, dlerror());
+            return true;
+        }
+    }
+
+    // optional callback functions
+    b->start = dlsym(dlhandle, "start");
+    b->stop = dlsym(dlhandle, "stop");
+
+    if(!b->isSuperBlock) {
+        // more optional callback functions that are only simple blocks
+        // can have:
+        ((struct QsSimpleBlock *) b)->flow = dlsym(dlhandle, "flow");
+        ((struct QsSimpleBlock *) b)->flush = dlsym(dlhandle, "flush");
+    }
+    // We get the destroy() callback later.  No point is adding another
+    // pointer if we only call destroy() once.
+
+    return false; // success
+}
+
 
 static
 int qsGraphReady(struct QsGraph *graph) {
@@ -221,6 +296,7 @@ int qsGraphReady(struct QsGraph *graph) {
     DASSERT(graph);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
     ASSERT(graph->flowState == QsGraphPaused);
+
 
     // Check for thread pools structures.  Not making threads yet, just
     // data.
@@ -248,13 +324,18 @@ int qsGraphReady(struct QsGraph *graph) {
         }
     }
 
+    // We declare a function scope block iterator, b, because we sometimes
+    // need an iterator outside the scope of the following "for" loops.
+    //
+    struct QsBlock *b; // dummy iterator.
+
+
     // It could easily happen that there is a thread pool with no assigned
     // blocks for it to run.  Thread pools like that are of no use, and
     // just waste memory and add extra code to let them exist.  Design
     // decision: We choice to make them disappear here with just a
     // warning.
     for(struct QsThreadPool *tp = graph->threadPools; tp; tp = tp->next) {
-        struct QsBlock *b;
         for(b = graph->firstBlock; b; b = b->next) {
             DASSERT(b->isSuperBlock ||
                     ((struct QsSimpleBlock *)b)->threadPool);
@@ -285,12 +366,69 @@ int qsGraphReady(struct QsGraph *graph) {
 
 
     // Start all triggers in all blocks.
-    for(struct QsBlock *b = graph->firstBlock; b; b = b->next) {
+    for(b = graph->firstBlock; b; b = b->next) {
         if(b->isSuperBlock) continue;
 
         for(struct QsTrigger *t = ((struct QsSimpleBlock *)b)->waiting;
                 t; t = t->next)
             TriggerStart(t);
+    }
+
+
+    // Check that if this simple block that has connections, than it has a
+    // flow() function.
+    for(b = graph->firstBlock; b; b = b->next) {
+        // SetupCallbacks() does a lot of shit.
+        if(SetupCallbacks(b)) break;
+        if(b->isSuperBlock) continue;
+        struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
+        if(smB->numInputs || smB->numOutputs)
+            if(!smB->flow) {
+                // We cannot do this check while we are making
+                // connections, because we can't until the second DSO
+                // (if there is one) is loaded; and we cannot load the 2nd
+                // DSO until after declare() is called, because loading it
+                // in declare() could shit DSO libraries all over the
+                // quickstream builder program, no matter what the form of
+                // the quickstream builder program takes.
+                //
+                // TODO: Maybe tally up all these like errors and then
+                // bail.  But, one could argue that we are not tallying
+                // lots of other types of errors below this loop, so
+                // that's the point.  So unless we tally all
+                // miss-configurations that the quickstream thing has,
+                // don't go there.  In most cases one fuck-up is enough,
+                // most of the time finding one fuck-up acts no
+                // differently than finding N fuck-ups.  i.e. It's not
+                // worth the effort.
+                ERROR("Block \"%s\" has %" PRIu32
+                        " input(s) and %" PRIu32
+                        " output(s) connections "
+                        "with no flow() function",
+                        b->name, smB->numInputs, smB->numOutputs);
+                return -1; // fail
+            }
+    }
+    if(b) {
+        // One of the block's construct() calls returned non zero.  It's a
+        // block writer option to bail like this via a construct() return
+        // value of not 0.
+        graph->flowState = QsGraphFailed;
+        return -1;
+    }
+
+
+    // Call optional construct() block callbacks.
+    for(b = graph->firstBlock; b; b = b->next)
+        if(CheckCallConstruct(b))
+            break;
+    //
+    if(b) {
+        // One of the block's construct() calls returned non zero.  It's a
+        // block writer option to bail like this via a construct() return
+        // value of not 0.
+        graph->flowState = QsGraphFailed;
+        return -1;
     }
 
 
@@ -303,14 +441,14 @@ int qsGraphReady(struct QsGraph *graph) {
     // ring buffers are mmapped after this in StreamsStart().
     //
     int ret = 0;
-    for(struct QsBlock *B = graph->firstBlock; B; B = B->next)
-        if((ret = RunStartOrStop(B, B->start, "start", _QS_IN_START)))
+    for(b = graph->firstBlock; b; b = b->next)
+        if((ret = RunStartOrStop(b, b->start, "start", _QS_IN_START)))
             break;
     //
     if(ret < 0) {
-        // One of the block's start() calls returned less than 0.  We are
-        // screwed.  It's a block writer option to bail like this via a
-        // start() return value less than 0.
+        // One of the block's start() calls returned less than 0.  It's a
+        // block writer option to bail like this via a start() return
+        // value less than 0.
         graph->flowState = QsGraphFailed;
         return -1;
     }

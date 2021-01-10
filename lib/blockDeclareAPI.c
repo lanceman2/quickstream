@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <string.h>
 #include <pthread.h>
 
 #include "../include/quickstream/block.h" // public interfaces
@@ -42,4 +43,29 @@ int qsPassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum) {
     smB->passThroughs[smB->numPassThroughs - 1].outputPortNum = outputPortNum;
 
     return 0;
+}
+
+
+void qsAddRunFile(const char *filename, void *userData) {
+
+    struct QsBlock *b = 0;
+    GET_BLOCK_IN_DECLARE(b);
+    ASSERT(b->runFilename == 0,
+            "this can't be called twice in a block instance");
+
+    b->runFilename = strdup(filename);
+    ASSERT(b->runFilename, "strdup() failed");
+    b->runFileUserData = userData;
+}
+
+
+// This function is only valid in a block callback function that is not
+// declare()
+//
+void *qsRunFileData(void) {
+
+    struct QsBlock *b = 0;
+    GET_BLOCK_IN_NOT_DECLARE(b);
+
+    return b->runFileUserData;
 }

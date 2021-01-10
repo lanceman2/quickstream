@@ -37,3 +37,36 @@
         }\
         ASSERT(b->isSuperBlock == false);\
     } while(0)
+
+
+#define GET_BLOCK_IN_DECLARE(b) \
+    do {\
+        ASSERT(mainThread == pthread_self(), "Not graph main thread");\
+        if(b && b->inWhichCallback != _QS_IN_NONE) {\
+            struct QsBlock *creatorB = GetBlock();\
+            ASSERT(creatorB->inWhichCallback == _QS_IN_DECLARE,\
+                "%s() must be called from declare()", __func__);\
+            ASSERT(creatorB == b || creatorB->graph == b->graph);\
+        } else if(!b) {\
+            b = GetBlock();\
+            ASSERT(b->inWhichCallback == _QS_IN_DECLARE,\
+                "%s() must be called from declare()", __func__);\
+        }\
+    } while(0)
+
+
+#define GET_BLOCK_IN_NOT_DECLARE(b) \
+    do {\
+        if(b && b->inWhichCallback != _QS_IN_NONE) {\
+            struct QsBlock *creatorB = GetBlock();\
+            ASSERT(creatorB->inWhichCallback != _QS_IN_DECLARE,\
+                "%s() must not be called from declare()", __func__);\
+            ASSERT(creatorB == b || creatorB->graph == b->graph);\
+        } else if(!b) {\
+            b = GetBlock();\
+            ASSERT(b->inWhichCallback != _QS_IN_DECLARE,\
+                "%s() must not be called from declare()", __func__);\
+        }\
+    } while(0)
+
+

@@ -81,12 +81,25 @@ struct QsBlock {
     // called any more; functions from the DSO, like start() and flow().
     void *dlhandle; // from dlopen()
 
-    // This is for qsAddRunFile().
-    void *runFiledlhandle;
-    const char *runFilename;
+    // This is for qsAddRunFile().  We switch to using this as the
+    // dlhandle to use to get all the block callbacks except declare().
+    // We can't just not keep the old dlhandle because we must keep the
+    // mappings from the old dlhandle until the block is destroyed, and
+    // then we must dlclose() both dlhandles.  Destroying the block
+    // handles with the blocks is questionable, given we can't be sure
+    // what the block code is really doing after we destroy the
+    // quickstream block data.  The block developer data may live on
+    // and interact with blocks that are not destroyed yet.  I can
+    // imagine some pretty crazy shit.  We may want to have this code
+    // robust even with "crazy shit".
+    //
+    void *runFileDLHandle;
+    char *runFilename;
+    // pointer to data passed into the other, 2nd, DSO "space"
+    void *runFileUserData;
 
 
-    // Some callbacks like boostrap(), construct() and destroy() we
+    // Some callbacks like declare(), construct() and destroy() we
     // do not same a pointer to, and dlsym() just before we call them.
     //
     // Pointers to optional callbacks from the DSO they are 0 if they are
@@ -101,6 +114,13 @@ struct QsBlock {
     // QsSimpleBlock or struct QsSuperBlock
     //
     bool isSuperBlock;
+
+    // Flag to say that we tried to run the optional construct() call.
+    bool haveCheckedRunFileDLHandle;
+
+    // If has at least tried to call construct().  We only call the
+    // constant() callback once if it exists.
+    bool calledConstruct;
 };
 
 
@@ -468,14 +488,16 @@ struct QsSuperBlock {
     // This super block is named from above by the builder that loaded
     // this super block.
     //
-    // A hierarchy of names is needed to keep from having parameters owned
-    // by inner blocks from having names that overlap with other
-    // parameters from other inner blocks.
+    // TODO: A hierarchy of names (namespaces) is needed to keep from
+    // having parameters owned by inner blocks from having names that
+    // overlap with other parameters from other inner blocks.
     //
     // The parameters may be constant, getter, or setter in any inner
     // block.
     //
-    struct QsDictionary *parameters; // exposed
+    // Inner block parameters are hidden by default.
+    //
+    struct QsDictionary *parameters; // exposed parameters
 
     // Blocks that this super block is proxying connections for this array
     // of pointers to blocks
@@ -520,3 +542,7 @@ struct QsOut {
     struct QsBlock **blocks;
     uint32_t *inputPorts; // array input index
 };
+
+
+extern
+void *GetDLHandle(const char *fileName, char **pathRet);

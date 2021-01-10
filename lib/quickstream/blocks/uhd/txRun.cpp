@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <string>
 
+#include <uhd/usrp/multi_usrp.hpp>
+
 #include "../../../../include/quickstream/block.h"
 #include "../../../../lib/debug.h"
 
@@ -15,7 +17,7 @@
 // We did not use the quickstream C++ block module interface.  I'm just
 // not a fan of C++, and it's dependency hell, complexity, long compile
 // times, super verbose code, more code lines, OOP bull shit, be an object
-// or die mentality, impossible to scope code, non-native loader, valgrind
+// of die mentality, impossible to scope code, non-native loader, valgrind
 // can't debug, and forever growing syntax.
 //
 // The dependences of libUDH are fucking ridiculously large.  How much
@@ -31,16 +33,14 @@
 // Setting some of the tx parameters at run-time can crash the libUHD code
 // (maybe it's a hardware problem), so it may be best not to adjust
 // bandwidth at run-time and instead output to a filter that can adjust
-// the bandwidth via re-sampling using software in a down-stream filter.
+// the bandwidth via re-sampling using software in the down-stream filter.
 // Just peg the sample rate (bandwidth) as high as it will go and
 // down-sample in a downstream filter.  The cost is more computer system
 // resources for a more robust program.
 //
-// Another "great" feature of libUHD is their are built-in wrong things
-// you can do.  Depreciated code and interfaces that is not documented or
-// marked as such.  At some point you just "poke and hope."  I rant to
-// three: Remove the fucking depreciated examples from the source code or
-// at least mark them as such in the example code files.
+// Another "great" feature of libUHD is they are built in wrong things you
+// can do.  Depreciated code and interfaces that is not documented or
+// marked as such.  At some point you just "poke and hope."
 //
 // This is C++ code so we can more easily use libuhd, but we are using the
 // quickstream C API as the interface to this block module; hence we
@@ -50,7 +50,51 @@ extern "C" {
 
 
 
-int declare(void) {
+// These will store values from before start() to initialize in start().
+// Not to be confused with what the current values are at running time.
+// They are just for initialize in start() that may be gotten from the
+// command line, or whatever.
+static std::vector<double> freq, rate, gain;
+
+
+static std::string uhd_args, subdev;
+static std::vector<size_t> channels; // USRP channels
+// This is the libuhd USRP channels not a quickstream channel.  It will be
+// the length of the std::vector<> variables above.
+static size_t numChannels = 0;
+
+
+// Stupid libuhd state; they spill into three objects that we need to
+// keep, because they are stupid-heads.
+//
+static uhd::usrp::multi_usrp::sptr usrp;
+static uhd::tx_streamer::sptr tx_stream;
+static uhd::tx_metadata_t tx_metadata;
+
+int construct(void) {
+
+    DSPEW("numChannels=%zu", numChannels);
+
+    return 0;
+}
+
+
+int start(uint32_t numInputs, uint32_t numOutputs) {
+
+
+    return 0;
+}
+
+
+int flow(void *buffers[], const size_t lens[],
+            uint32_t numInputs, uint32_t numOutputs) {
+
+
+    return 0;
+}
+
+
+int stop(uint32_t numInputs, uint32_t numOutputs) {
 
 
     return 0;

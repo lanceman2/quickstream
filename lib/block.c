@@ -24,6 +24,7 @@
 #include "GET_BLOCK.h"
 
 
+
 static
 int FindHandle_cb(const char *blockName, struct QsBlock *b, void **dlhh) {
 
@@ -36,10 +37,17 @@ int FindHandle_cb(const char *blockName, struct QsBlock *b, void **dlhh) {
 }
 
 
+// pathRet must be free()ed, or 0.
+//
+// pathRet will be the path that the DSO originated in; not the temporary
+// copy that we actually load, in the case where this a second time
+// loading the same file.
+//
 void *GetDLHandle(const char *fileName, char **pathRet) {
 
     char *path = GetPluginPath(QS_BLOCK_PREFIX, fileName, ".so");
-    *pathRet = path;
+    if(pathRet)
+        *pathRet = path;
 
     void *dlhandle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
     if(!dlhandle) {
@@ -69,35 +77,18 @@ void *GetDLHandle(const char *fileName, char **pathRet) {
         // loaded.  The temporary file is automatically removed by the OS
         // when this program exits.  This is a really cool trick.
         //
-        // TODO: maybe dlmopen() can do better?
+        // TODO: maybe dlmopen() can do better?  I tried and it just
+        // failed to do what I want.
         if((dlhandle = LoadDSOFromTmpFile(path)) == 0) {
             free(path);
             return 0;
         }
 
-    return dlhandle;
-}
-
-
-// This is a little wrapper to get a function: construct(), start(),
-// stop(), or destroy() for a block using the "added handle" or the
-// dl handle that was used to get declare().
-//
-// Getting the "added handle" can fail.
-//
-static inline
-void *GetSymbol(struct QsBlock *b) {
-
-    void *dlhandle = 0;
-
-    if(b->runFilename && !b->runFiledlhandle) {
-
-
-    }
+    if(!pathRet)
+        free(path);
 
     return dlhandle;
 }
-    
 
 
 static void qsSimpleBlockUnload(struct QsSimpleBlock *b) {
@@ -184,12 +175,6 @@ void qsBlockUnload_noDestory(struct QsBlock *b) {
 }
 
 
-int qsAddRunFile(const char *filename, void *userData) {
-
-    return 0;
-}
-
-
 struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         const char *blockName_in) {
 
@@ -198,10 +183,9 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // 3. see if isSuperBlock is defined and Allocate
     // 4. Add block to graph's block Dictionary list
     // 5. Add this block to the graph doubly linked list of blocks.
-    // 6. Get callbacks
-    // 7. Call declare()
-    // 8. Add cleanup callback for block's entry in graph block Dictionary
-    // 9. Add built-in parameters
+    // 6. Call declare()
+    // 7. Add cleanup callback for block's entry in graph block Dictionary
+    // 8. Add built-in parameters
 
     DASSERT(graph);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
@@ -386,37 +370,9 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         graph->lastBlock = graph->firstBlock = b;
     }
 
-    ///////////////////////////////////////////////////////////////////
-    // 6. Get callbacks
-    ///////////////////////////////////////////////////////////////////
-
-    if(b->isSuperBlock) {
-        if(dlsym(dlhandle, "flow")) {
-            ERROR("Super block \"%s\" cannot have flow() called",
-                    b->name);
-            free(path);
-            qsDictionaryRemove(entry, blockName);
-            qsBlockUnload_noDestory(b);
-            return 0;
-        }
-        if(dlsym(dlhandle, "flush")) {
-            ERROR("Super block \"%s\" cannot have flush() called",
-                    b->name);
-            free(path);
-            qsDictionaryRemove(entry, blockName);
-            qsBlockUnload_noDestory(b);
-            return 0;
-        }
-    } else {
-        ((struct QsSimpleBlock *) b)->flow = dlsym(dlhandle, "flow");
-        ((struct QsSimpleBlock *) b)->flush = dlsym(dlhandle, "flush");
-    }
-    b->start = dlsym(dlhandle, "start");
-    b->stop = dlsym(dlhandle, "stop");
-
 
     ///////////////////////////////////////////////////////////////////
-    // 7. Call declare()
+    // 6. Call declare()
     ///////////////////////////////////////////////////////////////////
 
     int (*declare)(void) = dlsym(dlhandle, "declare");
@@ -473,7 +429,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
 
     ///////////////////////////////////////////////////////////////////
-    // 8. Add cleanup callback for block's entry in graph block list
+    // 7. Add cleanup callback for block's entry in graph block list
     ///////////////////////////////////////////////////////////////////
 
     qsDictionarySetFreeValueOnDestroy(entry,
@@ -487,7 +443,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
 
     ///////////////////////////////////////////////////////////////////
-    // 9. Add built-in parameters
+    // 8. Add built-in parameters
     ///////////////////////////////////////////////////////////////////
 
     if(!b->isSuperBlock) {
@@ -506,7 +462,6 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
             return 0;
         }
     }
-
 
     return (struct QsBlock *) b;
 }
@@ -581,10 +536,14 @@ void qsBlockUnload(struct QsBlock *b) {
 
 
     if(b->dlhandle) {
+        // The user has the option to put the destroy() in one
+        // of two places:
         void (*destroy)(void) = dlsym(b->dlhandle, "destroy");
+        if(b->runFileDLHandle && !destroy)
+            destroy = dlsym(b->runFileDLHandle, "destroy");
 
         if(destroy) {
-            // Setup thread specfic data for declare() call.
+            // Setup thread specific data for declare() call.
             // And Make this re-entrant code.
             //
             struct QsBlock *oldBlock = pthread_getspecific(_qsGraphKey);
@@ -608,6 +567,15 @@ void qsBlockUnload(struct QsBlock *b) {
 
             CHECK(pthread_setspecific(_qsGraphKey, oldBlock));
         }
+    }
+
+    if(b->runFileDLHandle)
+        dlclose(b->runFileDLHandle);
+    if(b->runFilename) {
+#ifdef DEBUG
+        memset(b->runFilename, 0, strlen(b->runFilename));
+#endif
+        free(b->runFilename);
     }
 
     qsBlockUnload_noDestory(b);

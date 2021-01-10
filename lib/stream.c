@@ -57,20 +57,6 @@ int qsBlockConnect(struct QsBlock *_from, struct QsBlock *_to,
     struct QsSimpleBlock *to = (struct QsSimpleBlock *) _to;
     struct QsSimpleBlock *from = (struct QsSimpleBlock *) _from;
 
-    DASSERT(from->flow, "Block \"%s\" does not have a flow() function",
-                    _from->name);
-    DASSERT(to->flow, "Block \"%s\" does not have a flow() function",
-                    _to->name);
-
-    if(!to->flow || !from->flow) {
-        if(!from->flow)
-            ERROR("Block \"%s\" does not have a flow() function",
-                    _from->name);
-        if(!to->flow)
-            ERROR("Block \"%s\" does not have a flow() function",
-                    _to->name);
-        return -3;
-    }
 
     struct QsGraph *g = _from->graph;
     DASSERT(g);

@@ -183,10 +183,27 @@ enum QsParameterKind {
  complex that I find it easier to write my own streaming API than write a
  GNUradio block.
 
- \return 0 on success and -1 if the file can't be accessed, or -2
- if the file is not executable.
- */
-int qsAddRunFile(const char *filename, void *userData);
+ The loading of the additional DSO will not happen until later when the
+ program is flowing/running.  Therefore, the failure of this action will
+ not be determined until long after this function returns.  This function
+ merely just records the \p filename and \p userData so that the block may
+ load the DSO later.
+
+*/
+void qsAddRunFile(const char *filename, void *userData);
+
+/* Get the pointer that was passed to qsAddRunFile()
+
+ Since quickstream separates the all global data between running DSOs,
+ we needed a way to share data between to DSO's that are in the same block.
+
+ This function is only valid in a block callback function that is not
+ declare().
+
+ \return a pointer that user passed to qsAddRunFile() which was called in the
+ blocks declare() function.
+*/
+void *qsRunFileData(void);
 
 
 /** create an input parameter, or setter parameter
