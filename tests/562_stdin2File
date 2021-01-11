@@ -1,0 +1,66 @@
+#!/bin/bash
+
+set -ex
+
+# This does not work when running like so:
+#
+#     ./valgrind_run_tests 555_stdinCPP
+#
+# But running this passes:
+#
+#    valgrind --tool=memcheck --leak-check=full --error-exitcode=1 --trace-children=yes --show-leak-kinds=all --trace-children-skip='*' --suppressions=valgrind_suppressions --errors-for-leak-kinds=all --error-exitcode=211 ./555_stdinCPP
+#
+# So we gave up running with valgrind for now.
+#
+
+
+if [ -n "$VaLGRIND_RuN" ] ; then
+    set +x
+    echo -e "\nSkipping running $0 with valgrind\n"
+    exit
+fi
+
+
+set -ex
+
+
+inFile="data_$(basename $0)_in.tmp"
+outFile="data_$(basename $0)_out.tmp"
+
+dd if=/dev/urandom count=130 of=$inFile
+
+
+# if this worked.  Maybe some day.
+#
+if [ -n "$VaLGRIND_RuN" ] ; then
+    # valgrind can't run a multi-threaded
+    # version of this successfully.
+    # Running GDB with multi-threaded programs and valgrind
+    # may be helpful, but mostly drives you insane.
+    #
+    # I think that the tests/getterTriggeredFromSignal block gets hosed by
+    # running with valgrind, if there are many threads.
+    #
+    # https://www.valgrind.org/docs/manual/manual-core.html#manual-core.pthreads
+    t1="--threads 0"
+else
+    t1="--threads 10"
+fi
+
+
+
+
+../bin/quickstream\
+ -v 3\
+ $t1\
+ --block tests/stdin2FilesDeclare stdin\
+ --block tests/copy c1\
+ --block tests/passThrough p2\
+ --block tests/stdout stdout\
+ --connect stdin 0 c1 0\
+ --connect c1 0 p2 0\
+ --connect p2 0 stdout 0\
+ --run < $inFile > $outFile
+
+
+diff -q $inFile $outFile

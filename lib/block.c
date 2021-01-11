@@ -37,7 +37,7 @@ int FindHandle_cb(const char *blockName, struct QsBlock *b, void **dlhh) {
 }
 
 
-// pathRet must be free()ed, or 0.
+// pathRet must be free()ed, if it is not 0.  Failure or not.
 //
 // pathRet will be the path that the DSO originated in; not the temporary
 // copy that we actually load, in the case where this a second time
@@ -46,17 +46,16 @@ int FindHandle_cb(const char *blockName, struct QsBlock *b, void **dlhh) {
 void *GetDLHandle(const char *fileName, char **pathRet) {
 
     char *path = GetPluginPath(QS_BLOCK_PREFIX, fileName, ".so");
-ERROR("path=%s", path);
+
     if(pathRet)
         *pathRet = path;
 
     void *dlhandle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+
     if(!dlhandle) {
         WARN("dlopen(\"%s\",) failed: %s", path, dlerror());
-        free(path);
-        return 0;
+        goto done;
     }
-
 
     ///////////////////////////////////////////////////////////////////
     // check if already dlopen()ed and fix
@@ -80,11 +79,10 @@ ERROR("path=%s", path);
         //
         // TODO: maybe dlmopen() can do better?  I tried and it just
         // failed to do what I want.
-        if((dlhandle = LoadDSOFromTmpFile(path)) == 0) {
-            free(path);
-            return 0;
-        }
+        if((dlhandle = LoadDSOFromTmpFile(path)) == 0)
+            goto done;
 
+done:
     if(!pathRet)
         free(path);
 
@@ -224,7 +222,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
 
         {
             // Strip off the last "/blocks/" if there is one
-#define BLOCKS    DIR_STR "blocks" DIR_STR
+#define BLOCKS    (DIR_STR "blocks" DIR_STR)
             char *s = blockName;
             size_t bl = strlen(BLOCKS);
             while(*s) {
@@ -480,7 +478,6 @@ void qsBlockUnload(struct QsBlock *b) {
     // TODO: more super block stuff like unload all it's sub-blocks.
     // So, this function needs to be re-entrant.
 
-
     if(b->isSuperBlock == 0) {
         // This is a simple block.
         struct QsSimpleBlock *smB = (struct QsSimpleBlock *)b;
@@ -534,7 +531,6 @@ void qsBlockUnload(struct QsBlock *b) {
             smB->numPassThroughs = 0;
         }
     }
-
 
     if(b->dlhandle) {
         // The user has the option to put the destroy() in one

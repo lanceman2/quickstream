@@ -378,7 +378,7 @@ int qsGraphReady(struct QsGraph *graph) {
     // Check that if this simple block that has connections, than it has a
     // flow() function.
     for(b = graph->firstBlock; b; b = b->next) {
-        // SetupCallbacks() does a lot of shit.
+        // SetupCallbacks() does more than the name implies.
         if(SetupCallbacks(b)) break;
         if(b->isSuperBlock) continue;
         struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;

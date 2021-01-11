@@ -1,0 +1,25 @@
+In this directory: quickstream block plugins that link with the libUHD
+library.
+
+libUHD is a C++ library, majorly bloated, with a libboost dependency, and
+so dependences explode from there.  It reads and writes to UDP sockets to
+"drive" USRP hardware devices.  That's why we do not want quickstream to
+be dependent on libUHD.  That and the fact that by design we want to keep
+the dependences to just operating system essentials, means that we need
+to keep the use of libUHD with quickstream as optional.  Using quickstream
+should not require installing libUHD, unless you need libUHD to access
+their (https://www.ettus.com/) associated hardware; USRP computer devices.
+
+libUHD documentation: https://www.ettus.com/sdr-software/uhd-usrp-hardware-driver/
+
+libUHD RANT:
+Biggest run-time flaw is it intermittently crashes when you change the
+bandwidth parameter (version: 3.15.0.0).  I've heard excuses for it, but I
+consider it inexcusable.  Calling a destructor of a Tx or Rx object
+crashes the program.  It does not have any examples that destroy a Tx or
+Rx object, I would assume for that reason.  So though quickstream blocks
+can be restarted a UHD quickstream block cannot be restarted, at least to
+some degree (details not explained).   It runs with too many threads.
+It's not what anybody would call robust code.  This may be my
+dis-understanding of libUHD due to my very limited mental capacity.
+

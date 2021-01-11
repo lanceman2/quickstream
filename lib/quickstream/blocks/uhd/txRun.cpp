@@ -59,9 +59,6 @@ static std::vector<double> freq, rate, gain;
 
 static std::string uhd_args, subdev;
 static std::vector<size_t> channels; // USRP channels
-// This is the libuhd USRP channels not a quickstream channel.  It will be
-// the length of the std::vector<> variables above.
-static size_t numChannels = 0;
 
 
 // Stupid libuhd state; they spill into three objects that we need to
@@ -73,7 +70,7 @@ static uhd::tx_metadata_t tx_metadata;
 
 int construct(void) {
 
-    DSPEW("numChannels=%zu", numChannels);
+    DSPEW();
 
     return 0;
 }
@@ -90,7 +87,7 @@ int flow(void *buffers[], const size_t lens[],
             uint32_t numInputs, uint32_t numOutputs) {
 
 
-    return 1;
+    return 0;
 }
 
 
