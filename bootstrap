@@ -81,7 +81,7 @@ EOF
 
 
 # get the quickbuild.make file from the web
-wget $url -O quickbuild.make.org 
+wget --no-check-certificate $url -O quickbuild.make.org 
 
 if [ -n "$sha512sum" ] ; then
     set +x
