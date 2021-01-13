@@ -173,7 +173,7 @@ enum QsParameterKind {
  internal structure of quickstream, compared to adding a parser and
  another language to facilitate defining generic declarative block state.
  Also this lets you write a complete fully working block with one C/C++
- source file, and no other files, not 30 like in GNUradio.  I really don't
+ source file, and no other files, not 30, like in GNUradio.  I really don't
  know how many files it takes to make a GNUradio block, I gave up on it at
  some point.  It is just too fucking stupid.  At this time GNUradio has a
  generic block generator program that is broken.  Hence, the tutorial on
@@ -182,6 +182,18 @@ enum QsParameterKind {
  what robust code is.  They have made the process of making a block so
  complex that I find it easier to write my own streaming API than write a
  GNUradio block.
+
+ This method breaks the rules of good programming practice, but without
+ it, or something like it, the complexity of quickstream increases
+ tremendously.  Common practice would be to add another language to the
+ mix, forcing users to use two or more languages just to get the hello
+ world example of usage.  We just stick with simple design.  Simple is
+ good.  We argue that it's easier to add other languages, be they
+ declarative or imperative, after you build a complete set of
+ functionality.  It's not easy to build an imperative interface from a
+ declarative one (pretty much impossible); it's easier to build a
+ declarative interface from an imperative one (if not trivial, it's at
+ least straight forward).
 
  The loading of the additional DSO will not happen until later when the
  program is flowing/running.  Therefore, the failure of this action will
