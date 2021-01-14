@@ -1,23 +1,26 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 #include <sys/types.h>
+#include <stdint.h>
 #include <sys/wait.h>
 
 #include "../lib/debug.h"
 
+#include "quickstream.h"
+
 
 // this does not return.
-void usage(int fd) {
+void help(int fd) {
 
-    // This usage() is a little odd.  It launches another program to
-    // display the program Usage.  Why?  We put the --help, man pages,
-    // together in one program that is also used to generate some of the
-    // code that are this program.  This keeps the documentation of the
-    // program and it's options consistent.  Really most of the code of
-    // this program is in the library libquickstream.so.  The program
+    // This usage, --help thing, is a little odd.  It launches another
+    // program to display the program Usage.  Why?  We put the --help, man
+    // pages, together in one program that is also used to generate some
+    // of the code that are this program.  This keeps the documentation of
+    // the program and it's options consistent.  Really most of the code
+    // of this program is in the library libquickstream.so.  The program
     // quickstream should be just a command-line wrapper of
     // libquickstream.so, if that is not the case than we are doing
     // something wrong.

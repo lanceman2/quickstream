@@ -6,6 +6,9 @@
 #include <pthread.h>
 
 #include "../include/quickstream/app.h" // public interfaces
+#include "../include/quickstream/block.h" // public interfaces
+#include "../include/quickstream/builder.h" // public interfaces
+
 
 #include "debug.h"
 #include "Dictionary.h"
@@ -16,6 +19,8 @@
 #include "triggerJobsLists.h"
 #include "builder.h"
 #include "run.h"
+#include "parameter.h"
+
 
 // A singly linked list of all graphs.  We do not expect a lot of them.
 struct QsGraph *graphs = 0;
@@ -290,6 +295,29 @@ bool SetupCallbacks(struct QsBlock *b) {
 }
 
 
+static int InitParameter(const char *key, struct QsParameter *p,
+            void *userData) {
+
+    DASSERT(p);
+    if(p->kind == QsGetter) return 0;
+
+    if(p->kind == QsSetter) {
+        if(p->first) {
+            DASSERT(p->first != p);
+            // This setter is connect to another parameter
+            memcpy(p->value, p->first->value, p->size);
+        }
+        return 0;
+    }
+    DASSERT(p->kind == QsConstant);
+
+    if(p->first && p->first != p)
+        // This constant is connect to another parameter
+        memcpy(p->value, p->first->value, p->size);
+    return 0;
+}
+
+
 static
 int qsGraphReady(struct QsGraph *graph) {
 
@@ -363,6 +391,15 @@ int qsGraphReady(struct QsGraph *graph) {
     // all but the ring buffers.  Ring buffers must be made after all the
     // block start()s are called.
     if(StreamsInit(graph)) return -1; // error
+
+
+
+    if(graph->threadPools->maxThreads != 0) {
+
+        CHECK(pthread_mutex_init(&graph->mutex, 0));
+        CHECK(pthread_cond_init(&graph->cond, 0));
+        DASSERT(graph->masterWaiting == false);
+    }
 
 
     // Start all triggers in all blocks.
@@ -478,15 +515,17 @@ int qsGraphReady(struct QsGraph *graph) {
     }
 
 
-    if(graph->threadPools->maxThreads != 0) {
-
-        CHECK(pthread_mutex_init(&graph->mutex, 0));
-        CHECK(pthread_cond_init(&graph->cond, 0));
-        DASSERT(graph->masterWaiting == false);
+    // Set any parameters that are feed.
+    for(b = graph->firstBlock; b; b = b->next) {
+        if(b->isSuperBlock) continue;
+        qsDictionaryForEach(((struct QsSimpleBlock *)b)->setters,
+                (int (*) (const char *key, void *value,
+            void *)) InitParameter, 0);
+        qsDictionaryForEach(((struct QsSimpleBlock *)b)->getters,
+                (int (*) (const char *key, void *value,
+            void *)) InitParameter, 0);
     }
 
-
-    // TODO: HERE set any parameters that are feed by constant parameters.
 
     return 0; // success
 }

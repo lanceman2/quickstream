@@ -1,6 +1,11 @@
 
 INSTALL_DIR = $(PREFIX)/lib
 
+
+libquickstream.so_CFLAGS :=\
+ -fvisibility=hidden\
+ -DBUILD_LIB
+
 libquickstream.so_SOURCES :=\
  debug.c\
  Dictionary.c\
@@ -20,8 +25,19 @@ libquickstream.so_SOURCES :=\
  blockDeclareAPI.c
 
 
-libquickstream.so_LDFLAGS := -lpthread -ldl -lrt
-# TODO: need to add something like: -export-symbols-regex '^qs'
+libquickstream.so_LDFLAGS :=\
+ -Wl,--retain-symbols-file=retain-symbols.txt\
+ -lpthread -ldl -lrt
+
+# See the symbols retained with the command:
+#
+#    readelf --symbols libquickstream.so
+# or
+#    nm --extern-only libquickstream.so
+#
+# need to use commands like:
+#
+# nm -D libquickstream.so | grep " T " | awk '{print $3}' | egrep '^qs'
 
 
 include ../quickbuild.make

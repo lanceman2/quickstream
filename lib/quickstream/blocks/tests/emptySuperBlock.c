@@ -5,7 +5,10 @@
 
 bool isSuperBlock = true;
 
+
+#ifdef SPEW_LEVEL_DEBUG
 static int count = 0;
+#endif
 
 
 int declare(void) {

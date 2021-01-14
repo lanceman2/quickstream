@@ -8,6 +8,7 @@
 
 #include "../include/quickstream/block.h"
 #include "../include/quickstream/builder.h"
+#include "../include/quickstream/app.h"
 
 #include "debug.h"
 #include "Dictionary.h"
@@ -906,16 +907,15 @@ void QueueUpSetterFromGetter(struct QsSetter *s, struct QsParameter *p) {
             //
             // Unlock mutexes and continue looping to the next setter.
             CHECK(pthread_mutex_unlock(&
-                ((struct QsBlock *)p->block)->graph->mutex));
+                    ((struct QsBlock *)p->block)->graph->mutex));
             CHECK(pthread_mutex_unlock(s->mutex));
             return;
         }
 
         // Queue a job for this trigger.
         CheckAndQueueTrigger(trigger, trigger->block->threadPool);
-
         CHECK(pthread_mutex_unlock(&
-                ((struct QsBlock *)p->block)->graph->mutex));
+                    ((struct QsBlock *)p->block)->graph->mutex));
         s->haveValueQueued = true;
     }
 

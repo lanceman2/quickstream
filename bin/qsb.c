@@ -213,9 +213,10 @@ static inline struct Connector *FindConnectTo(
 #ifdef DEBUG
         default:
             DASSERT(0, "missing case");
-            return false;
+            return 0;
 #endif
     }
+    return 0;
 }
 
 
@@ -246,6 +247,7 @@ static bool CanConnect(struct Connector *from,
             return false;
 #endif
     }
+    return false;
 }
 
 

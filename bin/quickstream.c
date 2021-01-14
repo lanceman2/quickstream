@@ -13,36 +13,10 @@
 #include "../include/quickstream/block.h"
 #include "../include/quickstream/builder.h"
 
+#include "quickstream.h"
 #include "getOpt.h"
 #include "../lib/quickstream/misc/qsOptions.h"
 
-
-// The spew level.
-// 0 == no spew, 1 == error, 2 == warn, 3 == notice, 4 == info, 5 == debug
-//
-// DEFAULT_SPEW_LEVEL is defined in
-//   ../lib/quickstream/misc/quickstreamHelp.c.in
-static int level = DEFAULT_SPEW_LEVEL;
-
-// Current/last graph:
-static struct QsGraph *graph = 0;
-//
-static uint32_t numGraphs = 0;
-static struct QsGraph **graphs = 0;
-
-static void CreateGraph(void) {
-
-    graph = qsGraphCreate();
-    ASSERT(graph);
-    graphs = realloc(graphs, (++numGraphs)*sizeof(*graphs));
-    ASSERT(graphs, "realloc(%p,%zu) failed", graphs, numGraphs*sizeof(*graphs));
-    graphs[numGraphs-1] = graph;
-}
-
-
-// From quickstream_usage.c
-// usage() does not return, it will exit.
-extern void usage(int fd);
 
 
 static void gdb_catcher(int signum) {
@@ -76,19 +50,13 @@ int main(int argc, const char * const *argv) {
             /////////////////////////////////////////////////////////////
             //               EXITING CASES                             //
             /////////////////////////////////////////////////////////////
-            case -1:
-            case '*':
-                fprintf(stderr, "\nBad option: %s\n\n", argv[i]);
-                // this will exit with error.
-                return 1;
-            case '?':
-            case 'h':
-                // The --help option get stdout and all the error
-                // cases get stderr.
-                usage(STDOUT_FILENO);
+            case -1:  // Bad opt
+            case '*': // Bad opt
+            case '?': // --help
+            case 'h': // --help
             case 'V': //--version
-                printf("%s\n", QUICKSTREAM_VERSION);
-                return 0;
+                ProcessCommand(c, 0, argv[i], 0);
+                break;
 
             /////////////////////////////////////////////////////////////
             //           NON-EXITING CASES    (if no error)            //
@@ -530,13 +498,10 @@ int main(int argc, const char * const *argv) {
             break;
     }
 
+
     if(graphs) {
-        // a is a dummy QsGraph pointer iterator.
-        struct QsGraph **a = graphs + (numGraphs - 1);
-        while(a >= graphs) {
-            qsGraphDestroy(*a);
-            --a;
-        }
+        while(numGraphs)
+            qsGraphDestroy(graphs[--numGraphs]);
         // Free the array of pointers.
         free(graphs);
     }

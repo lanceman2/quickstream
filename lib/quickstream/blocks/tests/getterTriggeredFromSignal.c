@@ -38,7 +38,9 @@ double val = 0.034;
 static
 int triggerCallback(struct QsParameter *p) {
 
-    DSPEW("                      TIMER %d", ++count);
+    ++count;
+
+    DSPEW("                      TIMER %d", count);
 
 
     qsParameterGetterPush(getter, &val);

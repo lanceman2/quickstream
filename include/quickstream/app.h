@@ -14,6 +14,8 @@
 
  */
 
+
+
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -35,7 +37,7 @@
 #define STR(s) XSTR(s)
 #define XSTR(s) #s
 
-#define QUICKSTREAM_VERSION  (STR(QS_MAJOR) ":" STR(QS_MINOR) ":" STR(QS_EDIT))
+#define QUICKSTREAM_VERSION  (STR(QS_MAJOR) "." STR(QS_MINOR) "." STR(QS_EDIT))
 
 #define QUICKSTREAM_URL   "https://github.com/lanceman2/quickstream"
 
@@ -54,11 +56,19 @@ struct QsThreadPool;
 struct QsBlock;
 
 
+#ifdef BUILD_LIB
+#define EXPORT   __attribute__((visibility("default")))
+#else
+#define EXPORT  /*empty macro*/
+#endif
+
+
 /** Set the highest libquickstream spew level
 
  \param level 0 for none, 1 for error, 2 for warning, 3 for notice, 4 for info,
  and 5 for debug.
 */
+EXPORT
 extern
 void qsSetSpewLevel(int level);
 
@@ -72,6 +82,7 @@ void qsSetSpewLevel(int level);
  \return 0 for none, 1 for error, 2 for warning, 3 for notice, 4 for info,
  and 5 for debug.
  */
+EXPORT
 extern
 int qsGetLibSpewLevel(void);
 
@@ -84,6 +95,7 @@ int qsGetLibSpewLevel(void);
 
   \return an opaque pointer to an graph object.
  */
+EXPORT
 extern
 struct QsGraph *qsGraphCreate(void);
 
@@ -93,6 +105,7 @@ struct QsGraph *qsGraphCreate(void);
  \param graph a pointer to an graph object that was returned from qsGraphCreate().
 
  */
+EXPORT
 extern
 void qsGraphDestroy(struct QsGraph *graph);
 
@@ -118,6 +131,7 @@ void qsGraphDestroy(struct QsGraph *graph);
 
  \return a pointer to an opaque thread pool object.
  */
+EXPORT
 extern
 struct QsThreadPool *qsGraphThreadPoolCreate(struct QsGraph *graph,
         uint32_t maxThreads);
@@ -135,6 +149,7 @@ struct QsThreadPool *qsGraphThreadPoolCreate(struct QsGraph *graph,
  \param block who's flow() function is called by a thread in this pool, as
  the stream flows.
  */
+EXPORT
 extern
 void qsThreadPoolAddBlock(struct QsThreadPool *tp,
         struct QsBlock *block);
@@ -149,6 +164,7 @@ void qsThreadPoolAddBlock(struct QsThreadPool *tp,
  to qsGraphThreadPool().
 
 */
+EXPORT
 extern
 void qsThreadPoolDestroy(struct QsThreadPool *tp);
 
@@ -166,6 +182,7 @@ void qsThreadPoolDestroy(struct QsThreadPool *tp);
  \return 0 if the call waited at all, 1 if the call did not wait, and less
  than zero on error.
  */
+EXPORT
 extern
 int qsGraphWait(struct QsGraph *graph);
 
@@ -184,6 +201,7 @@ int qsGraphWait(struct QsGraph *graph);
 
  \return 0 on success
  */
+EXPORT
 extern
 int qsGraphRun(struct QsGraph *graph);
 
@@ -201,6 +219,7 @@ int qsGraphRun(struct QsGraph *graph);
  \return 0 on success and greater than 0 on a non-fatal error, and less
  than zero on a fatal error.
  */
+EXPORT
 extern
 int qsGraphHalt(struct QsGraph *graph);
 
@@ -212,6 +231,7 @@ int qsGraphHalt(struct QsGraph *graph);
 
   \param file is a libc stream file pointer to print to.
 */
+EXPORT
 extern
 void qsGraphParametersPrint(struct QsGraph *graph, FILE *file);
 
@@ -232,27 +252,36 @@ void qsGraphParametersPrint(struct QsGraph *graph, FILE *file);
  \return 0 on success and greater than zero if there is no quickstream graph, and
  less than zero on other error.
  */
+EXPORT
 extern
 int qsGraphPrintDot(const struct QsGraph *graph, FILE *file);
 
 
+EXPORT
 extern
 int qsGraphPrintDotDisplay(const struct QsGraph *graph, bool waitForDisplay);
 
 
-
+EXPORT
 extern
 int qsBlockPrintHelp(const char *filename, FILE *file);
 
 
+EXPORT
 extern
 uint32_t qsGraphForEachBlock(const struct QsGraph *graph,
         int (*callback)(struct QsBlock *block, void *userData));
 
 
 
+
+
 // TODO: Worry about qsGraphKill() later.
 
+
+
+
+#undef EXPORT
 
 
 #endif // #ifndef __qsgraph_h__

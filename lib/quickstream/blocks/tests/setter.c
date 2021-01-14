@@ -11,7 +11,6 @@
 #include "../../../debug.h"
 
 
-static int count = 0;
 static struct QsParameter *p = 0;
 
 
@@ -22,15 +21,13 @@ int set_CB(struct QsParameter *p, const void *value, void *userData) {
 
     printf("%s %lg\n", qsBlockGetName(0), *((double *) value));
 
-    //if(*(double*)value > 10.0) return 1;
+    if(*(double*)value > 10.0) return 1;
 
     return 0;
 }
 
 
 int declare(void) {
-
-    DSPEW("count = %d", count++);
 
     double initVal = 0.055;
 

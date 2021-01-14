@@ -7,6 +7,10 @@
 #include <sys/syscall.h>
 #include <pthread.h>
 
+
+#include "../include/quickstream/app.h"
+
+
 #ifndef SYS_gettid
 #  error "SYS_gettid unavailable on this system"
 #endif

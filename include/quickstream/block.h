@@ -144,6 +144,14 @@ enum QsParameterKind {
 */
 
 
+#ifdef BUILD_LIB
+#define EXPORT   __attribute__((visibility("default")))
+#else
+#define EXPORT  /*empty macro*/
+#endif
+
+
+
 /** add a dynamic shared object (DSO) file to be loaded when running the
  block
 
@@ -202,6 +210,8 @@ enum QsParameterKind {
  load the DSO later.
 
 */
+EXPORT
+extern
 void qsAddRunFile(const char *filename, void *userData);
 
 /* Get the pointer that was passed to qsAddRunFile()
@@ -215,6 +225,8 @@ void qsAddRunFile(const char *filename, void *userData);
  \return a pointer that user passed to qsAddRunFile() which was called in the
  blocks declare() function.
 */
+EXPORT
+extern
 void *qsRunFileData(void);
 
 
@@ -253,6 +265,7 @@ void *qsRunFileData(void);
  \return a setter parameter pointer on success, and 0 is returned if
  the parameter already exists, or other error.
  */
+EXPORT
 extern
 struct QsParameter *
 qsParameterSetterCreate(struct QsBlock *block, const char *pname,
@@ -270,6 +283,7 @@ qsParameterSetterCreate(struct QsBlock *block, const char *pname,
  setter parameters.
 
  */
+EXPORT
 extern
 struct QsParameter *
 qsParameterGetterCreate(struct QsBlock *block, const char *pname,
@@ -288,6 +302,7 @@ qsParameterGetterCreate(struct QsBlock *block, const char *pname,
 
  /return the number of times the getter is connected to a setter.
  */
+EXPORT
 extern
 uint32_t
 qsParameterNumConnections(struct QsParameter *getter);
@@ -311,6 +326,7 @@ qsParameterNumConnections(struct QsParameter *getter);
  poll the current value with qsParameterGetValue().
 
  */
+EXPORT
 extern
 struct QsParameter *
 qsParameterConstantCreate(struct QsBlock *block, const char *pname,
@@ -341,6 +357,7 @@ qsParameterConstantCreate(struct QsBlock *block, const char *pname,
  no need to call this until the next stream flow restart.
 
  */
+EXPORT
 extern
 uint32_t qsParameterGetterPush(struct QsParameter *getter,
         const void *value);
@@ -353,6 +370,7 @@ uint32_t qsParameterGetterPush(struct QsParameter *getter,
  \return the type of a parameter object.
  
  */
+EXPORT
 extern
 enum QsParameterType qsParameterGetType(const struct QsParameter *p);
 
@@ -369,6 +387,7 @@ enum QsParameterType qsParameterGetType(const struct QsParameter *p);
 
  /param p must be a getter, setter or constant parameter.
 */
+EXPORT
 extern void
 qsParameterGetValue(struct QsParameter *p, void *value);
 
@@ -380,6 +399,7 @@ qsParameterGetValue(struct QsParameter *p, void *value);
  \return the value entry size of a parameter object.
 
  */
+EXPORT
 extern
 size_t qsParameterGetSize(const struct QsParameter *p);
 
@@ -393,6 +413,7 @@ size_t qsParameterGetSize(const struct QsParameter *p);
  The returned memory is managed by the block object.
  Do not write to it.
  */
+EXPORT
 extern
 const char *qsBlockGetName(const struct QsBlock *block);
 
@@ -413,6 +434,7 @@ const char *qsBlockGetName(const struct QsBlock *block);
 
  \return a pointer to the parameter object, or 0 if not found.
  */
+EXPORT
 extern
 struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
         const char *pname, bool isSetter);
@@ -420,11 +442,13 @@ struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
 
 /** Get kind of parameter
  */
+EXPORT
 extern
 enum QsParameterKind qsParameterGetKind(const struct QsParameter *p);
 
 
 
+EXPORT
 extern
 void
 qsParameterGetValueByName(const char *pname, void *value, size_t size);
@@ -499,6 +523,7 @@ qsParameterGetValueByName(const char *pname, void *value, size_t size);
 
  \memberof CBlockAPI
  */
+EXPORT
 extern
 void *qsGetOutputBuffer(uint32_t outputPortNum);
 
@@ -518,6 +543,7 @@ void *qsGetOutputBuffer(uint32_t outputPortNum);
 
  \memberof CBlockAPI
  */
+EXPORT
 extern
 void qsOutput(uint32_t outputPortNum, size_t len);
 
@@ -546,6 +572,7 @@ void qsOutput(uint32_t outputPortNum, size_t len);
 
  \memberof CBlockAPI
  */
+EXPORT
 extern
 void qsAdvanceInput(uint32_t inputPortNum, size_t len);
 
@@ -570,6 +597,7 @@ void qsAdvanceInput(uint32_t inputPortNum, size_t len);
 
  \memberof CBlockAPI
  */
+EXPORT
 extern
 void qsSetInputThreshold(uint32_t inputPortNum, size_t len);
 
@@ -591,6 +619,7 @@ void qsSetInputThreshold(uint32_t inputPortNum, size_t len);
 
  \memberof CBlockAPI
  */
+EXPORT
 extern
 void qsSetInputReadPromise(uint32_t inputPortNum, size_t len);
 
@@ -615,6 +644,7 @@ void qsSetInputReadPromise(uint32_t inputPortNum, size_t len);
 
  \memberof CBlockAPI
  */
+EXPORT
 extern
 void qsSetOutputMaxWrite(uint32_t outputPortNum, size_t maxWriteLen);
 
@@ -628,6 +658,7 @@ void qsSetOutputMaxWrite(uint32_t outputPortNum, size_t maxWriteLen);
  \return the maximum output write length for the given port number, or 0 if
  there is no output port with that port number.
  */
+EXPORT
 extern
 size_t qsGetOutputMaxWrite(uint32_t outputPortNum);
 
@@ -661,6 +692,7 @@ size_t qsGetOutputMaxWrite(uint32_t outputPortNum);
 
  \memberof CBlockAPI
  */
+EXPORT
 extern
 int qsPassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum);
 
@@ -682,6 +714,7 @@ int qsPassThroughBuffer(uint32_t inputPortNum, uint32_t outputPortNum);
 
  \memberof CBlockAPI
  */
+EXPORT
 extern
 const char* qsBlockGetName(const struct QsBlock *block);
 
@@ -695,7 +728,7 @@ const char* qsBlockGetName(const struct QsBlock *block);
  \return a pointer to the struct QsBlock object, or 0 if the
  block with that name was not found in that graph.
  */
-
+EXPORT
 extern
 struct QsBlock *qsBlockGetFromName(struct QsGraph *graph,
         const char *bName);
@@ -726,6 +759,7 @@ struct QsBlock *qsBlockGetFromName(struct QsGraph *graph,
 
  \memberof CBlockAPI
  */
+EXPORT
 extern
 int qsTriggerSignalCreate(int signum,
         int (*triggerCallback)(void *userData),
@@ -904,6 +938,8 @@ int flush(void *in[], const size_t len[],
 }
 #endif
 
+
+#undef EXPORT
 
 
 #endif // #ifndef __qsblock_h__

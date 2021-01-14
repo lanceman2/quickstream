@@ -10,7 +10,11 @@ XML2_LDFLAGS := $(shell pkg-config --libs libxml-2.0)
 G_COMPILE_RES := glib-compile-resources
 
 
-quickstream_SOURCES := quickstream.c getOpt.c quickstream_usage.c
+quickstream_SOURCES :=\
+ quickstream.c\
+ getOpt.c\
+ quickstream_help.c\
+ quickstream_action.c
 quickstream_LDFLAGS := -L../lib -lquickstream -Wl,-rpath=\$$ORIGIN/../lib
 
 scribble_SOURCES := scribble.c
@@ -21,7 +25,7 @@ ifeq ($(GTK_LDFLAGS),)
 $(warning "Not building quickstreamBuilder")
 else
 
-CLEANFILES := qsb_res.c qsb_workArea_res.c  qsb_popup_res.c
+CLEANFILES := qsb_res.c qsb_workArea_res.c qsb_popup_res.c
 
 
 %_res.c: %_res.xml %_res.ui

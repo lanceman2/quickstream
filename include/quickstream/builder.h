@@ -116,6 +116,15 @@ struct QsParameter;
 #define QS_PNAME_REGEX     (01)
 
 
+
+#ifdef BUILD_LIB
+#define EXPORT   __attribute__((visibility("default")))
+#else
+#define EXPORT  /*empty macro*/
+#endif
+
+
+
 /** get the number of input ports and output ports for a block
 
  This function is only valid after the stream has started and before the
@@ -131,6 +140,7 @@ struct QsParameter;
 
  \return 0 on success and -1 if the block was not found.
  */
+EXPORT
 extern
 int qsBlockGetNumPorts(const struct QsBlock *block,
         uint32_t *numIn, uint32_t *numOut);
@@ -144,6 +154,7 @@ int qsBlockGetNumPorts(const struct QsBlock *block,
  \return a pointer to the graph that loaded and owns block \p block.
 
  */
+EXPORT
 extern
 struct QsBlock *qsBlockGetGraph(const struct QsBlock *block);
 
@@ -157,6 +168,7 @@ struct QsBlock *qsBlockGetGraph(const struct QsBlock *block);
 
  \return a pointer to the block with the name.
  */
+EXPORT
 extern
 struct QsBlock *qsGraphGetBlockByName(const struct QsGraph *graph,
         const char *bname);
@@ -170,6 +182,7 @@ struct QsBlock *qsGraphGetBlockByName(const struct QsGraph *graph,
  \return the value entry size of a parameter object.
 
  */
+EXPORT
 extern
 const char *qsParameterGetName(const struct QsParameter *p);
 
@@ -181,6 +194,7 @@ const char *qsParameterGetName(const struct QsParameter *p);
 //
 // /return 0 on success, and -1 if the parameter is a setter.
 //
+EXPORT
 extern
 int qsParameterSetValue(struct QsParameter *p, const void *value);
 
@@ -215,6 +229,7 @@ int qsParameterSetValue(struct QsParameter *p, const void *value);
  When compiled with DEBUG the other failed cases will call assert.
 
  */
+EXPORT
 extern
 int qsParameterConnect(struct QsParameter *from, struct QsParameter *to);
 
@@ -229,6 +244,7 @@ int qsParameterConnect(struct QsParameter *from, struct QsParameter *to);
  the graph.
 
  */
+EXPORT
 extern
 void qsParameterDisconnect(struct QsParameter *p, struct QsParameter *p1);
 
@@ -236,6 +252,7 @@ void qsParameterDisconnect(struct QsParameter *p, struct QsParameter *p1);
 /** Super block exposing a parameter of an inner block
 
  */
+EXPORT
 extern
 int qsParameterExpose(struct QsBlock *superBlock, const char *pname,
         struct QsParameter *parameter);
@@ -244,6 +261,7 @@ int qsParameterExpose(struct QsBlock *superBlock, const char *pname,
 /** Super block exposing an input port of an inner block
 
  */
+EXPORT
 extern
 int qsBlockExposeInput(struct QsBlock *superBlock, uint32_t exposeInPort,
         struct QsBlock *block, uint32_t inPort);
@@ -252,6 +270,7 @@ int qsBlockExposeInput(struct QsBlock *superBlock, uint32_t exposeInPort,
 /** Super block exposing an output port of an inner block
 
  */
+EXPORT
 extern
 int qsBlockExposeOutput(struct QsBlock *superBlock, uint32_t exposeOutPort,
         struct QsBlock *block, uint32_t outPort);
@@ -278,11 +297,13 @@ int qsBlockExposeOutput(struct QsBlock *superBlock, uint32_t exposeOutPort,
   made.
 
  */
+EXPORT
 extern
 int qsBlockConnect(struct QsBlock *from, struct QsBlock *to,
         uint32_t outPortNum, uint32_t inPortNum);
 
 
+EXPORT
 extern
 int qsBlockDisconnect(struct QsBlock *toBlock, uint32_t inputPortNum);
 
@@ -300,12 +321,14 @@ int qsBlockDisconnect(struct QsBlock *toBlock, uint32_t inputPortNum);
 
   \return a pointer to the block or 0 on error.
  */
+EXPORT
 extern
 struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         const char *blockName);
 
 
 
+EXPORT
 extern
 void qsBlockUnload(struct QsBlock *block);
 
@@ -345,6 +368,8 @@ void qsBlockUnload(struct QsBlock *block);
  same as, the number of times \p callback() is called.
 
  */
+EXPORT
+extern
 size_t qsParameterGetterForEach(struct QsGraph *graph, struct QsBlock *block,
         const char *pName,
         enum QsParameterType type,
@@ -389,6 +414,7 @@ size_t qsParameterGetterForEach(struct QsGraph *graph, struct QsBlock *block,
  same as, the number of times \p callback() is called.
 
  */
+EXPORT
 size_t qsParameterSetterForEach(struct QsGraph *graph,
         struct QsBlock *block, const char *pName,
         enum QsParameterType type,
@@ -397,5 +423,7 @@ size_t qsParameterSetterForEach(struct QsGraph *graph,
             enum QsParameterType type, void *userData),
         void *userData, uint32_t flags);
 
+
+#undef EXPORT
 
 #endif // #ifndef __qsbuilder_h__

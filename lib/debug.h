@@ -52,6 +52,9 @@
 #include <errno.h>
 
 
+#define EXPORT   __attribute__((visibility("default")))
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -66,6 +69,7 @@ extern "C" {
 #pragma GCC diagnostic ignored "-Wformat-zero-length"
 
 
+EXPORT
 extern void qs_spew(int level, FILE *stream, int errn, const char *pre, const char *file,
         int line, const char *func, bool bufferIt, const char *fmt, ...)
 #ifdef __GNUC__
@@ -74,9 +78,11 @@ extern void qs_spew(int level, FILE *stream, int errn, const char *pre, const ch
 #endif
         ;
 
-
+EXPORT
 extern void qs_assertAction(FILE *stream);
 
+
+EXPORT
 extern void qsErrorFree(void);
 
 
@@ -204,5 +210,9 @@ extern void qsErrorFree(void);
 #ifdef __cplusplus
 }
 #endif
+
+
+#undef EXPORT
+
 
 #endif // #ifndef __debug_h__
