@@ -259,7 +259,21 @@ static struct QsOption
     { "--interpreter", 'i', "FILE",          true/*arg_optional*/,
 
         "run the in interpreter mode.  Reads all commands from stdin"
-        " with one command per line.  # starts a comment."
+        " or at your option FILE.  "
+        " It reads one command per line.  # starts a comment.  It's good"
+        " for scripting from in a file, but does not use GNU readline."
+        " It works nicely with Shebang (#!) at the beginning of a script."
+        " All commands are the same as command-line options without the"
+        " -- or -.  For example:\n\n"
+        "    #!/usr/local/bin/quickstream\n"
+        "    block fileIn in\n"
+        "    block tests/stdout out\n"
+        "    parameter-set in file foo\n"
+        "    connect in 0 out 0\n"
+        "    run\n"
+        "\n"
+        " TODO: An option for a interactive interpreter that uses"
+        " GNU readline."
     },
 /*----------------------------------------------------------------------*/
     { "--parameters-print", 'P', 0,  false,
