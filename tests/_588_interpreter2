@@ -1,0 +1,14 @@
+# This file gets loaded by 588_interpreter
+v 4
+threads 1
+block tests/sequenceGen gen2
+block tests/copy c02
+block tests/copy c12
+block tests/passThrough p22
+block tests/passThrough p32
+block tests/sequenceCheck out2
+connect gen2 0 c02 0
+connect c02 0 c12 0
+connect c12 0 p22 0
+connect p22 0 p32 0
+connect p32 0 out2 0
