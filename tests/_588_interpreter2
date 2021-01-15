@@ -1,6 +1,5 @@
 # This file gets loaded by 588_interpreter
 v 4
-threads 1
 block tests/sequenceGen gen2
 block tests/copy c02
 block tests/copy c12

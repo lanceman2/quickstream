@@ -1,7 +1,7 @@
 #!../bin/quickstream --interpreter
 
 v 4
-threads 5
+threads 0
 block tests/sequenceGen gen
 block tests/copy c0
 block tests/copy c1
