@@ -14,7 +14,8 @@ quickstream_SOURCES :=\
  quickstream.c\
  getOpt.c\
  quickstream_help.c\
- quickstream_action.c
+ quickstream_action.c\
+ quickstream_interpreter.c
 quickstream_LDFLAGS := -L../lib -lquickstream -Wl,-rpath=\$$ORIGIN/../lib
 
 scribble_SOURCES := scribble.c

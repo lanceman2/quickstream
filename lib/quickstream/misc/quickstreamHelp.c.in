@@ -147,6 +147,12 @@ static const char *usage =
 //
 // from this one source, and they all stay consistent.
 //
+// This is so much easier than using a parser and some bullshit document
+// format.  And it does not bloat any of the code with a crap load of
+// strings except this program.  It's just this one program that holds the
+// strings.  The programs that uses this are different programs that run
+// this program.  It's stupid simple.
+//
 static struct QsOption
 {
   char *long_op;
@@ -248,6 +254,12 @@ static struct QsOption
     { "--help", 'h', 0,                     false/*arg_optional*/,
 
         "print this help to stdout and then exit."
+    },
+/*----------------------------------------------------------------------*/
+    { "--interpreter", 'i', "FILE",          true/*arg_optional*/,
+
+        "run the in interpreter mode.  Reads all commands from stdin"
+        " with one command per line.  # starts a comment."
     },
 /*----------------------------------------------------------------------*/
     { "--parameters-print", 'P', 0,  false,

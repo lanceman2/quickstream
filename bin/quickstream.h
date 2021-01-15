@@ -11,7 +11,6 @@ extern
 struct QsGraph **graphs;
 
 
-
 // help() does not return, it will exit.
 extern
 void help(int fd);
@@ -24,18 +23,5 @@ extern
 void CreateGraph(void);
 
 
-// Count the number of arguments up to one that starts with '-'
-//
-// i  is the current argv index.
-//
-// return the number of arguments after the first argument.
-static inline
-int GetNumArgs(int i, int argc, const char * const *argv) {
-
-    int numArgs = 0;
-    for(++i; i<argc && argv[i][0] != '-'; ++i)
-        ++numArgs;
-    return numArgs;
-}
-
-
+extern
+int RunInterpreter(const char *filename);
