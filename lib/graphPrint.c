@@ -346,11 +346,10 @@ int qsGraphPrintDot(const struct QsGraph *g, FILE *f) {
 
             // Make a cluster for all output ports for this block
             //
-            // BUG: We don't get smB->flush set until run is called.
             fprintf(f,
             "    subgraph cluster_%d {\n"
-            "      label=\"flow()%s\";\n",
-                    clusterNum++, (smB->flush)?" flush()":"");
+            "      label=\"flow()\";\n",
+                    clusterNum++);
             for(uint32_t i = smB->numInputs - 1; i != -1; --i)
                 fprintf(f,
             "      \"%d:%s:Input%" PRIu32 "\" "

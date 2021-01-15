@@ -1,4 +1,4 @@
-# This file, config.make.example, defines possible make configuration
+# The file, config.make.example, defines possible make configuration
 # variables.
 #
 # This make file is used when building/installing using the quickbuild

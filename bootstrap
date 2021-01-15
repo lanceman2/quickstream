@@ -35,9 +35,20 @@ set -ex
 # Go to the directory there this script is.
 cd $(dirname ${BASH_SOURCE[0]})
 
-# File config.make is not check in and it may have user
+# File config.make is not checked in and it may have user
 # configuration information in it.
-[ -e config.make ] || cp config.make.example config.make
+if [ ! -e config.make ] ; then
+    # This script is a little fragile.  If include/quickstream/app.h
+    # changes how it defines QS_MAJOR, QS_MINOR, and/or QS_EDIT this
+    # script can break.
+    f=include/quickstream/app.h
+    ma=$(grep QS_MAJOR -m 1 $f | awk '{print $3}')
+    mi=$(grep QS_MINOR -m 1 $f | awk '{print $3}')
+    ed=$(grep QS_EDIT  -m 1 $f | awk '{print $3}')
+    VERSION="$ma.$mi.$ed"
+    echo -e "# This is a generated file\n" > config.make
+    sed "s!@PACKAGE_VERSION@!${VERSION}!g" config.make.example >> config.make
+fi
 
 
 function PrintSuccess() {
@@ -57,6 +68,10 @@ if [ -z "$*" ] && [ -e quickbuild.make ] ; then
     cat <<EOF
 
   The file quickbuild.make exists.
+
+  Removing it will make this script download it again
+  and then check it's sha512 hash.
+
 
 EOF
     PrintSuccess
