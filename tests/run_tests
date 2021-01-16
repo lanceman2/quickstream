@@ -68,21 +68,36 @@ fi
 i=1
 pass=0
 fail=0
+skipped=0
+
+# programs that return 0
 passPrograms=
+# programs that return 1
 failPrograms=
+# programs that return not 0 or 1
+skippedPrograms=
+
 echo "  ================================================"
 echo "                RUNNING $num TESTS"
 echo "  ================================================"
+set +e
 for run in "${tests[@]}" ; do
     echo "   [ $i / $num ] === running: ${VaLGRIND_RuN} ./$run"
-    if ${VaLGRIND_RuN} ./$run ; then
+    ${VaLGRIND_RuN} ./$run
+    ret="$?"
+
+    if [ "$ret" = "0" ] ; then
         let pass=$pass+1
         echo "$run === PASSED"
         passPrograms="$passPrograms ./$run"
-    else
+    elif [ "$ret" = "1" ] ; then
         let fail=$fail+1
         echo "$run === FAILED"
         failPrograms="$failPrograms ./$run"
+    else
+        let skipped=$skipped+1
+        echo "$run === SKIPPED"
+        skippedPrograms="$skippedPrograms ./$run"
     fi
 
     let i=$i+1
@@ -95,16 +110,25 @@ fi
 
 cat << EOF
 
+  ===============================================================
+             HOW EACH TEST PROGRAM DID ($withValgrind)
+  ===============================================================
 
-   [ $pass / $num ] PASSED: $passPrograms
-   [ $fail / $num ] FAILED: $failPrograms
+    [ $pass / $num ] PASSED: $passPrograms
+    [ $fail / $num ] FAILED: $failPrograms
+    [ $skipped / $num ] SKIPPED: $skippedPrograms
 
 
   ===============================================================
-              TOTAL TEST RESULTS ($withValgrind)
+              NET TEST RESULTS ($withValgrind)
   ===============================================================
+
              [ $pass / $num ] PASSED
              [ $fail / $num ] FAILED
+             [ $skipped / $num ] SKIPPED
+
+
+  Tests may be skipped because a dependency was not found.
 
 
   Run:
