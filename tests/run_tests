@@ -72,9 +72,11 @@ skipped=0
 
 # programs that return 0
 passPrograms=
-# programs that return 1
+
+# programs that return not 0 or 3
 failPrograms=
-# programs that return not 0 or 1
+
+# programs that return 3
 skippedPrograms=
 
 echo "  ================================================"
@@ -90,14 +92,14 @@ for run in "${tests[@]}" ; do
         let pass=$pass+1
         echo "$run === PASSED"
         passPrograms="$passPrograms ./$run"
-    elif [ "$ret" = "1" ] ; then
-        let fail=$fail+1
-        echo "$run === FAILED"
-        failPrograms="$failPrograms ./$run"
-    else
+    elif [ "$ret" = "3" ] ; then
         let skipped=$skipped+1
         echo "$run === SKIPPED"
         skippedPrograms="$skippedPrograms ./$run"
+    else
+        let fail=$fail+1
+        echo "$run === FAILED"
+        failPrograms="$failPrograms ./$run"
     fi
 
     let i=$i+1
@@ -107,6 +109,11 @@ withValgrind="WITHOUT VALGRIND"
 if [ -n "$VaLGRIND_RuN" ] ; then
     withValgrind="WITH VALGRIND"
 fi
+
+
+result=GOOD
+[ "$fail" = "0" ] ||\
+  result="BAD   and we don't mean Michael Jackson's bad"
 
 cat << EOF
 
@@ -126,6 +133,9 @@ cat << EOF
              [ $pass / $num ] PASSED
              [ $fail / $num ] FAILED
              [ $skipped / $num ] SKIPPED
+
+
+  THIS RESULT IS $result
 
 
   Tests may be skipped because a dependency was not found, or

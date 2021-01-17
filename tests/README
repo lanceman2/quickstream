@@ -65,9 +65,9 @@ How to add a test
     testing; and hence are not run with the suite testing commands:
     "./run_tests" and "./valgrind_run_tests".
 
-    Test programs succeed by exiting with status 0, test programs succeed
-    by exiting with status 1, and test programs get marked as skipped by
-    exiting with status not 0 or 1.
+    Test programs succeed by exiting with status 0, test programs fail
+    by exiting with status not 0 or 3, and test programs get marked as
+    skipped by exiting with status 3.
 
 
 At the start of the project the API is unstable, so at the start we tend
