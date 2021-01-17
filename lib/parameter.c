@@ -384,7 +384,7 @@ qsParameterSetterCreate(struct QsBlock *b, const char *pname,
         enum QsParameterType type, size_t psize,
         int (*setCallback)(struct QsParameter *p,
             const void *value, void *userData),
-        void *userData, uint32_t flags, const void *initialValue) {
+        void *userData, const void *initialValue) {
 
     ASSERT(pname);
     ASSERT(pname[0]);
@@ -398,7 +398,7 @@ qsParameterSetterCreate(struct QsBlock *b, const char *pname,
     p->userData = userData;
     p->setCallback = setCallback;
     p->mutex = &smB->mutex;
-    p->callbackWhilePaused = flags & QS_SETS_WHILE_PAUSED;
+    //p->callbackWhilePaused = flags & QS_SETS_WHILE_PAUSED;
 
     return (struct QsParameter *) p;
 }
@@ -425,6 +425,24 @@ qsParameterConstantCreate(struct QsBlock *b, const char *pname,
     p->userData = userData;
 
     return (struct QsParameter *) p;
+}
+
+
+void qsParameterSetCallback(struct QsParameter *p,
+        int (*setCallback)(struct QsParameter *p,
+            const void *value, void *userData)) {
+
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    DASSERT(p);
+    ASSERT(p->kind != QsGetter,
+            "QsParameter of type getter do not have setCallbacks");
+
+    if(p->kind == QsSetter)
+        ((struct QsSetter *)p)->setCallback = setCallback;
+    else {
+        DASSERT(p->kind == QsConstant);
+        ((struct QsConstant *)p)->setCallback = setCallback;
+    }
 }
 
 
@@ -571,6 +589,8 @@ AddParameterConnections(struct QsParameter *p1, struct QsParameter *p2) {
 static
 int SetterTriggerCB(struct QsSetter *s) {
 
+    if(!s->setCallback) return 0;
+
     // TODO: We decided to shorten the time that the block mutex lock is
     // held and call the setter callback() from outside the mutex lock
     // using a stack memory copy of the value.  We thought that since we
@@ -607,8 +627,8 @@ int SetterTriggerCB(struct QsSetter *s) {
 
 
 #if 0 // NOT USED ??
-// This is called when the value is changed in a connected group of parameters that
-// has a constant parameter in the group.
+// This is called when the value is changed in a connected group of
+// parameters that has a constant parameter in the group.
 //static
 void PushContantValues(struct QsConstant *c, void *value) {
 
@@ -669,6 +689,7 @@ int qsParameterConnect(struct QsParameter *p0,
         return -1;
     }
 
+#if 0
     if(p0->kind == QsConstant && p1->kind == QsSetter &&
             !((struct QsSetter *)p1)->callbackWhilePaused) {
         ERROR("Setter parameter %s:%s cannot be connected to from a constant"
@@ -677,6 +698,7 @@ int qsParameterConnect(struct QsParameter *p0,
         DASSERT(0);
         return -2;
     }
+#endif
 
     if(p0 == p1) {
         ERROR("No parameter \"%s\" can connect to itself", p1->name);
@@ -884,6 +906,7 @@ void QueueUpSetterFromGetter(struct QsSetter *s, struct QsParameter *p) {
     DASSERT(s->parameter.first->kind == QsGetter);
     DASSERT(s->parameter.type == p->type);
     DASSERT(s->parameter.size == p->size);
+    DASSERT(s->mutex);
 
     CHECK(pthread_mutex_lock(s->mutex));
 

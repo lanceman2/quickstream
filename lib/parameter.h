@@ -162,7 +162,7 @@ struct QsSetter {
     //
     // This is a block writer user option.
     //
-    bool callbackWhilePaused;
+    //bool callbackWhilePaused;
 };
 
 

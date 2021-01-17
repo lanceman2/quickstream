@@ -28,7 +28,8 @@ BUILD_NO_INSTALL :=\
  itimer_test\
  setjmp\
  CPP_valgrind_test\
- getline
+ getline\
+ mod
 
 
 
@@ -40,6 +41,7 @@ itimer_test_SOURCES := itimer_test.c ../lib/debug.c
 setjmp_SOURCES := setjmp.c ../lib/debug.c
 CPP_valgrind_test_SOURCES := CPP_valgrind_test.cpp
 getline_SOURCES := getline.c
+mod_SOURCES := mod.c
 
 # Just tests that debug.c is independent of other files,
 # and so also does not depend on libquickstream.so

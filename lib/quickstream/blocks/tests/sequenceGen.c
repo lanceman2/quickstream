@@ -9,7 +9,7 @@
 
 
 static size_t maxWrite = 0;
-static size_t totalOut = DEFAULT_TOTAL_LENGTH, count;
+static uint64_t totalOut = DEFAULT_TOTAL_LENGTH, count;
 static struct RandomString *rs;
 
 
@@ -17,7 +17,7 @@ static struct RandomString *rs;
 int declare(void) {
 
     qsParameterConstantCreate(0, "totalOut",
-            QsSize, sizeof(totalOut), 0/*setCallback*/,
+            QsUint64, sizeof(totalOut), 0/*setCallback*/,
             0/*userData*/, &totalOut);
 
     return 0; // success

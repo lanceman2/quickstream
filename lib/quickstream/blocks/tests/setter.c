@@ -32,7 +32,7 @@ int declare(void) {
     double initVal = 0.055;
 
     p = qsParameterSetterCreate(0, "setter", QsDouble, sizeof(double),
-        set_CB, 0, QS_SETS_WHILE_PAUSED, &initVal/*initialValue*/);
+        set_CB, 0, &initVal/*initialValue*/);
 
     return 0; // 0 => success
 }

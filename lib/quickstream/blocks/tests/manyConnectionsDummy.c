@@ -18,21 +18,21 @@ int declare(void) {
     double val = 0.055;
 
     qsParameterSetterCreate(0, "setter0", QsDouble, sizeof(val),
-            setCallback, 0, QS_SETS_WHILE_PAUSED, &val/*initialValue*/);
+            setCallback, 0, &val/*initialValue*/);
     qsParameterConstantCreate(0, "constant0", QsDouble,
             sizeof(val), setCallback, 0, &val);
     qsParameterGetterCreate(0, "getter0", QsDouble,
             sizeof(val), &val);
 
     qsParameterSetterCreate(0, "setter1", QsDouble, sizeof(val),
-            setCallback, 0, QS_SETS_WHILE_PAUSED, &val/*initialValue*/);
+            setCallback, 0, &val/*initialValue*/);
     qsParameterConstantCreate(0, "constant1", QsDouble,
             sizeof(val), setCallback, 0, &val);
     qsParameterGetterCreate(0, "getter1", QsDouble,
             sizeof(val), &val);
 
     qsParameterSetterCreate(0, "setter2", QsDouble, sizeof(val),
-            setCallback, 0, QS_SETS_WHILE_PAUSED, &val/*initialValue*/);
+            setCallback, 0, &val/*initialValue*/);
     qsParameterConstantCreate(0, "constant2", QsDouble,
             sizeof(val), setCallback, 0, &val);
     qsParameterGetterCreate(0, "getter2", QsDouble,

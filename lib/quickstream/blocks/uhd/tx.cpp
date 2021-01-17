@@ -6,6 +6,8 @@
 #include "../../../../include/quickstream/block.h"
 #include "../../../../lib/debug.h"
 
+#include "tx.h"
+
 #ifndef __cplusplus
 // This is C++ code so we can more easily use libuhd.
 #error "This is not a C++ compiler"
@@ -49,11 +51,28 @@
 extern "C" {
 
 
+struct TxParameters txParameters;
+
 
 int declare(void) {
 
     qsAddRunFile("uhd/txRun.so", 0);
 
+    // Parameters that we can set.
+
+    double freq = 915000000.0; // center frequency (Hz)
+
+    txParameters.setFreq = 
+        qsParameterSetterCreate(0/*this block*/, "freq", 
+            QsDouble, sizeof(freq),
+            0/*setCallback is set later*/,
+            0/*userData*/,
+            &freq);
+
+    txParameters.setFreq = 
+        qsParameterGetterCreate(0/*this block*/, "freq",
+            QsDouble, sizeof(freq),
+            &freq);
 
     return 0;
 }

@@ -66,9 +66,11 @@ struct QsBlock {
     struct QsBlock *next, *prev;
 
 
-
-    // block name that is unique to this block for all block in graph.
+    // block name that is unique to this block for all block in the graph.
     const char *name;
+    // filename passed to qsGraphBlockLoad()
+    const char *loadName;
+
 
     // _QS_IN_NONE
     // _QS_IN_BOOTSTRAP

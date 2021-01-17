@@ -185,6 +185,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // 6. Call declare()
     // 7. Add cleanup callback for block's entry in graph block Dictionary
     // 8. Add built-in parameters
+    // 9. strdup() fileName
 
     DASSERT(graph);
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
@@ -462,6 +463,15 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         }
     }
 
+
+    ///////////////////////////////////////////////////////////////////
+    // 9. strdup(fileName);
+    ///////////////////////////////////////////////////////////////////
+
+    b->loadName = strdup(fileName);
+    ASSERT(b->loadName, "strdup() failed");
+
+
     return (struct QsBlock *) b;
 }
 
@@ -474,6 +484,13 @@ void qsBlockUnload(struct QsBlock *b) {
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
     ASSERT(b->graph->flowState == QsGraphPaused ||
             b->graph->flowState == QsGraphFailed);
+    DASSERT(b->loadName);
+
+#ifdef DEBUG
+    memset((void *) b->loadName, 0, strlen(b->loadName));
+#endif
+    free((void *) b->loadName);
+
 
     // TODO: more super block stuff like unload all it's sub-blocks.
     // So, this function needs to be re-entrant.

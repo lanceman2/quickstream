@@ -5,12 +5,13 @@
 #include <string.h>
 #include <inttypes.h>
 
-#include "quickstream.h"
-#include "../lib/debug.h"
-
 #include "../include/quickstream/app.h"
 #include "../include/quickstream/block.h"
 #include "../include/quickstream/builder.h"
+
+#include "quickstream.h"
+#include "../lib/debug.h"
+#include "../lib/parameter.h"
 
 #include "getOpt.h"
 #include "../lib/quickstream/misc/qsOptions.h"
@@ -61,6 +62,11 @@ int ParameterSet(const char *blockName, const char *parameterName,
     if(!b) return 1;
     struct QsParameter *p =
         qsParameterGetPointer(b, parameterName, false);
+    if(!p) {
+        ERROR("block \"%s\" parameter \"%s\" not found",
+                blockName, parameterName);
+        return 1; // fail
+    }
 
     switch(qsParameterGetType(p)) {
 
@@ -114,9 +120,27 @@ int ParameterSet(const char *blockName, const char *parameterName,
                 return 1; // error
         }
             break;
-        case QsNone:
-        case QsFloat:
+
         case QsUint64:
+        {
+            char *endptr = 0;
+            uint64_t val = strtoull(*values, &endptr, 10);
+            DASSERT(p->size == sizeof(val));
+            if(*values == endptr) {
+                fprintf(stderr, "--parameter-set %s %s %s\n"
+                        "  Failed to convert %s "
+                        "to unsigned long long\n",
+                        blockName, parameterName,
+                            *values, *values);
+                return 1;
+            }
+            if(qsParameterSetValue(p, &val))
+                return 1; // error
+        }
+            break;
+
+        case QsFloat:
+        case QsNone:
             ASSERT(0, "Write this code");
             break;
     }

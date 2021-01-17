@@ -2,17 +2,15 @@
 
 
 if [ ! -x ../lib/quickstream/blocks/uhd/tx.so ] ; then
-    exit 3 # skip this test
+    exit 3 # 3 = skip this test
 fi
 
-# skip for now.
-exit 3
-
+exit 3 # skip for now
 
 ../bin/quickstream\
  --verbose 5\
- --block constant constant
- --block uhd/tx tx
- --connect constant 0 tx 0
- --parameter-set constant totalOut 10000
- --run
+ --block constant constant\
+ --block uhd/tx tx\
+ --connect constant 0 tx 0\
+ --parameter-set constant totalOut 10000\
+ --run | hexdump -v

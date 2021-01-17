@@ -272,8 +272,7 @@ qsParameterSetterCreate(struct QsBlock *block, const char *pname,
         enum QsParameterType type, size_t psize,
         int (*setCallback)(struct QsParameter *p,
             const void *value, void *userData),
-        void *userData, uint32_t flags,
-        const void *initialValue);
+        void *userData, const void *initialValue);
 
 
 
@@ -334,6 +333,12 @@ qsParameterConstantCreate(struct QsBlock *block, const char *pname,
         int (*setCallback)(struct QsParameter *p,
             const void *value, void *userData),
         void *userData, const void *initialVal);
+
+EXPORT
+extern
+void qsParameterSetCallback(struct QsParameter *p,
+        int (*setCallback)(struct QsParameter *p,
+            const void *value, void *userData));
 
 
 /** Push a getter parameter to all setter parameters that are connected

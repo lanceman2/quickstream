@@ -8,11 +8,7 @@
 #include "../../../../include/quickstream/block.h"
 #include "../../../../lib/debug.h"
 
-#ifndef __cplusplus
-// This is C++ code so we can more easily use libuhd.
-#error "This is not a C++ compiler"
-#endif
-
+#include "tx.h"
 
 // We did not use the quickstream C++ block module interface.  I'm just
 // not a fan of C++, and it's dependency hell, complexity, long compile
@@ -87,7 +83,7 @@ int flow(void *buffers[], const size_t lens[],
             uint32_t numInputs, uint32_t numOutputs) {
 
 
-    return 0;
+    return 1;
 }
 
 
