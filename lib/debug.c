@@ -234,10 +234,21 @@ void qs_spew(int levelIn, FILE *stream, int errn,
 }
 
 
-void qs_assertAction(FILE *stream)
+
+void (*qsAssertAction)(FILE *stream, const char *file,
+        int lineNum, const char *func) = 0;
+
+
+
+void qs_assertAction(FILE *stream, const char *file,
+        int lineNum, const char *func)
 {
     pid_t pid;
     pid = getpid();
+    if(qsAssertAction)
+        // We call the users assert action.  If it does not exit that's
+        // okay, we'll just fall into the default behavior.
+        qsAssertAction(stream, file, lineNum, func);
 #ifdef ASSERT_ACTION_EXIT
     fprintf(stream, "Will exit due to error\n");
     exit(1); // atexit() calls are called

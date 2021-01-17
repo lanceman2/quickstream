@@ -17,7 +17,7 @@ set -ex
 if [ -n "$VaLGRIND_RuN" ] ; then
     set +x
     echo -e "\nSkipping running $0 with valgrind\n"
-    exit
+    exit 3 # 3 = skipped
 fi
 
 

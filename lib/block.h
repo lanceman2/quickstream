@@ -394,10 +394,8 @@ struct QsOutput {  // points to reader filter blocks
     //
     uint8_t *writePtr;
 
-    // The block that owns this output promises to not write more than
-    // maxWrite bytes to the buffer.  Also applies to pass-through
-    // buffer writing.
-    //
+    // maximum length that the block writer promises to not write more
+    // then to the output ring buffer for this port.
     size_t maxWrite;
 
     // The maximum of maxWrite and maxRead for all block reader's of this

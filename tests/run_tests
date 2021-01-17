@@ -128,7 +128,9 @@ cat << EOF
              [ $skipped / $num ] SKIPPED
 
 
-  Tests may be skipped because a dependency was not found.
+  Tests may be skipped because a dependency was not found, or
+  we are not able to run it with valgrind because valgrind will
+  not do what we need it to do.
 
 
   Run:

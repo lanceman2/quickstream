@@ -79,7 +79,15 @@ extern void qs_spew(int level, FILE *stream, int errn, const char *pre, const ch
         ;
 
 EXPORT
-extern void qs_assertAction(FILE *stream);
+extern
+void qs_assertAction(FILE *stream, const char *file,
+        int lineNum, const char *func);
+
+
+EXPORT
+extern
+void (*qsAssertAction)(FILE *stream, const char *file,
+        int lineNum, const char *func);
 
 
 EXPORT
@@ -123,7 +131,7 @@ extern void qsErrorFree(void);
     do {\
         if(!((bool) (val))) {\
             _SPEW(1, SPEW_FILE, errno, true, "ASSERT("#val") failed: ", "" __VA_ARGS__);\
-            qs_assertAction(SPEW_FILE);\
+            qs_assertAction(SPEW_FILE, __BASE_FILE__, __LINE__, __func__);\
         }\
     }\
     while(0)

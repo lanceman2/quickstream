@@ -47,14 +47,16 @@ void qsOutput(uint32_t outputPortNum, size_t len) {
             "Block \"%s\" only has %" PRIu32 " output ports",
             b->block.name, b->numOutputs);
     struct QsOutput *output = b->outputs + outputPortNum;
-    DASSERT(len <= output->maxWrite);
+    //DASSERT(len <= output->maxWrite);
 
     // They can call this more than once in a given flow() call, so they
     // can output a little at a time, in a convoluted code; for
     // convenience.
 
     // This is all this function needed to do.  We do not advance the
-    // write pointer yet.
+    // write pointer yet.  We can't advance the write pointer yet, because
+    // we need this access to be lock-less.  The amount of data written to
+    // the ring buffer is just tallied for now.
     b->outputLens[outputPortNum] += len;
 
     // The OUTPUT WRITE PROMISE ERROR CHECK

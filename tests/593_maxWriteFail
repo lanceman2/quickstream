@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -ex
+
+
+if [ -n "$VaLGRIND_RuN" ] ; then
+    # valgrind can't run this test because we leak memory intentionally in
+    # this test.  We are testing a failure mode that we can't recover
+    # from, or at least not yet.  Failure modes are such a pain.
+    set +x
+    echo "We can't run this test with valgrind"
+    exit 3 # skip it.
+fi
+
+#exit 3 # skip for now
+
+
+../bin/quickstream\
+ -v 5\
+ --threads 2\
+ --block tests/maxWriteFail In\
+ --block tests/stdout stdout\
+ --connect In 0 stdout 0\
+ --run > /dev/null
