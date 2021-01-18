@@ -495,6 +495,9 @@ bool IsFlowableAndSetPointers(struct QsSimpleBlock *b) {
     }
 
 
+    bool haveInputNotAtMaxRead = false;
+    bool oneInputBreakPromise = false;
+
     // Advance the read pointers that feed this block, b; and tally the
     // readers remaining length.
     for(uint32_t i = b->numInputs-1; i != -1; --i) {
@@ -517,12 +520,12 @@ bool IsFlowableAndSetPointers(struct QsSimpleBlock *b) {
         DASSERT(b->advanceLens[i] <= b->inputLens[i]);
         DASSERT(b->inputLens[i] <= input->readLength);
 
-        if(b->inputLens[i] >= input->maxRead)
-            // This block filter module is not written correctly.
-            ASSERT(b->advanceLens[i],
-                    "The filter block \"%s\" did not keep it's read promise"
-                    " for input port %" PRIu32,
-                    b->block.name, i);
+        if(b->inputLens[i] < input->maxRead && !haveInputNotAtMaxRead)
+            haveInputNotAtMaxRead = true;
+
+        if(b->inputLens[i] >= input->maxRead && !b->advanceLens[i] &&
+                !oneInputBreakPromise)
+            oneInputBreakPromise = true;
 
         // Advance read pointer 
         input->readPtr += b->advanceLens[i];
@@ -546,6 +549,28 @@ bool IsFlowableAndSetPointers(struct QsSimpleBlock *b) {
             // by just not advancing the buffer.
             inputsFeeding = true;
     }
+
+
+    if(!haveInputNotAtMaxRead && oneInputBreakPromise) {
+        // A read promise was broken while all inputs where full enough.
+        // We find the input and tell them which one failed to keep a read
+        // promise in a ASSERT() call.
+        //
+        // This is program is screwed at this point.
+        for(uint32_t i = b->numInputs-1; i != -1; --i) {
+            struct QsInput *input = b->inputs + i;
+            ASSERT(b->inputLens[i] >= input->maxRead && b->advanceLens[i],
+                    "block \"%s\" input port %" PRIu32
+                    " failed to keep a read promise "
+                    "at %zu bytes when there was %zu bytes to read",
+                    ((struct QsBlock *)b)->name, i,
+                    input->maxRead, b->advanceLens[i]);
+        }
+        // We should not get here.
+        DASSERT(0);
+    }
+
+
 
 
     return (inputAdvanced && inputsFeeding && allOutputsHungry);
