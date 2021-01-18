@@ -326,17 +326,18 @@ struct QsInput {
     // The block->flow() may just return without advancing any input or
     // output, effectively ignoring the flow() call like the threshold
     // trigger conditions where not reached.  In this way we may have
-    // arbitrarily complex threshold trigger conditions.
+    // effectively arbitrarily complex threshold trigger conditions.
     size_t threshold; // Length in bytes to cause flow() to be called.
 
-    // The reading filter block promises to read some input data so long
-    // as the buffer input length >= maxRead.
+    // The reading filter block promises to read some input data, on some
+    // input port, so long as the buffer input length >= maxRead on all
+    // input ports.
     //
     // It only has to read 1 byte to fulfill this promise, but so long as
-    // the readable amount of data on this port is >= maxRead is will keep
-    // having it's flow() called until the readable amount of data on this
-    // port is < maxRead or an output buffer write pointer is at a limit
-    // (???).
+    // the readable amount of data on this port is >= maxRead on all ports
+    // is will keep having it's flow() called until the readable amount of
+    // data at least one port is < maxRead or an output buffer write
+    // pointer is at a limit (???).
     //
     // This parameter guarantees that we can calculate a fixed ring buffer
     // size that will not be overrun.
