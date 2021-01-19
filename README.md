@@ -870,3 +870,83 @@ Restricting Interfaces at Different Levels
   UNIX philosophy
 
 
+# FAQ (not really)
+
+These questions are helpful in understanding how quickstream works:
+
+- Is a read promise needed to run the stream?
+
+  Yes.  Without it you can't know/calculate the limiting writer and reader
+  pointer boundaries in the ring buffer.
+
+- What if a block does not fulfill it's input read promises?
+
+  The ring buffer could be overrun by a write pointer.  And so some blocks
+  could read a mix of the newer written data and older written data.  But
+  before this happens the program will stop running.  Blocks must keep
+  their read promises.
+
+- Is a write promise needed to run the stream?
+
+  Yes.  The write promise lengths are needed to calculate the ring buffer
+  lengths.  We need both all read promise lengths and all write promise
+  lengths that are connecting to a ring buffer, to compute the total ring
+  buffer lengths.
+
+- What if a block does not fulfill it's output write promises?
+
+  Without a limiting the length that a writer is allowed to write, read
+  pointers can be overrun by a write pointer.  The corruption is the same
+  as when a read promise is broken.  But it cannot happen either, the
+  program will stop running before that happens.  Blocks must keep their
+  output write promises or the program will stop running.
+
+- What a fucked up ring buffer model, GNUradio does it better.
+
+  quickstream lets the blocks and end users have more control over the
+  sizes of the ring buffers.  Experiments show that sometimes we can make
+  a stream graph run much more efficiently by making the per cycle write
+  lengths larger, up to some limit.  Of course it greatly depends on the
+  hardware and memory available, but without this feature such an
+  optimisation is not possible.  This is a run-time option, so we can
+  optimise this on the fly.  I don't think GNUradio can do that.  Yes,
+  very fucked up.
+
+- The ring buffers are too large.
+
+  The smallest a ring buffer can be is 2 pages (2*4096 bytes).  Yes, that
+  does seem large.  But we have seen that by making the rings buffers even
+  larger the stream can sometimes run more efficiently than the case with
+  smaller ring buffers.  I think GNUradio has fixed ring buffer sizes,
+  so I don't think they can play this game.
+
+- Did you copy the ring buffer idea from GNUradio?
+
+  Yes.  It's a great idea.  Thank you, GNUradio.  We did not copy the code,
+  just the idea, but we think we extended it, and twisted it.  quickstream
+  uses read and write promises to determine the ring buffer sizes, and
+  GNUradio does not, as far as we can tell.  As a consequence quickstream
+  does not require a synchronised block input and output scheme, and
+  worker threads can roam between blocks letting the end user decide how
+  many worker threads to run, independent of the number of blocks in the
+  graph.
+
+- Can you pin down a block to a CPU?
+
+  Yes.  You just assign the block (or blocks) of interest a thread pool
+  that has one thread in it, and than set the thread affinity of that
+  thread.  That was a big concern and that's how we solved that while
+  keeping things very flexible.  A quickstream graph can be run by any
+  number of thread pools, with any number of threads in each pool.  Each
+  block get assigned to a given thread pool.
+
+- WTK is with the command-line program?
+
+  We like UNIX and UXIX-like ideas.  We make all the graph builder
+  accessible through the command-line program before they are accessible
+  through the GUI builder.  We worked around the limitation of length of
+  argv by adding a simple interpreter that reads stream input and treats
+  it like command-line arguments.  So we can read very long
+  command-line-like-options.  This also enables test driven development,
+  which is the most awesome development thing ever.
+
