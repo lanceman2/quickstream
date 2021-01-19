@@ -922,14 +922,14 @@ These questions are helpful in understanding how quickstream works:
 
 - Did you copy the ring buffer idea from GNUradio?
 
-  Yes.  It's a great idea.  Thank you, GNUradio.  We did not copy the code,
-  just the idea, but we think we extended it, and twisted it.  quickstream
-  uses read and write promises to determine the ring buffer sizes, and
-  GNUradio does not, as far as we can tell.  As a consequence quickstream
-  does not require a synchronised block input and output scheme, and
-  worker threads can roam between blocks letting the end user decide how
-  many worker threads to run, independent of the number of blocks in the
-  graph.
+  Yes.  It's a great idea.  Thank you, GNUradio.  We did not copy the
+  code, just the idea, but we think we extended it, and twisted it.
+  quickstream uses read and write promises to determine the ring buffer
+  sizes, and GNUradio does not, as far as we can tell.  As a consequence
+  quickstream does not require a synchronised block input and output (n/m)
+  scheme, and worker threads can roam between blocks letting the end user
+  decide how many worker threads to run, independent of the number of
+  blocks in the graph.
 
 - Can you pin down a block to a CPU?
 
