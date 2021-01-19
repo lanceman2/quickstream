@@ -59,7 +59,10 @@ int ParameterSet(const char *blockName, const char *parameterName,
 
     // Get the block
     struct QsBlock *b = qsGraphGetBlockByName(graph, blockName);
-    if(!b) return 1;
+    if(!b) {
+        ERROR("Block \"%s\" not found", blockName);
+        return 1;
+    }
     struct QsParameter *p =
         qsParameterGetPointer(b, parameterName, false);
     if(!p) {

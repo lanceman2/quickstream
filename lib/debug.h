@@ -12,40 +12,63 @@
  *
  * see details below.
  *
- */
+ /verbatim
 
 ///////////////////////////////////////////////////////////////////////////
-// USER DEFINABLE SELECTOR MACROS make the follow macros come to life:
-//
-// DEBUG             -->  DASSERT()
-//
-// SPEW_LEVEL_DEBUG  -->  DSPEW() INFO() NOTICE() WARN() ERROR()
-// SPEW_LEVEL_INFO   -->  INFO() NOTICE() WARN() ERROR()
-// SPEW_LEVEL_NOTICE -->  NOTICE() WARN() ERROR()
-// SPEW_LEVEL_WARN   -->  WARN() ERROR()
-// SPEW_LEVEL_ERROR  -->  ERROR()
-//
-// always on is      --> ASSERT()
-//
-// If a macro function is not live it becomes a empty macro with no code.
-//
-//
-// The ERROR() function will also set a string accessible through qsError()
-//
-//
+   USER DEFINABLE SELECTOR MACROS make the follow macros come to life:
+ 
+   DEBUG             -->  DASSERT()
+
+   SPEW_LEVEL_DEBUG  -->  DSPEW() INFO() NOTICE() WARN() ERROR()
+   SPEW_LEVEL_INFO   -->  INFO() NOTICE() WARN() ERROR()
+   SPEW_LEVEL_NOTICE -->  NOTICE() WARN() ERROR()
+   SPEW_LEVEL_WARN   -->  WARN() ERROR()
+   SPEW_LEVEL_ERROR  -->  ERROR()
+
+   always on is      --> ASSERT()
+
+   If a macro function is not live it becomes a empty macro with no code.
+
+
+   The ERROR() function will also set a string accessible through qsError()
+   the string has a fixed size so as to not compound bug hunting.
+   qsError() is thread-safe in some respects.  It's simple, just look at
+   the code.  It's shorter than these comments.
+
+
 ///////////////////////////////////////////////////////////////////////////
-//
-// Setting SPEW_LEVEL_NONE with still have ASSERT() spewing and ERROR()
-// will not spew but will still set the qsError string
-//
+
+   Setting SPEW_LEVEL_NONE with still have ASSERT() spewing and ERROR()
+   will not spew but will still set the qsError string
 
 
-/*
- * It's really not much code but is a powerful development
- * tool like assert.  See 'man assert'.
- *
- * CRTSFilter builders do not have to include this file in their
- * plugin modules.  It's pretty handy for developing/debugging.
+/endverbatim
+
+   This file is really not much code but is a powerful development tool
+   like assert(3).  See 'man 3 assert'.  This just adds spewing of line
+   number, name of function, and other handy information to the basic idea
+   of libc's assert(3).  For DEBUG mode builds: sprinkle DASSERT() into
+   all your functions, and zero all memory allocations before you free
+   them.  I'm not a fuckn' robot, so it catches most of my memory related
+   coding errors.  Always check malloc(3) and like return values with
+   ASSERT(), unless you will return the ENOMEM (errno) error check to the
+   user.  There is no performance penalty for using this DASSERT() in
+   non-DEBUG builds, except that you the human in the coding process loop
+   need take time to write the fucking code.
+
+   Every API has crap like this, get over it.  We keep our quickstream
+   crap small, and independent.  We know this crap is not end user
+   friendly, but without this shit, writing this quickstream code is
+   impossible, bugs would kill the code, consuming it like a rotting
+   corpse.
+
+   For you robot programmer's that can write ten thousand lines of code
+   without ever test compiling it, you will not read this comment anyway,
+   so I'm a dumb-ass for writing this sentence.
+
+   Block modules builders do not have to include this file in their plugin
+   modules.  It's pretty handy for developing/debugging, but it's not
+   a necessity.
  */
 #include <stdbool.h>
 #include <stdio.h>
@@ -70,8 +93,9 @@ extern "C" {
 
 
 EXPORT
-extern void qs_spew(int level, FILE *stream, int errn, const char *pre, const char *file,
-        int line, const char *func, bool bufferIt, const char *fmt, ...)
+extern void qs_spew(int level, FILE *stream, int errn, const char *pre,
+        const char *file, int line, const char *func,
+        bool bufferIt, const char *fmt, ...)
 #ifdef __GNUC__
         // check printf format errors at compile time:
         __attribute__ ( ( format (printf, 9, 10 ) ) )

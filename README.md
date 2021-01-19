@@ -857,3 +857,16 @@ https://raw.githubusercontent.com/lanceman2/quickstream.doc/master/jobFlow.png)
 - Make the base build build in less than 1 minute (last check is about 10
   seconds).
 - change QUICKSTREAM_VERSION in the source in include/quickstream/app.h
+
+
+## Stupid thoughts
+
+Restricting Interfaces at Different Levels
+
+  We do that to make gains.  So you start by losing, but later you gain.
+    - Gain is you get modules
+       - Seamless expansion across domains
+
+  UNIX philosophy
+
+

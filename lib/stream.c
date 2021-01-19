@@ -554,23 +554,25 @@ bool IsFlowableAndSetPointers(struct QsSimpleBlock *b) {
     if(!haveInputNotAtMaxRead && oneInputBreakPromise) {
         // A read promise was broken while all inputs where full enough.
         // We find the input and tell them which one failed to keep a read
-        // promise in a ASSERT() call.
+        // promise in an ASSERT() call.
         //
-        // This is program is screwed at this point.
+        // TODO: There may be more than one input read promise broken,
+        // so we should print them all.
+        //
+        // This running program is screwed at this point.
         for(uint32_t i = b->numInputs-1; i != -1; --i) {
             struct QsInput *input = b->inputs + i;
             ASSERT(b->inputLens[i] >= input->maxRead && b->advanceLens[i],
                     "block \"%s\" input port %" PRIu32
-                    " failed to keep a read promise "
+                    " failed to keep a read promise to "
+                    "read at least 1 byte when the input length is "
                     "at %zu bytes when there was %zu bytes to read",
                     ((struct QsBlock *)b)->name, i,
-                    input->maxRead, b->advanceLens[i]);
+                     input->maxRead, b->inputLens[i]);
         }
         // We should not get here.
         DASSERT(0);
     }
-
-
 
 
     return (inputAdvanced && inputsFeeding && allOutputsHungry);

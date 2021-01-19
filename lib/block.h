@@ -337,7 +337,7 @@ struct QsInput {
     // the readable amount of data on this port is >= maxRead on all ports
     // is will keep having it's flow() called until the readable amount of
     // data at least one port is < maxRead or an output buffer write
-    // pointer is at a limit (???).
+    // pointer is at a limit (clogged).
     //
     // This parameter guarantees that we can calculate a fixed ring buffer
     // size that will not be overrun.

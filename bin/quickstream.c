@@ -62,7 +62,7 @@ int main(int argc, const char * const *argv) {
         // We used to have a long switch(c) here, but we moved
         // it into this function which we also use to run the --interpret
         // mode.
-        ret = ProcessCommand(c, numArgs, argv[i-1], &argv[i]);
+        ret = ProcessCommand(c, numArgs, argv[i], &argv[i]);
         i += numArgs;
         arg = 0;
 
