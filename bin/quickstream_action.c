@@ -39,7 +39,8 @@ void CreateGraph(void) {
     graph = qsGraphCreate();
     ASSERT(graph);
     graphs = realloc(graphs, (++numGraphs)*sizeof(*graphs));
-    ASSERT(graphs, "realloc(%p,%zu) failed", graphs, numGraphs*sizeof(*graphs));
+    ASSERT(graphs, "realloc(%p,%zu) failed", graphs,
+            numGraphs*sizeof(*graphs));
     graphs[numGraphs-1] = graph;
 }
 
@@ -382,12 +383,9 @@ int ProcessCommand(int comm, int numArgs, const char *command,
             return 0;
 
         case 'i': // --interpreter
-        {
-            const char *arg = 0;
-            if(numArgs)
-                arg = argv[0];
-            return RunInterpreter(arg);
-        }
+            // This may return and let the command-line parser keep going
+            // after this go at the interpreter.
+            return RunInterpreter(numArgs, argv);
 
         case 'd': // --display Generate a graphviz dot graph and run the
             // imagemagick display program and continue running
@@ -455,45 +453,45 @@ int ProcessCommand(int comm, int numArgs, const char *command,
                 return 0;
             }
 
-            case 'v': // --verbose
-                if(numArgs != 1) {
-                    fprintf(stderr, "--verbose with bad level\n");
-                    return 1;
-                }
+        case 'v': // --verbose
+            if(numArgs != 1) {
+                fprintf(stderr, "--verbose with bad level\n");
+                return 1;
+            }
                 
-                // LEVEL maybe debug, info, notice, warn, error, and
-                // off which translates to: 5, 4, 3, 2, 1, and 0
-                // as this program (and not the API) define it.
-                if(*argv[0] == 'd' || *argv[0] == 'D' || *argv[0] == '5')
-                    // DEBUG 5
-                    level = 5;
-                else if(*argv[0] == 'i' || *argv[0] == 'I' || *argv[0] == '4')
-                    // INFO 4
-                    level = 4;
-                else if(*argv[0] == 'n' || *argv[0] == 'N' || *argv[0] == '3')
-                    // NOTICE 3
-                    level = 3;
-                else if(*argv[0] == 'w' || *argv[0] == 'W' || *argv[0] == '2')
-                    // WARN 2
-                    level = 2;
-                else if(*argv[0] == 'e' || *argv[0] == 'E' || *argv[0] == '1')
-                    // ERROR 1
-                    level = 1;
-                else // none and anything else
-                    // NONE 0 with a error string.
-                    level = 0;
+            // LEVEL maybe debug, info, notice, warn, error, and
+            // off which translates to: 5, 4, 3, 2, 1, and 0
+            // as this program (and not the API) define it.
+            if(*argv[0] == 'd' || *argv[0] == 'D' || *argv[0] == '5')
+                // DEBUG 5
+                level = 5;
+            else if(*argv[0] == 'i' || *argv[0] == 'I' || *argv[0] == '4')
+                // INFO 4
+                level = 4;
+            else if(*argv[0] == 'n' || *argv[0] == 'N' || *argv[0] == '3')
+                // NOTICE 3
+                level = 3;
+            else if(*argv[0] == 'w' || *argv[0] == 'W' || *argv[0] == '2')
+                // WARN 2
+                level = 2;
+            else if(*argv[0] == 'e' || *argv[0] == 'E' || *argv[0] == '1')
+                // ERROR 1
+                level = 1;
+            else // none and anything else
+                // NONE 0 with a error string.
+                level = 0;
 
-                if(level >= 3/*notice*/)
-                    fprintf(stderr, "quickstream spew level "
-                            "set to %d\n"
-                            "The highest libquickstream "
-                            "spew level is %d\n",
-                            level, qsGetLibSpewLevel());
+            if(level >= 3/*notice*/)
+                fprintf(stderr, "quickstream spew level "
+                        "set to %d\n"
+                        "The highest libquickstream "
+                        "spew level is %d\n",
+                        level, qsGetLibSpewLevel());
 
-                qsSetSpewLevel(level);
-                return 0;
+            qsSetSpewLevel(level);
+            return 0;
 
-            default:
+        default:
             // This should not happen, unless the options are not coded
             // correctly.  We are missing a case for this char.  This
             // should be a case that is caught in case '*'.  That means we

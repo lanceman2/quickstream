@@ -28,6 +28,14 @@ struct QsThreadPool {
     // numThreads <= maxThreads
     uint32_t numThreads;
 
+    // Just a unique ID based on a thread pool create count.  We avoided
+    // added more stupid data like this in this structure, but stupid
+    // sometimes wins; it's just easy and simple.  We were thinking of
+    // using the address as a mapping to an ID, but that is not unique
+    // over time as memory is recycled.  So fuck, here it is, more stupid
+    // data.
+    uint32_t id;
+
 
     // We use "next" to make a list of threadPools in graph.
     struct QsThreadPool *next;

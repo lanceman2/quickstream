@@ -14,6 +14,12 @@
 #include "run.h"
 
 
+// The number of thread pools created.  Nothing to do with the number
+// destroyed.  Only increases.  We let the first thread pool ID be 0 (not
+// 1).  This ain't fuckn' FORTRAN.
+//
+static uint32_t createCount = 0;
+
 
 void qsThreadPoolDestroy(struct QsThreadPool *tp) {
 
@@ -89,6 +95,7 @@ struct QsThreadPool *qsGraphThreadPoolCreate(struct QsGraph *graph,
 
     tp->maxThreads = maxThreads;
     tp->graph = graph;
+    tp->id = createCount++;
 
     // This newly created thread pool will be the new default thread pool
     // for all newly created simple blocks, until we make another.  Also

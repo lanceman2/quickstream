@@ -24,4 +24,4 @@ void CreateGraph(void);
 
 
 extern
-int RunInterpreter(const char *filename);
+int RunInterpreter(int numArgs, const char * const *argv);

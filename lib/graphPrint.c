@@ -338,8 +338,9 @@ int qsGraphPrintDot(const struct QsGraph *g, FILE *f) {
 
         fprintf(f,
             "  subgraph cluster_%d {\n"
-            "    label=\"%s [%s]\";\n",
-                    clusterNum++, b->name, b->loadName);
+            "    label=\"%s [%s] (pool %" PRIu32 ")\";\n",
+                    clusterNum++, b->name, b->loadName,
+                    smB->threadPool->id);
 
         if(smB->numInputs || smB->numOutputs) {
 

@@ -245,10 +245,11 @@ static struct QsOption
         " another stream graph, QsGraph, is created.  All subsequent blocks"
         " are loaded into this last stream graph that is created.  The "
         "--run, --dot, --display, and --display-wait command "
-        "options are applied to all the stream graphs.  The up-coming --block, "
-        "--connect, --plug, and --threads command options are applied to "
-        "the last created stream graph.  If no --graph option was given a "
-        "stream graph will be created automatically when it is needed."
+        "options are applied to all the stream graphs.  The up-coming "
+        "--block, --connect, --plug, and --threads command options are "
+        "applied to the last created stream graph.  If no --graph "
+        "option was given a stream graph will be created automatically "
+        "when it is needed."
     },
 /*----------------------------------------------------------------------*/
     { "--help", 'h', 0,                     false/*arg_optional*/,
@@ -256,7 +257,7 @@ static struct QsOption
         "print this help to stdout and then exit."
     },
 /*----------------------------------------------------------------------*/
-    { "--interpreter", 'i', "FILE",          true/*arg_optional*/,
+    { "--interpreter", 'i', "[FILE [LINENO]]",       true/*arg_optional*/,
 
         "run the in interpreter mode.  Reads all commands from stdin"
         " or at your option FILE.  "
@@ -272,8 +273,35 @@ static struct QsOption
         "    connect in 0 out 0\n"
         "    run\n"
         "\n"
+        "We added another option argument syntax to this \"interpreter\""
+        " thing.  For example:\n\n"
+        "    #!/bin/bash\n"
+        "\n"
+        "    quickstream --block foo\\\n"
+        "    --interpreter ${BASH_SOURCE[0]} ${LINENO}\n"
+        "    block tests/stdout out\n"
+        "    parameter-set in file foo\n"
+        "    connect in 0 out 0\n"
+        "    run\n"
+        "\n"
+        "In this case the \"interpreter\" mode of reading commands will\n"
+        " start at the line after the --interpreter option argument.\n"
+        "\n"
+        " And yet another: It also works in an interactive shell session:"
+        " just end the command with --interpreter and it starts reading"
+        " and running commands after each newline; but remember don't"
+        " prefix the commands with the -- or - like in the regular"
+        " command-line arguments, the newline is the command separator,"
+        " not -- or -.\n"
+        "\n"
         " TODO: An option for a interactive interpreter that uses"
-        " GNU readline."
+        " GNU readline.  We need to keep this in mind as we develop so"
+        " as to not fuck-up development like Python did in the past.  "
+        "Ruby did a good job of this, making a working interactive "
+        "interpreter from the start.  Granted, quickstream may never"
+        " reach the quality of Python or Ruby.  And we don't want"
+        " quickstream to have its' own language; we avoid that"
+        " rabbit hole, and use existing scripting languages."
     },
 /*----------------------------------------------------------------------*/
     { "--parameters-print", 'P', 0,  false,
