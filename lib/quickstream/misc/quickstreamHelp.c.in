@@ -278,7 +278,8 @@ static struct QsOption
         "    #!/bin/bash\n"
         "\n"
         "    quickstream --block foo\\\n"
-        "    --interpreter ${BASH_SOURCE[0]} ${LINENO}\n"
+        "    --interpreter ${BASH_SOURCE[0]} 6\n"
+        "    exit # for bash to exit and quickstream keeps running\n"
         "    block tests/stdout out\n"
         "    parameter-set in file foo\n"
         "    connect in 0 out 0\n"
@@ -293,6 +294,8 @@ static struct QsOption
         " prefix the commands with the -- or - like in the regular"
         " command-line arguments, the newline is the command separator,"
         " not -- or -.\n"
+        "\n"
+        "Note: this 
         "\n"
         " TODO: An option for a interactive interpreter that uses"
         " GNU readline.  We need to keep this in mind as we develop so"
