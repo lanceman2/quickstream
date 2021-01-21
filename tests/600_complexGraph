@@ -34,13 +34,14 @@ exit # exiting bash after --interpreter finishes parsing below.
 # Note: the above --interpreter ${BASH_SOURCE[0]} LINENO may need
 # LINENO to be changed if the line number changes.  We can't use
 # bash $LINENO because that does not count backslash line continuation.
+# I like to use text editors with the line number on the left.
 #
 # This is really cool.  Interpreter mode after command-line mode.
 # I just had to try it.
 
 block tests/copy c4
 block tests/copy c5
-block tests/copy c6
+block tests/passThrough c6
 block tests/copy c7
 block tests/sequenceCheck end
 connect gen 1 c0 0
@@ -55,4 +56,4 @@ connect c7 0 end 0
 parameter-set gen totalOut 9000
 parameter-set c0 seedOffset 1
 parameter-set c4 OutputMaxWrite 30
-run
+display

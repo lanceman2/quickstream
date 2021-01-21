@@ -295,8 +295,6 @@ static struct QsOption
         " command-line arguments, the newline is the command separator,"
         " not -- or -.\n"
         "\n"
-        "Note: this 
-        "\n"
         " TODO: An option for a interactive interpreter that uses"
         " GNU readline.  We need to keep this in mind as we develop so"
         " as to not fuck-up development like Python did in the past.  "
