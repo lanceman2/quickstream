@@ -56,4 +56,4 @@ connect c7 0 end 0
 parameter-set gen totalOut 9000
 parameter-set c0 seedOffset 1
 parameter-set c4 OutputMaxWrite 30
-display
+run
