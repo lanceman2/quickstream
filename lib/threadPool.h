@@ -25,6 +25,19 @@ struct QsThreadPool {
     // threadPool, be they idle or in the process of calling flow().  We
     // must have a ThreadPool mutex lock to access numThreads.
     //
+    // The numThreads counter does not decrease while the stream is
+    // flowing, even when threads exit.  There is no point to that given
+    // that the number of running threads will either always be increasing
+    // until the flow is stopping and then the threads will start exiting,
+    // and at that time no new threads will be created.  We need the
+    // numThreads for when we pthread_join() the threads.
+    //
+    // It works out that we don't need to know how many threads are not
+    // idle in a given thread pool.  We could add it for debugging, but it
+    // really is not needed for this thing to run.  The graph keeps some
+    // thread counters that do the job of knowing when the stream/flow is
+    // trying to have threads exit.
+    //
     // numThreads <= maxThreads
     uint32_t numThreads;
 

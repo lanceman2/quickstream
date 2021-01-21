@@ -619,7 +619,9 @@ int qsGraphWait(struct QsGraph *graph) {
         DASSERT(tp->numThreads != 0);
         for(uint32_t i = 0; i < tp->numThreads; ++i) {
             if(!tp->threads[i].hasLaunched) break;
-            DSPEW("JOINING thread %" PRIu32, i);
+            DSPEW("Joining pool(%" PRIu32 ") thread %"
+                    PRIu32 "/%" PRIu32,
+                    tp->id, i+1, tp->numThreads);
             // Join a worker thread:
             CHECK(pthread_join(tp->threads[i].thread, 0));
         }

@@ -10,26 +10,21 @@ if [ -n "$VaLGRIND_RuN" ] ; then
     # may be helpful, but mostly drives you insane.
     #
     # https://www.valgrind.org/docs/manual/manual-core.html#manual-core.pthreads
-    t0=0
-else
-    t0=10
+    echo "Skipping running with valgrind"
+    exit 3 # skip for now
 fi
 
 
-
-
-#exit 3 # skip for now
-
 ../bin/quickstream\
  -v 5\
- --threads $t0\
+ --threads 9\
  --block tests/sequenceGen gen\
  --block tests/sequenceCheck c0\
  --block tests/copy c1\
  --block tests/passThrough p2\
  --block tests/passThrough p3\
- --interpreter ${BASH_SOURCE[0]} 35  # FILENAME LINENO
-exit # exiting bash after --interpreter finishes parsing below.
+ --interpreter ${BASH_SOURCE[0]} 29  # FILENAME LINENO
+exit 0 # exiting bash after --interpreter finishes parsing below.
 
 # Note: the above --interpreter ${BASH_SOURCE[0]} LINENO may need
 # LINENO to be changed if the line number changes.  We can't use
@@ -40,6 +35,7 @@ exit # exiting bash after --interpreter finishes parsing below.
 # I just had to try it.
 
 block tests/copy c4
+threads 4
 block tests/copy c5
 block tests/passThrough c6
 block tests/copy c7
@@ -53,6 +49,8 @@ connect c4 0 c5 0
 connect c5 0 c6 0
 connect c6 0 c7 0
 connect c7 0 end 0
+block tests/stdout stdout
+connect c7 0 stdout 0
 parameter-set gen totalOut 9000
 parameter-set c0 seedOffset 1
 parameter-set c4 OutputMaxWrite 30

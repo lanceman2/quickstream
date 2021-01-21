@@ -18,6 +18,14 @@
 #include "run.h"
 
 
+// Simple spew CPP macro used only in this file.
+//
+#define THREADPOOL_SPEW(STYPE, tp, post) \
+    STYPE("ThreadPool(%" PRIu32 ") has %"\
+        PRIu32 " idle threads out of %" PRIu32 "%s",\
+        tp->id, tp->numIdleThreads, tp->numThreads, post)
+
+
 
 // We will have a thread pool (graph) mutex before calling this and after.
 // When the users trigger callback is called the mutex will be unlocked.
@@ -169,9 +177,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
             --graph->numIdleThreads;
             --tp->numIdleThreads;
 
-            DSPEW("ThreadPool has %" PRIu32 " idle threads out of %"
-                    PRIu32,
-                    tp->numIdleThreads, tp->numThreads);
+            THREADPOOL_SPEW(DSPEW, tp, "");
 
             return tp->first;
         }
@@ -219,8 +225,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
         ++tp->numIdleThreads;
     }
 
-    DSPEW("ThreadPool has %" PRIu32 " idle threads out of %" PRIu32,
-            tp->numIdleThreads, tp->numThreads);
+    THREADPOOL_SPEW(DSPEW, tp, "");
 
     // We cannot set --graph->numIdleThreads in this "jump from zone";
     // that would make it not possible to know if it was decremented,
@@ -280,9 +285,7 @@ bool WaitForWork(struct QsThreadPool *tp) {
     --graph->numIdleThreads;
     --tp->numIdleThreads;
 
-    DSPEW("ThreadPool has %" PRIu32 " idle threads out of %" PRIu32,
-            tp->numIdleThreads, tp->numThreads);
-
+    THREADPOOL_SPEW(DSPEW, tp, "");
 
     return tp->first;
 }
@@ -440,12 +443,9 @@ void *runWorker(struct QsThreadPool *tp) {
                 CHECK(pthread_cond_signal(&ttp->cond));
 
 
-    INFO("Thread exiting graph numWorkingThreads=%" PRIu32
-            "  tp(%p) numIdleThreads=%" PRIu32,
-        graph->numWorkingThreads, tp, tp->numIdleThreads);
+    THREADPOOL_SPEW(INFO, tp, " thread exiting");
 
     CHECK(pthread_mutex_unlock(tp->mutex));
-
 
     return 0;
 }
