@@ -266,6 +266,19 @@ void TriggerStart(struct QsTrigger *t) {
         }
         break;
         case QsStreamSource:
+        {
+            // Add this trigger to this special running list
+            struct QsStreamSource *s = (struct QsStreamSource *) t;
+            DASSERT(t->block);
+            struct QsGraph *g = ((struct QsBlock *)t->block)->graph;
+            DASSERT(g);
+            struct QsStreamSource *i = g->streamSourceTriggers;
+            while(i && i->next) i = i->next;
+            if(i) i->next = s;
+            else g->streamSourceTriggers = s;
+            s->next = 0;
+        }
+        break;
         case QsStreamIO:
         break;
     }
@@ -296,6 +309,28 @@ void TriggerStop(struct QsTrigger *t) {
             ((struct QsSetter *)t->userData)->trigger = 0;
         break;
         case QsStreamSource:
+        {
+            // Remove this trigger from this special list
+            struct QsStreamSource *s = (struct QsStreamSource *) t;
+            DASSERT(t->block);
+            struct QsGraph *g = ((struct QsBlock *)t->block)->graph;
+            DASSERT(g);
+            struct QsStreamSource *i = g->streamSourceTriggers;
+            DASSERT(i);
+            struct QsStreamSource *prev = 0;
+            for(; i && i != s; i = i->next) prev = i;
+            // We must find it or this code it shit.
+            DASSERT(i);
+            if(prev) {
+                DASSERT(g->streamSourceTriggers != s);
+                prev->next = s->next;
+            } else {
+                DASSERT(g->streamSourceTriggers == s);
+                g->streamSourceTriggers = s->next;
+            }
+            s->next = 0;
+        }
+        break;
         case QsStreamIO:
         break;
     }

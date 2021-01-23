@@ -31,6 +31,7 @@
 #include "trigger.h"
 #include "threadPool.h"
 #include "triggerJobsLists.h"
+#include "stream.h"
 
 
 
@@ -228,7 +229,7 @@ int qsBlockDisconnect(struct QsBlock *b, uint32_t inputPortNum) {
     ASSERT(b->graph->flowState == QsGraphPaused);
 
     if(b->isSuperBlock) {
-        ASSERT(0, "Write code to connect SuperBlocks by a stream");
+        ASSERT(0, "Write code to connect SuperBlocks in a stream");
         return -1; // error
     }
 
@@ -356,53 +357,6 @@ int IsSource(const struct QsSimpleBlock *b) {
 }
 
 
-// We have a threadPool mutex lock when this is called.
-static inline bool
-CheckBlockFlowCallable(struct QsSimpleBlock *b) {
-
-    DASSERT(b->streamTrigger);
-
-    if(b->callingFlow || !b->streamTrigger->isRunning)
-        // This filter block has a worker thread actively calling flow(),
-        // so there is no need to queue a worker for it.  It will just
-        // keep on working until working or queuing is not necessary, so
-        // we don't and can't queue it now.
-        return false;
-
-
-    // If any outputs are clogged than we cannot call flow().
-    for(uint32_t i = b->numOutputs-1; i != -1; --i) {
-        struct QsOutput *output = b->outputs + i;
-        for(uint32_t j = output->numInputs-1; j != -1; --j)
-            if(output->inputs[j]->readLength >= output->maxLength)
-                // We have at least one clogged output reader.  It has a
-                // full amount that it can read.  And so we will not be
-                // able to call flow().  Otherwise we could overrun the
-                // read pointer with the write pointer.
-                return false;
-    }
-
-
-    // If any input meets the threshold we can call flow() for this filter
-    // block, b, we return true.  If this filter block, b, decides that
-    // this one simple threshold condition is not enough then that filter
-    // block's flow() call can just do nothing and than this will try
-    // again later when another feeding filter block returns from a flow()
-    // call and we do this again.
-    for(uint32_t i = b->numInputs-1; i != -1; --i) {
-        struct QsInput *input = b->inputs + i;
-        if(input->readLength >= input->threshold)
-            return true;
-    }
-
-    if(b->numInputs == 0)
-        // We have no inputs so the inputs are not a restriction.
-        return true;
-
-    return false;
-}
-
-
 // This does a lot.
 //
 // Returns true to continue calling flow() or flush().
@@ -503,7 +457,10 @@ bool IsFlowableAndSetPointers(struct QsSimpleBlock *b) {
     for(uint32_t i = b->numInputs-1; i != -1; --i) {
         struct QsInput *input = b->inputs + i;
 
-        if((b->advanceLens[i] || input->readLength > b->inputLens[i]
+        if((        // input advanced
+                    b->advanceLens[i] ||
+                    // we got more data to read.
+                    input->readLength > b->inputLens[i]
                     ) && !inputAdvanced)
             inputAdvanced = true;
 
@@ -533,6 +490,7 @@ bool IsFlowableAndSetPointers(struct QsSimpleBlock *b) {
         // pointer (at this pass-through level).
         //
         // b is the reading filter.
+        DASSERT(input->readLength >= b->advanceLens[i]);
         input->readLength -= b->advanceLens[i];
 
         if(input->readPtr >= input->buffer->end) {
@@ -542,7 +500,9 @@ bool IsFlowableAndSetPointers(struct QsSimpleBlock *b) {
             DASSERT(input->readPtr < input->buffer->end);
         }
 
-        if(!inputsFeeding && input->readLength >= input->threshold)
+        // TODO: We need to take care of the flushing case:
+        //if(!inputsFeeding && input->readLength >= input->threshold)
+        if(!inputsFeeding && input->readLength)
             // The amount of input data left meets the needed threshold in
             // at least one input.  If the threshold condition is more
             // complex than the filter block will not eat the data we send

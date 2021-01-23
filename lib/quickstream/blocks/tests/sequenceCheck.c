@@ -26,7 +26,7 @@ int declare(void) {
 
 int start(uint32_t numInputs, uint32_t numOutputs) {
 
-    ASSERT(numInputs);
+    ASSERT(numInputs, "block %s", qsBlockGetName(0));
 
     DSPEW("%" PRIu32 " inputs  %" PRIu32 " outputs",
             numInputs, numOutputs);
@@ -98,7 +98,7 @@ int flow(void *buffers[], const size_t lens[],
         for(size_t j=0; j<len; ++j)
             // Check each character.  We like to know where it fails.
             ASSERT(comp[j] == in[j],
-                    "%s Miss-match on input channel %" PRIu32,
+                    "block %s Miss-match on input channel %" PRIu32,
                     qsBlockGetName(0), i);
 
         if(i < numOutputs)

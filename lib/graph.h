@@ -95,6 +95,14 @@ struct QsGraph {
     //
     struct QsThreadPool *threadPools;
 
+    // A singly linked list of QsStreamSourceTrigger that are running.
+    //
+    // This list is created before each run.  As the triggers are set to
+    // running.  And they are removed as they are set to not running.
+    //
+    struct QsStreamSource *streamSourceTriggers;
+
+
     // The main (master) thread waits on this conditional in qsGraphWait()
     // while the worker threads run the stream flow.
     //

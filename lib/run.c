@@ -16,6 +16,7 @@
 #include "trigger.h"
 #include "triggerJobsLists.h"
 #include "run.h"
+#include "stream.h"
 
 
 // Simple spew CPP macro used only in this file.
@@ -360,6 +361,32 @@ void *runWorker(struct QsThreadPool *tp) {
 
         } while(tp->first); // end loop over blocks queued in thread pool
 
+        // Check QsStreamSource triggers and see if we can queue some of
+        // them.  These triggers suck, in that they do not self trigger.
+        // We have to do this crap here.
+        for(struct QsStreamSource *s = graph->streamSourceTriggers; s;
+                s = s->next) {
+            struct QsTrigger *t = (struct QsTrigger *)s;
+            DASSERT(t->isRunning);
+            DASSERT(t->isSource);
+            DASSERT(t->isInJobQueue == 0 || t->block->threadPool != tp);
+            if(CheckBlockFlowCallable(t->block)) {
+                if(CheckAndQueueTrigger(t, t->block->threadPool)) {
+                    if(t->block->threadPool != tp) {
+                        // We just queued a job in a different thread pool
+                        // so we need to check if we need to wake a worker
+                        // to work on it.
+                        if(t->block->threadPool->numIdleThreads) {
+                            DSPEW("SIGNALING from pt(%" PRIu32
+                                    ") to tp(%" PRIu32 ")",
+                                    tp->id, t->block->threadPool->id);
+                            CHECK(pthread_cond_signal(
+                                        &t->block->threadPool->cond));
+                        }
+                    }
+                }
+            }
+        }
 
         // At this point there are no triggered jobs in this thread pool
         // queue.  So for whatever reason this thread pool needs to wait
@@ -402,17 +429,17 @@ void *runWorker(struct QsThreadPool *tp) {
             }
 
             if(!b) {
+                graph->finishingRunning = true;
                 // We found no usable source trigger in all thread pools.
                 if(tp->maxThreads == 0)
                     // There was no threads other then the main thread.
                     // We are done running.
                     break;
-                graph->finishingRunning = true;
             }
         }
 
-        if(graph->finishingRunning &&
-                graph->numIdleThreads == graph->numWorkingThreads-1)
+        if(graph->finishingRunning && (tp->maxThreads == 0 ||
+                graph->numIdleThreads == graph->numWorkingThreads-1))
             // All of the threads, but this one, are idle, so
             // we can return.
             break;

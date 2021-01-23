@@ -49,6 +49,9 @@ bool IsLineContinuation(const char *line, size_t len) {
 #endif
 
 
+
+
+
 // 0 args
 // --interpreter
 //
@@ -127,6 +130,7 @@ int RunInterpreter(int numArgs, const char * const *arg) {
             MAX_LEN, sizeof(*argv));
 
     int lineCount = startLineNum - 1;
+    int exitStatus = 0;
 
     while((nread = getline(&line, &len, file)) != -1) {
 
@@ -157,20 +161,26 @@ printf("\n");
                     command = opt->shortOpt;
                     break;
                 }
-        
+
         if(command == 0) {
             fprintf(stderr, "Unknown command: %s  line %d\n",
                     argv[0], lineCount);
-            continue;
+            exitStatus = 1;
+            break;
         }
 
         if(ProcessCommand(command, n-1, argv[0],
-                    (const char * const *)&argv[1]))
-            return 1; // fail
+                    (const char * const *)&argv[1], &exitStatus)) {
+            if(exitStatus)
+                fprintf(stderr, "Command failed: %s  line %d\n",
+                        argv[0], lineCount);
+            break;
+        }
     }
 
     free(line);
     free(argv);
     fclose(file);
-    return 0;
+
+    return exitStatus;
 }

@@ -520,18 +520,30 @@ void qsBlockUnload(struct QsBlock *b) {
 
         // We remove all the outputs by removing all the inputs that
         // connect from them.  We have to search for them.
+        //
         for(struct QsBlock *bl = b->graph->firstBlock; bl; bl = bl->next) {
             if(bl->isSuperBlock || bl == b) continue;
 
             struct QsSimpleBlock *smBl = (struct QsSimpleBlock *) bl;
-            if(smBl->inputs == 0) {
-                DASSERT(smBl->numInputs == 0);
-                continue;
-            }
+            // search all inputs for block smBl.
+            for(uint32_t i = smBl->numInputs-1; i != -1; --i) {
+                // Iterating a list (in this case an array) as we edit it
+                // can be tricky.
+                //
+                // We are changing as we iterate through.  Sometimes the
+                // numInputs can decrease by more than one, because there
+                // are unconnected lower number ports that get removed
+                // automatically when we remove one higher input port.
+                // Hence this weird if/else crap:
+                if(smBl->inputs == 0) {
+                    DASSERT(smBl->numInputs == 0);
+                    break;
+                } else if(i >= smBl->numInputs)
+                    i = smBl->numInputs - 1;
 
-            for(uint32_t i = smBl->numInputs - 1; i != -1; --i)
                 if(smBl->inputs[i].feederBlock == smB)
                     qsBlockDisconnect(bl, smBl->inputs[i].inputPortNum);
+            }
         }
 
         DASSERT(smB->numOutputs == 0);

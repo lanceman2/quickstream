@@ -17,7 +17,7 @@ void help(int fd);
 
 extern
 int ProcessCommand(int comm, int numArgs, const char *command,
-        const char * const *args);
+        const char * const *args, int *exitStatus);
 
 extern
 void CreateGraph(void);
@@ -25,3 +25,7 @@ void CreateGraph(void);
 
 extern
 int RunInterpreter(int numArgs, const char * const *argv);
+
+
+extern
+void Cleanup(void);

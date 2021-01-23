@@ -102,12 +102,13 @@ void qsErrorFree(void) {
 //
 // The non-zero return value must be free()ed by the API user.
 //
-// API interface.  Thread safe.
+// API interface.  Thread safe.  Kind-of expensive, but should only be
+// used in exceptional cases.
 //
 const char *qsError(void) {
 
     // Adds a pointer for every thread created; is better than adding the
-    // whole string of memory.
+    // whole string of memory.  No, it's really really thread safe.
     static __thread char *buffer = 0;
 
     if(buffer) {

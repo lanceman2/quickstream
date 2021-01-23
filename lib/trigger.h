@@ -170,6 +170,13 @@ struct QsStreamSource {
 
     // inherit QsTrigger
     struct QsTrigger trigger;
+
+
+    // We keep a list of QsStreamSource triggers in graph.  Just so we
+    // have fast access to them at flow/run time.  Since they suck, in
+    // that they do not self trigger, we must cycle through them to
+    // in the main run loop.
+    struct QsStreamSource *next;
 };
 
 

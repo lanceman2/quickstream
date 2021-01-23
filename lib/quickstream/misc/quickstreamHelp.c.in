@@ -239,6 +239,17 @@ static struct QsOption
         "stdout."
     },
 /*----------------------------------------------------------------------*/
+    { "--exit", 'e', "[STATUS]",                     false,
+
+        "exit the program with status 0 \"success\" by default.  "
+        "Needed when using the --interpreter mode.  This will try to "
+        "\"cleanly\" exit by calling all object destroyers.  This is no"
+        " different to what happens when the quickstream program runs"
+        " out of commands, it just give users the ability to cut off "
+        "a series of commands at any point without having to delete the"
+        " trailing commands.  This command is otherwise unnecessary."
+    },
+/*----------------------------------------------------------------------*/
     { "--graph", 'g', 0,               false,
 
         "create another stream graph.  Each time this option is given"

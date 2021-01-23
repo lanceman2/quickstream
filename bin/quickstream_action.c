@@ -152,6 +152,30 @@ int ParameterSet(const char *blockName, const char *parameterName,
 }
 
 
+// This should free/cleanup all resources that libquickstream created.
+// This can be called more than once with no fear of damage.
+//
+// We should be able to call this and then make new quickstream objects.
+//
+void
+Cleanup(void) {
+
+    if(graphs) {
+        while(numGraphs)
+            qsGraphDestroy(graphs[--numGraphs]);
+        // Free the array of pointers.
+        free(graphs);
+        graphs = 0;
+    }
+
+    // To free memory that was allocated by the spew and error CPP macro
+    // functions: ASSERT(), DASSERT(), ERROR(), WARN(), NOTICE(), INFO(),
+    // DSPEW() and SPEW() from debug.c and debug.h.
+    //
+    qsErrorFree();
+}
+
+
 // Process a single command.
 //
 // This does nothing much.  It just translates from a command string to
@@ -176,7 +200,7 @@ int ParameterSet(const char *blockName, const char *parameterName,
 // return 0 on success and non-zero on error
 //
 int ProcessCommand(int comm, int numArgs, const char *command,
-        const char * const *argv) {
+        const char * const *argv, int *exitStatus) {
 
     switch(comm) {
 
@@ -192,15 +216,38 @@ int ProcessCommand(int comm, int numArgs, const char *command,
         case '*':
             fprintf(stderr, "\nBad option: %s\n\n", command);
             // this will exit with error.
-            exit(1);
+            *exitStatus = 1;
+            Cleanup();
+            return 1;
         case '?':
         case 'h':
             // The --help option get stdout and all the error
             // cases get stderr.
+            Cleanup();
+            // help() does not return.
             help(STDOUT_FILENO);
+            *exitStatus = 0;
+            return 1;
         case 'V': //--version
             printf("%s\n", QUICKSTREAM_VERSION);
-            exit(0);
+            Cleanup();
+            *exitStatus = 0;
+            return 1;
+        case 'e': // --exit
+        {
+            int status = 0;
+            if(numArgs) {
+                // Get an exit status from argv[0].
+                errno = 0;
+                char *endptr = 0;
+                status = strtol(argv[0], &endptr, 10);
+                if(endptr == argv[0] || status > 255 || status < -255)
+                    status = 1;
+            }
+            Cleanup();
+            *exitStatus = status;
+            return 1;
+        }
 
         /////////////////////////////////////////////////////////////////
         //           NON-EXITING CASES    (if no error)                //
@@ -211,6 +258,7 @@ int ProcessCommand(int comm, int numArgs, const char *command,
             // We do not want the name to start with '-'
             if(!numArgs || argv[0][0] == '-' || numArgs > 2) {
                 PrintInvalidCommand(numArgs, command, argv);
+                *exitStatus = 1;
                 return 1;
             }
             {
@@ -222,6 +270,7 @@ int ProcessCommand(int comm, int numArgs, const char *command,
                 struct QsBlock *b = qsGraphBlockLoad(graph, argv[0], name);
                 if(!b) {
                     fprintf(stderr, "Loading block %s FAILED\n", argv[0]);
+                    *exitStatus = 1;
                     return 1; // error return code.
                 }
             }
@@ -231,15 +280,21 @@ int ProcessCommand(int comm, int numArgs, const char *command,
             // We must have 3 additional args:
             if(numArgs < 3) {
                 fprintf(stderr, "--parameter-set without 3 args\n");
+                *exitStatus = 1;
                 return 1;
             }
             if(!graph) {
                 // If there not graph than their are no blocks.
                 fprintf(stderr, "--parameter-set "
                         "with no blocks loaded");
+                *exitStatus = 1;
                 return 1;
             }
-            return ParameterSet(argv[0], argv[1], &argv[2], numArgs-2);
+            if(ParameterSet(argv[0], argv[1], &argv[2], numArgs-2)) {
+                *exitStatus = 1;
+                return 1;
+            }
+            return 0;
 
         case  'c': // --connect block0 outPort block1 inPort
             // We must have 4 additional args:
@@ -247,12 +302,14 @@ int ProcessCommand(int comm, int numArgs, const char *command,
                 fprintf(stderr, "--connect "
                             "without 4 more args: "
                             "block0 outPort block1 inPort\n");
+                *exitStatus = 1;
                 return 1;
             }
             if(!graph) {
                 // If there not graph than their are no blocks.
                 fprintf(stderr, "--connect "
                         "with no blocks loaded");
+                *exitStatus = 1;
                 return 1;
             }
             char *end;
@@ -261,28 +318,33 @@ int ProcessCommand(int comm, int numArgs, const char *command,
             if(argv[0] == end) {
                 fprintf(stderr, "--connect bad outPort number: %s\n",
                             argv[1]);
+                *exitStatus = 1;
                 return 1;
             }
             uint32_t toPortNum = strtoul(argv[3], &end, 10); 
             if(argv[3] == end) {
                 fprintf(stderr, "--connect bad inPort number: %s\n",
                         argv[3]);
+                *exitStatus = 1;
                 return 1;
             }
             struct QsBlock *b0 = qsGraphGetBlockByName(graph, argv[0]);
             if(!b0) {
                 fprintf(stderr, "--connect: block \"%s\" not found\n",
                         argv[0]);
+                *exitStatus = 1;
                 return 1;
             }
             struct QsBlock *b1 = qsGraphGetBlockByName(graph, argv[2]);
             if(!b1) {
                 fprintf(stderr, "--connect: block \"%s\" not found\n",
                         argv[2]);
+                *exitStatus = 1;
                 return 1;
             }
             if(qsBlockConnect(b0, b1, fromPortNum, toPortNum)) {
                 fprintf(stderr, "--connect: failed to connect\n");
+                *exitStatus = 1;
                 return 1;    
             }
             return 0;
@@ -294,12 +356,14 @@ int ProcessCommand(int comm, int numArgs, const char *command,
                 fprintf(stderr, "--connect-parameters "
                             "without 4 more args: "
                             "block0 parameter0 block1 parameter1\n");
+                *exitStatus = 1;
                 return 1;
             }
             if(!graph) {
                 // If there not graph than their are no blocks.
                 fprintf(stderr, "--connect-parameters "
                         "with no blocks loaded");
+                *exitStatus = 1;
                 return 1;
             }
             {
@@ -348,17 +412,21 @@ int ProcessCommand(int comm, int numArgs, const char *command,
                                 "\"%s\" ",
                                 argv[3], argv[2]);
                     fprintf(stderr,"\n");
+                    *exitStatus = 1;
                     return 1;
                 }
 
-                if(qsParameterConnect(p0, p1))
+                if(qsParameterConnect(p0, p1)) {
+                    *exitStatus = 1;
                     return 1;
+                }
                 return 0;
             }
 
         case 's': // sleep SECONDS
             if(numArgs != 1) {
                 fprintf(stderr, "--sleep with bad SECONDS\n");
+                *exitStatus = 1;
                 return 1;
             }
             {
@@ -367,6 +435,7 @@ int ProcessCommand(int comm, int numArgs, const char *command,
                 double val = strtod(argv[0], &endptr);
                 if(endptr == argv[0] || val <= 0.0) {
                     fprintf(stderr, "Bad --sleep option\n\n");
+                    *exitStatus = 1;
                     return 1;
                 }
                 if(level >= 4) // 4 = INFO
@@ -385,7 +454,8 @@ int ProcessCommand(int comm, int numArgs, const char *command,
         case 'i': // --interpreter
             // This may return and let the command-line parser keep going
             // after this go at the interpreter.
-            return RunInterpreter(numArgs, argv);
+            *exitStatus = RunInterpreter(numArgs, argv);
+            return *exitStatus;
 
         case 'd': // --display Generate a graphviz dot graph and run the
             // imagemagick display program and continue running
@@ -419,20 +489,25 @@ int ProcessCommand(int comm, int numArgs, const char *command,
             // while the stream is flowing?  What about when there is
             // more than one graph and only some graphs fail?
             for(uint32_t i = 0; i<numGraphs; ++i)
-                if(qsGraphRun(graphs[i]))
+                if(qsGraphRun(graphs[i])) {
+                    *exitStatus = 1;
                     return 1;
+                }
             //
             // Now wait for them to finish running:
             for(uint32_t i = 0; i<numGraphs; ++i)
                 // For the case when there are no other threads than this
                 // main thread this will not block and do the right thing.
-                if(qsGraphWait(graphs[i]))
+                if(qsGraphWait(graphs[i])) {
+                    *exitStatus = 1;
                     return 1;
+                }
             return 0;
 
         case 't': // --threads
             if(numArgs != 1) {
                 fprintf(stderr, "--threads with bad MAX_THREADS\n");
+                *exitStatus = 1;
                 return 1;
             }
             {
@@ -441,6 +516,7 @@ int ProcessCommand(int comm, int numArgs, const char *command,
                 uint32_t maxThreads = strtol(argv[0], &endptr, 10);
                 if(endptr == argv[0] || maxThreads > 1000000) {
                     fprintf(stderr, "Bad --threads option\n\n");
+                    *exitStatus = 1;
                     return 1;
                 }
                 if(level >= 4) // 4 = INFO
@@ -456,6 +532,7 @@ int ProcessCommand(int comm, int numArgs, const char *command,
         case 'v': // --verbose
             if(numArgs != 1) {
                 fprintf(stderr, "--verbose with bad level\n");
+                *exitStatus = 1;
                 return 1;
             }
                 

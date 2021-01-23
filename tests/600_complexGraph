@@ -11,19 +11,71 @@ if [ -n "$VaLGRIND_RuN" ] ; then
     #
     # https://www.valgrind.org/docs/manual/manual-core.html#manual-core.pthreads
     echo "Skipping running with valgrind"
-    exit 3 # skip for now
+    #exit 3 # skip for now
+fi
+
+exit 3 # skip for now.
+
+if ../bin/quickstream --interpreter ${BASH_SOURCE[0]} 28 ; then  # FILENAME LINENO
+    exit 0 # exiting bash after --interpreter finishes parsing below.
+else
+    exit 1
 fi
 
 
-../bin/quickstream\
- -v 5\
- --threads 9\
- --block tests/sequenceGen gen\
- --block tests/sequenceCheck c0\
- --block tests/copy c1\
- --block tests/passThrough p2\
- --block tests/passThrough p3\
- --interpreter ${BASH_SOURCE[0]} 29  # FILENAME LINENO
+# Note: the above --interpreter ${BASH_SOURCE[0]} LINENO may need
+# LINENO to be changed if the line number changes.  We can't use
+# bash $LINENO because that does not count backslash line continuation.
+# I like to use text editors with the line number on the left.
+#
+# This is really cool.  Interpreter mode after command-line mode.
+# I just had to try it.
+
+v 5
+threads 0
+block tests/sequenceGen gen0
+block tests/sequenceGen gen1
+block tests/sequenceGen gen2
+block tests/sequenceCheck p0
+block tests/sequenceCheck p1
+block tests/passThrough p01
+block tests/sequenceCheck p11
+block tests/sequenceCheck p21
+
+block tests/sequenceCheck p41
+
+
+
+
+
+
+connect gen0 0 p01 0
+connect gen0 1 p01 1
+connect gen1 0 p01 2
+
+connect gen1 0 p11 0
+connect gen2 1 p11 1
+connect gen2 2 p11 2
+
+connect gen0 1 p21 0
+connect gen1 2 p21 1
+connect gen2 3 p21 2
+
+connect gen2 0 p1 0
+connect gen1 1 p1 1
+connect p01  2 p41 0
+
+connect p01 0 p0 0
+connect p01 1 p0 1
+
+
+parameter-set p21 seedOffset 1
+run
+exit
+
+
+block tests/passThrough p2
+block tests/passThrough p3
 exit 0 # exiting bash after --interpreter finishes parsing below.
 
 # Note: the above --interpreter ${BASH_SOURCE[0]} LINENO may need
@@ -38,6 +90,7 @@ block tests/copy c4
 threads 4
 block tests/copy c5
 block tests/passThrough c6
+threads 2
 block tests/copy c7
 block tests/sequenceCheck end
 connect gen 1 c0 0

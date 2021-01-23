@@ -47,9 +47,9 @@ int main(int argc, const char * const *argv) {
     signal(SIGSEGV, gdb_catcher);
 
     int i = 1;
-    int ret = 0; // return code.
     const char *arg = 0;
     int numArgs; // dummy
+    int exitStatus = 0;
 
     qsSetSpewLevel(DEFAULT_SPEW_LEVEL);
 
@@ -62,29 +62,13 @@ int main(int argc, const char * const *argv) {
         // We used to have a long switch(c) here, but we moved
         // it into this function which we also use to run the --interpret
         // mode.
-        ret = ProcessCommand(c, numArgs, argv[i], &argv[i]);
+        if(ProcessCommand(c, numArgs, argv[i], &argv[i], &exitStatus))
+            break;
         i += numArgs;
         arg = 0;
-
-        if(ret)
-            // Something failed in a way that we can't continue to run.
-            // We will skip parsing the rest of the arguments options.
-            break;
     }
 
+    Cleanup();
 
-    if(graphs) {
-        while(numGraphs)
-            qsGraphDestroy(graphs[--numGraphs]);
-        // Free the array of pointers.
-        free(graphs);
-    }
-
-    // To free memory that was allocated by the spew and error CPP macro
-    // functions: ASSERT(), DASSERT(), ERROR(), WARN(), NOTICE(), INFO(),
-    // DSPEW() and SPEW() from debug.c and debug.h.
-    //
-    qsErrorFree();
-
-    return ret;
+    return exitStatus;
 }
