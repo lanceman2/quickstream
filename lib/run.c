@@ -364,6 +364,14 @@ void *runWorker(struct QsThreadPool *tp) {
         // Check QsStreamSource triggers and see if we can queue some of
         // them.  These triggers suck, in that they do not self trigger.
         // We have to do this crap here.
+        //
+        // TODO:  This for code block may not be needed at all.  There
+        // should be no reason that this needs to queue up stream work.
+        // That should be done in StreamFlow_callback() in stream.c.  For
+        // now we'll test that hypnosis by calling ASSERT(0).  If the
+        // ASSERT(0) ever gets called then we can remove this for block of
+        // code.
+        //
         for(struct QsStreamSource *s = graph->streamSourceTriggers; s;
                 s = s->next) {
             struct QsTrigger *t = (struct QsTrigger *)s;
@@ -372,6 +380,9 @@ void *runWorker(struct QsThreadPool *tp) {
             DASSERT(t->isInJobQueue == 0 || t->block->threadPool != tp);
             if(CheckBlockFlowCallable(t->block)) {
                 if(CheckAndQueueTrigger(t, t->block->threadPool)) {
+                    ERROR("added t->block \"%s\" to queue",
+                            t->block->block.name);
+                    ASSERT(0, "I don't think this code makes sense");
                     if(t->block->threadPool != tp) {
                         // We just queued a job in a different thread pool
                         // so we need to check if we need to wake a worker
