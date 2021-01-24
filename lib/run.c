@@ -361,16 +361,20 @@ void *runWorker(struct QsThreadPool *tp) {
 
         } while(tp->first); // end loop over blocks queued in thread pool
 
+
+#if 0   // TODO: REMOVE THIS CRAP.
+
         // Check QsStreamSource triggers and see if we can queue some of
         // them.  These triggers suck, in that they do not self trigger.
         // We have to do this crap here.
-        //
+
         // TODO:  This for code block may not be needed at all.  There
         // should be no reason that this needs to queue up stream work.
         // That should be done in StreamFlow_callback() in stream.c.  For
         // now we'll test that hypnosis by calling ASSERT(0).  If the
         // ASSERT(0) ever gets called then we can remove this for block of
-        // code.
+        // code.  Of course we can't prove that this code is not needed,
+        // we can only prove the converse.
         //
         for(struct QsStreamSource *s = graph->streamSourceTriggers; s;
                 s = s->next) {
@@ -398,6 +402,7 @@ void *runWorker(struct QsThreadPool *tp) {
                 }
             }
         }
+#endif
 
         // At this point there are no triggered jobs in this thread pool
         // queue.  So for whatever reason this thread pool needs to wait

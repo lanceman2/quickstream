@@ -142,7 +142,6 @@ int flow(void *buffers[], const size_t lens[],
                 qsAssertAction = AssertAction;
                 return 0;
             }
-            ERROR();
         }
 
         memcpy(qsGetOutputBuffer(i), buffers[i], len);

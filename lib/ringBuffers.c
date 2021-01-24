@@ -48,19 +48,30 @@ IsFeedingPassThrough(struct QsSimpleBlock *b, struct QsOutput *o) {
     // Search this block's list of blocks that it feeds.
     for(uint32_t i = o->numInputs - 1; i != -1; --i) {
         struct QsSimpleBlock *smB = o->inputs[i]->block;
+
         uint32_t inputPortNum = o->inputs[i]->inputPortNum;
-        uint32_t outputPortNum = o->inputs[i]->outputPortNum;
+
+        // See if this smB block has a inputPortNum in it's
+        // smB->passThroughs[]
+
         uint32_t j = smB->numPassThroughs - 1;
         for(; j != -1; --j)
-            if(smB->passThroughs[j].inputPortNum == inputPortNum &&
-                    smB->passThroughs[j].outputPortNum == outputPortNum) {
+            if(smB->passThroughs[j].inputPortNum == inputPortNum
+                    && smB->passThroughs[j].outputPortNum < 
+                    smB->numOutputs) {
+                // Okay we have a match.  Block "b" is feeding
+                // a pass-through in block smB that goes from
+                // input port "inputPortNum" to output port
+                // smB->passThroughs[j].outputPortNum
+                //
                 p.input = smB->inputs + inputPortNum;
-                p.output = smB->outputs + outputPortNum;
+                p.output = smB->outputs +
+                    smB->passThroughs[j].outputPortNum;
                 break;
             }
         if(j != -1)
             // We found a matching pass-through pair in a block that b
-            // outputs to.
+            // outputs to.  // double for loop break.
             break;
     }
 
@@ -84,7 +95,6 @@ IsPassThrough(struct QsSimpleBlock *b, struct QsOutput *o) {
 
     return false;
 }
-
 
 
 static

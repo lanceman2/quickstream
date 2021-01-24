@@ -2,6 +2,7 @@
 
 set -ex
 
+# This test found a major bug.  Pissed away one week of my life.
 
 if [ -n "$VaLGRIND_RuN" ] ; then
     # valgrind can't run a multi-threaded
@@ -10,16 +11,16 @@ if [ -n "$VaLGRIND_RuN" ] ; then
     # may be helpful, but mostly drives you insane.
     #
     # https://www.valgrind.org/docs/manual/manual-core.html#manual-core.pthreads
-    echo "Skipping running with valgrind"
+    #echo "Skipping running with valgrind"
+    echo
     #exit 3 # skip for now
 fi
 
-exit 3 # skip for now.
 
 if ../bin/quickstream --interpreter ${BASH_SOURCE[0]} 28 ; then  # FILENAME LINENO
     exit 0 # exiting bash after --interpreter finishes parsing below.
 else
-    exit 1
+    exit 1 # fail
 fi
 
 
@@ -41,13 +42,7 @@ block tests/sequenceCheck p1
 block tests/passThrough p01
 block tests/sequenceCheck p11
 block tests/sequenceCheck p21
-
 block tests/sequenceCheck p41
-
-
-
-
-
 
 connect gen0 0 p01 0
 connect gen0 1 p01 1
@@ -68,43 +63,6 @@ connect p01  2 p41 0
 connect p01 0 p0 0
 connect p01 1 p0 1
 
-
 parameter-set p21 seedOffset 1
 run
-exit
 
-
-block tests/passThrough p2
-block tests/passThrough p3
-exit 0 # exiting bash after --interpreter finishes parsing below.
-
-# Note: the above --interpreter ${BASH_SOURCE[0]} LINENO may need
-# LINENO to be changed if the line number changes.  We can't use
-# bash $LINENO because that does not count backslash line continuation.
-# I like to use text editors with the line number on the left.
-#
-# This is really cool.  Interpreter mode after command-line mode.
-# I just had to try it.
-
-block tests/copy c4
-threads 4
-block tests/copy c5
-block tests/passThrough c6
-threads 2
-block tests/copy c7
-block tests/sequenceCheck end
-connect gen 1 c0 0
-connect gen 0 c1 0
-connect c1 0 p2 0
-connect p2 0 p3 0
-connect p3 0 c4 0
-connect c4 0 c5 0
-connect c5 0 c6 0
-connect c6 0 c7 0
-connect c7 0 end 0
-block tests/stdout stdout
-connect c7 0 stdout 0
-parameter-set gen totalOut 9000
-parameter-set c0 seedOffset 1
-parameter-set c4 OutputMaxWrite 30
-run

@@ -58,7 +58,6 @@ int flow(void *buffers[], const size_t lens[],
         uint32_t numInputs, uint32_t numOutputs) {
 
 
-ERROR("%s", qsBlockGetName(0));
     DASSERT(numInputs == 0);
     DASSERT(numOutputs);
 
