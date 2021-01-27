@@ -278,7 +278,7 @@ void TriggerStart(struct QsTrigger *t) {
             else g->streamSourceTriggers = s;
             s->next = 0;
         }
-        break;
+        case QsReadFd:
         case QsStreamIO:
         break;
     }
@@ -331,6 +331,7 @@ void TriggerStop(struct QsTrigger *t) {
             s->next = 0;
         }
         break;
+        case QsReadFd:
         case QsStreamIO:
         break;
     }

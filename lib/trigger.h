@@ -12,7 +12,8 @@ enum QsTriggerKind {
 
     QsSetterTrigger, // for calling setter parameter callback
     QsSignal,   // OS signal trigger callback
-
+    QsReadFd,  // epoll_wait()
+    //QsWriteFd, // epoll_wait()
     // Stream triggers go after all others.  So we can tell they are for
     // streams by the greater value
 
@@ -180,7 +181,7 @@ struct QsStreamSource {
 };
 
 
-struct QsStreamFdRead {
+struct QsReadFd {
 
     // A trigger based on epoll_wait(2) for a reading fd.
 
@@ -191,7 +192,7 @@ struct QsStreamFdRead {
 };
 
 
-struct QsStreamFdWrite {
+struct QsWriteFd {
 
     // A trigger based on epoll_wait(2) for a writing fd.
 

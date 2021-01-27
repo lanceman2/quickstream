@@ -1,0 +1,60 @@
+#!/bin/bash
+
+set -ex
+
+
+if [ -n "$VaLGRIND_RuN" ] ; then
+    # valgrind can't run a multi-threaded
+    # version of this successfully.
+    # Running GDB with multi-threaded programs and valgrind
+    # may be helpful, but mostly drives you insane.
+    #
+    # https://www.valgrind.org/docs/manual/manual-core.html#manual-core.pthreads
+    echo "Skipping running with valgrind"
+    exit 3 # skip for now
+fi
+
+if ../bin/quickstream --interpreter ${BASH_SOURCE[0]} 25 ; then  # FILENAME LINENO
+    exit 0 # exiting bash after --interpreter finishes parsing below.
+else
+    exit 1
+fi
+
+# Note: the above --interpreter ${BASH_SOURCE[0]} LINENO may need
+# LINENO to be changed if the line number changes.  We can't use
+# bash $LINENO because that does not count backslash line continuation.
+# I like to use text editors with the line number on the left.
+#
+# This is really cool.  Interpreter mode after command-line mode.
+# I just had to try it.
+
+v 4
+threads 2
+block tests/sequenceGen gen0
+block tests/sequenceGen gen1
+threads 2
+block tests/sequenceGen gen2
+block tests/sequenceCheck c0
+threads 2
+block tests/sequenceCheck c1
+block tests/sequenceCheck c2
+threads 2
+block tests/passThrough p0
+block tests/sequenceCheck c3
+connect gen0 1 c1 1
+connect gen2 0 c2 0
+connect gen1 1 c0 1
+connect gen1 2 c2 2
+connect c0 1 p0 1
+connect p0 1 c2 1
+connect gen0 0 p0 0
+connect p0 0 c0 0
+connect c0 0 c1 0
+connect gen1 0 c3 0
+parameter-set gen0 OutputMaxWrite 1
+parameter-set c0 OutputMaxWrite 10
+parameter-set p0 OutputMaxWrite 103
+#display
+run
+exit 0
+should not get here

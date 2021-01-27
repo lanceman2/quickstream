@@ -256,7 +256,6 @@ bool WaitForWork(struct QsThreadPool *tp) {
     do {
         // pause/wait.  Mutex unlock inside pthread_cond_wait()
         CHECK(pthread_cond_wait(&tp->cond, tp->mutex));
-        //pause();
         //
         // This can wake up and find no work because another thread did
         // the work for us between the time a job is posted and the time

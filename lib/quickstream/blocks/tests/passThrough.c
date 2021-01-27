@@ -21,8 +21,9 @@ int declare(void) {
 
 int start(uint32_t numInputs, uint32_t numOutputs) {
 
+    // Note: this can work with no inputs and outputs.
+
     ASSERT(numInputs <= MAX_INPUTS);
-    ASSERT(numInputs);
     ASSERT(numInputs == numOutputs);
 
     DSPEW("%" PRIu32 " inputs  %" PRIu32 " outputs",
