@@ -16,6 +16,13 @@
 #include "qsb_treeView.h"
 
 
+// TODO: This has problems getting the path that can be used by whatever
+// will load the plugins.  The path is relative to what? and what
+// environment variables where used?
+//
+// We need to add a path finder function, that verifies/normalizes the
+// path.
+
 // Returns name to add the file, or 0 to not.
 //
 // The returned value must be free()d.
@@ -30,13 +37,15 @@ char *GetName(int dirfd, const char *path) {
 
 
 // Returns true to add the file, or 0 to not.
+//
+// The dirfd should not be closed by this function.
 static
 bool CheckFile(int dirfd, const char *path) {
 
     size_t len = strlen(path);
     if(len <= 2) return false;
 
-    if(strcmp(&path[len-2], ".c") == 0) {
+    if(strcmp(&path[len-2], ".h") == 0) {
         //DSPEW("%s", path);
         return true;
     }
@@ -55,11 +64,16 @@ void setup_widgets(const char *path) {
 
     GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
-    GtkWidget *tree = treeViewCreate(0);
-    treeViewAdd(tree, path, path, CheckFile, GetName);
-    treeViewShow(tree, "Choose Block");
+    {
+        //////////////////////////////////////////////////////
+        //   THIS BLOCK IS THE API WE ARE TESTING
+        //////////////////////////////////////////////////////
+        GtkWidget *tree = treeViewCreate(0);
+        treeViewAdd(tree, path, path, CheckFile, GetName);
+        treeViewShow(tree, "Choose Block");
+        gtk_container_add(GTK_CONTAINER(vbox), tree);
+    }
 
-    gtk_container_add(GTK_CONTAINER(vbox), tree);
     gtk_container_add(GTK_CONTAINER(win), vbox);
 
     gtk_widget_show(vbox);
@@ -87,7 +101,7 @@ int main(int argc, char *argv[]) {
 
     gtk_init(&argc, &argv);
 
-    setup_widgets(argv[1]);
+    setup_widgets(argv[1]?argv[1]:"..");
 
     gtk_main(); 
 
