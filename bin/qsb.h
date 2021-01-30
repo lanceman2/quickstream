@@ -132,6 +132,7 @@ struct Block {
     gint x, y; // current position in layout widget.
 };
 
+
 struct Connection {
 
     // By convention "from" is a "output" or "get" and

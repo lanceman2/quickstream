@@ -4,8 +4,6 @@ INSTALL_DIR = $(PREFIX)/bin
 
 GTK_CFLAGS := $(shell pkg-config --cflags gtk+-3.0)
 GTK_LDFLAGS := $(shell pkg-config --libs gtk+-3.0)
-XML2_CFLAGS := $(shell pkg-config --cflags libxml-2.0)
-XML2_LDFLAGS := $(shell pkg-config --libs libxml-2.0)
 
 G_COMPILE_RES := glib-compile-resources
 
@@ -18,9 +16,25 @@ quickstream_SOURCES :=\
  quickstream_interpreter.c
 quickstream_LDFLAGS := -L../lib -lquickstream -Wl,-rpath=\$$ORIGIN/../lib
 
+BUILD_NO_INSTALL := scribble treeView treeView1
+
 scribble_SOURCES := scribble.c
-scribble_LDFLAGS := $(GTK_LDFLAGS) 
+scribble_LDFLAGS := $(GTK_LDFLAGS)
 scribble_CPPFLAGS := $(GTK_CFLAGS)
+
+treeView_SOURCES := treeView.c
+treeView_LDFLAGS := $(GTK_LDFLAGS)
+treeView_CPPFLAGS := $(GTK_CFLAGS)
+
+treeView_directoryTest_SOURCES :=\
+ treeView_directoryTest.c\
+ ../lib/debug.c\
+ qsb_treeView.c
+treeView_directoryTest_LDFLAGS := $(GTK_LDFLAGS)
+treeView_directoryTest_CPPFLAGS := $(GTK_CFLAGS)
+
+
+
 
 ifeq ($(GTK_LDFLAGS),)
 $(warning "Not building quickstreamBuilder")
@@ -41,8 +55,8 @@ quickstreamBuilder_SOURCES :=\
  qsb_workArea_res.c\
  qsb_popup_res.c
 
-quickstreamBuilder_CPPFLAGS := $(GTK_CFLAGS) $(XML2_CFLAGS)
-quickstreamBuilder_LDFLAGS := $(GTK_LDFLAGS) $(XML2_LDFLAGS) -lm
+quickstreamBuilder_CPPFLAGS := $(GTK_CFLAGS)
+quickstreamBuilder_LDFLAGS := $(GTK_LDFLAGS) -lm
 
 
 endif

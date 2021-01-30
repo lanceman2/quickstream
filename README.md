@@ -126,8 +126,7 @@ apt install
  libasound2-dev\
  python3-dev\
  libssl-dev\
- libuhd-dev\
- libxml2-dev
+ libuhd-dev
 ```
 
 If you do want to generate documentation you will need the three packages:
