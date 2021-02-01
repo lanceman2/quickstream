@@ -36,7 +36,7 @@ char *GetName(int dirfd, const char *path) {
 }
 
 
-// Returns true to add the file, or 0 to not.
+// Returns true to add the file, or false to not.
 //
 // The dirfd should not be closed by this function.
 static

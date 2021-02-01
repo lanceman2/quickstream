@@ -154,7 +154,6 @@ void AddView(GtkTreeStore *store, const char *path,  const char *name,
     // Now dirfd is trashed by dir, and we use dir to cleanup resources,
     // not dirfd.
 
-
     struct dirent *ent = readdir(dir);
 
     while(ent) {
