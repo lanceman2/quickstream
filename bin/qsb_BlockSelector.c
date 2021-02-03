@@ -68,7 +68,6 @@ char *GetModuleDirectory(void) {
     buf[rl] = '\0';
     // move from end to 2nd to last '/'
     char *str = buf + (rl-1);
-#define DIRCHAR  ('/')
     while(str != buf && *str != DIRCHAR) --str;
     // at /home/joe/git/quickstream/bin/
     if(str != buf) --str;
@@ -156,14 +155,64 @@ char *GetName(int dirfd, const char *path) {
 }
 
 
+char *selectedBlockFile = 0;
+
+
 static
 void
-rowActivated_CB(GtkTreeView       *tree_view,
-               GtkTreePath       *path,
+rowActivated_CB(GtkTreeView       *tree,
+               GtkTreePath       *tpath,
                GtkTreeViewColumn *column,
                gpointer           user_data) {
 
-    ERROR();
+    GtkTreeModel *store = gtk_tree_view_get_model(GTK_TREE_VIEW(tree));
+    GtkTreeIter iter;
+    gtk_tree_model_get_iter(store, &iter, tpath);
+    gboolean hasChildren = gtk_tree_model_iter_has_child(store, &iter);
+
+    if(hasChildren)
+        // We just get selections that are children.
+        return;
+
+
+    if(selectedBlockFile) {
+        free(selectedBlockFile);
+        selectedBlockFile = 0;
+    }
+
+
+    gboolean ret = TRUE;
+
+    while(ret) {
+
+        gchar *name;
+        gtk_tree_model_get(store, &iter, 0/*column*/, &name, -1);
+        GtkTreeIter parentIter;
+        ret = gtk_tree_model_iter_parent(store, &parentIter, &iter);
+        iter = parentIter;
+
+        if(ret) {
+            size_t l0 = 0;
+            char *oldItem = 0;
+            if(selectedBlockFile) {
+                l0 = strlen(selectedBlockFile);
+                oldItem = selectedBlockFile;
+            }
+            size_t l1 = l0 + strlen(name) + 2;
+            selectedBlockFile = malloc(l1);
+            ASSERT(selectedBlockFile, "malloc(%zu) failed", l1);
+            if(oldItem)
+                sprintf(selectedBlockFile, "%s/%s", name, oldItem);
+            else
+                strcpy(selectedBlockFile, name);
+
+            if(oldItem)
+                free(oldItem);
+        }
+        g_free(name);
+    }
+
+    WARN("selectedBlockFile=%s", selectedBlockFile);
 }
 
 
@@ -192,4 +241,16 @@ void AddBlockSelector(GtkWidget *tree) {
 
     free(pathLabel);
     free(moduleDir);
+}
+
+
+// We let the gtk widget API handle cleanup of the GTK Tree View, but
+// there is some cleanup needed.
+//
+void CleanupBlockSelector(void) {
+
+    if(selectedBlockFile) {
+        free(selectedBlockFile);
+        selectedBlockFile = 0;
+    }
 }

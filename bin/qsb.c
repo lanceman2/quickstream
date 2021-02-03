@@ -130,7 +130,7 @@ Connect(GtkBuilder *builder, const char *id, const char *action,
 }
 
 
-static inline void MakeWorkArea(struct Page *page) {
+static inline void MakeWorkArea(void) {
 
     GtkBuilder *b = gtk_builder_new_from_resource(
             "/quickstreamBuilder/qsb_workArea_res.ui");
@@ -153,27 +153,10 @@ static inline void MakeWorkArea(struct Page *page) {
     g_object_unref(G_OBJECT(b));
 }
 
-static gint BlockSelectCompareCB(gconstpointer a, gconstpointer b) {
-
-    if(a > b)
-        return 1;
-    if(a < b)
-        return -1;
-    return 0;
-}
-
-
-// TODO: free(page);
-
 
 static gboolean NewTab(GtkWidget *w, gpointer data) {
 
-    struct Page *page = calloc(1, sizeof(*page));
-    ASSERT(page, "calloc(1, %zu) failed", sizeof(*page));
-
-    page->selectedBlocks = g_tree_new(BlockSelectCompareCB);
-
-    MakeWorkArea(page);
+    MakeWorkArea();
     return TRUE;
 }
 
@@ -252,6 +235,8 @@ int main(int argc, char *argv[]) {
     gtk_main(); 
 
     qsErrorFree();
+    CleanupBlockSelector();
 
+    DSPEW("exiting");
     return 0;
 }

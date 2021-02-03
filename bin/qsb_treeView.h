@@ -1,3 +1,4 @@
+#define DIRCHAR  ('/')
 
 extern
 GtkWidget *treeViewCreate(GtkWidget *tree);
