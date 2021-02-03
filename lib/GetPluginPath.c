@@ -152,9 +152,8 @@ char *_GetPluginPath(const char *prefix,
     ASSERT(buf, "malloc(%zu) failed", bufLen);
     ssize_t rl = readlink("/proc/self/exe", buf, bufLen);
     ASSERT(rl > 0, "readlink(\"/proc/self/exe\",,) failed");
-    while(rl + postLen >= bufLen)
-    {
-        DASSERT(bufLen < 1024*1024); // it should not get this large.
+    while(rl + postLen >= bufLen) {
+        ASSERT(bufLen < 1024*1024); // it should not get this large.
         buf = realloc(buf, bufLen += 128);
         ASSERT(buf, "realloc() failed");
         rl = readlink("/proc/self/exe", buf, bufLen);
@@ -165,7 +164,7 @@ char *_GetPluginPath(const char *prefix,
     //
     // Now buf = path to program binary.
     //
-    // Now strip off to after "/bin/qs_runner" (Linux path separator)
+    // Now strip off to after "/bin/quickstream" (Linux path separator)
     // Or "/testing_crap/crap_runner"
     // by backing up two '/' chars.
     //
@@ -207,6 +206,8 @@ char *_GetPluginPath(const char *prefix,
 
 
 // This is the only exposed interface in this file.
+//
+// The returned value must be free()ed.
 //
 char *GetPluginPath(const char *prefix,
         const char *name, const char *suffix) {

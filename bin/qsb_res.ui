@@ -182,6 +182,7 @@
                       <!--*********************************************-->
                       <object id="blockSelectorTree" class="GtkTreeView">
                         <property name="visible">True</property>
+                        <property name="activate-on-single-click">True</property>
                       </object>
                     </child>
                   </object>

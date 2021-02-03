@@ -14,7 +14,16 @@ quickstream_SOURCES :=\
  quickstream_help.c\
  quickstream_action.c\
  quickstream_interpreter.c
-quickstream_LDFLAGS := -L../lib -lquickstream -Wl,-rpath=\$$ORIGIN/../lib
+
+quickstream_LDFLAGS := -L../lib -lquickstream -Wl,-rpath=\$$ORIGIN/../lib -ldl
+
+
+
+ifeq ($(GTK_LDFLAGS),)
+# The quickstream program does not depend on GTK so in this case the
+# quickstream program will be built.
+$(warning "Not building quickstreamBuilder")
+else
 
 BUILD_NO_INSTALL := scribble treeView treeView1
 
@@ -34,12 +43,6 @@ treeView_directoryTest_LDFLAGS := $(GTK_LDFLAGS)
 treeView_directoryTest_CPPFLAGS := $(GTK_CFLAGS)
 
 
-
-
-ifeq ($(GTK_LDFLAGS),)
-$(warning "Not building quickstreamBuilder")
-else
-
 CLEANFILES := qsb_res.c qsb_workArea_res.c qsb_popup_res.c
 
 
@@ -50,14 +53,14 @@ CLEANFILES := qsb_res.c qsb_workArea_res.c qsb_popup_res.c
 
 quickstreamBuilder_SOURCES :=\
  qsb.c\
- ../lib/debug.c\
  qsb_res.c\
  qsb_workArea_res.c\
- qsb_popup_res.c
+ qsb_popup_res.c\
+ qsb_treeView.c\
+ qsb_BlockSelector.c
 
 quickstreamBuilder_CPPFLAGS := $(GTK_CFLAGS)
-quickstreamBuilder_LDFLAGS := $(GTK_LDFLAGS) -lm
-
+quickstreamBuilder_LDFLAGS := $(quickstream_LDFLAGS) $(GTK_LDFLAGS) -lm
 
 endif
 

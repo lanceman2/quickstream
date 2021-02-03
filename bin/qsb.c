@@ -26,6 +26,7 @@
 
 #include "qsb.h"
 
+#include "../include/quickstream/app.h"
 
 
 static void CSS() {
@@ -184,13 +185,6 @@ setup_widgets(void) {
             "/quickstreamBuilder/qsb_res.ui");
 
 
-
-
-
-
-
-    //////////////////////////////////////////////////////////////////
-
     window = GTK_WIDGET(gtk_builder_get_object(b, "window"));
 
     {
@@ -212,6 +206,9 @@ setup_widgets(void) {
         gtk_paned_set_position(hpaned, 700);
     }
 
+     AddBlockSelector(GTK_WIDGET(gtk_builder_get_object(b,
+                     "blockSelectorTree")));
+ 
     noteBook = GTK_NOTEBOOK(gtk_builder_get_object(b, "notebook"));
 
     NewTab(0, 0);
@@ -237,11 +234,14 @@ catcher(int sig) {
     ASSERT(0);
 }
 
+#define DEFAULT_SPEW_LEVEL (5)
 
 int main(int argc, char *argv[]) {
 
     signal(SIGSEGV, catcher);
     signal(SIGABRT, catcher);
+
+    qsSetSpewLevel(DEFAULT_SPEW_LEVEL);
 
     gtk_init(&argc, &argv);
 
@@ -250,6 +250,8 @@ int main(int argc, char *argv[]) {
     setup_widgets();
 
     gtk_main(); 
+
+    qsErrorFree();
 
     return 0;
 }

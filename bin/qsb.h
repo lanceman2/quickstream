@@ -177,3 +177,8 @@ struct Page {
     size_t numConnections;
     struct Connection *connections;
 };
+
+
+// This adds a Gtk tree view to use as the block selecting thingy.
+extern
+void AddBlockSelector(GtkWidget *tree);

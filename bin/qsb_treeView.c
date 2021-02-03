@@ -178,12 +178,12 @@ void AddView(GtkTreeStore *store, const char *path,  const char *name,
 
                         GtkTreeIter iter;
                         gtk_tree_store_append(store, &iter, parentIt);
-                        gtk_tree_store_set(store, &iter, 0,
+                        gtk_tree_store_set(store, &iter, 0/*column*/,
                                 ent->d_name, -1);
                         // CheckDir() closed it.  We open it again.
                         fd = openat(dirFd, ent->d_name, 0);
                         if(fd >= 0)
-                            // Dive.  Dive.
+                            // Dive.  Dive.  Deeper call stack...
                             AddView(store, ent->d_name, 0, fd, &iter,
                                     CheckFile, GetName, recurseMax);
                     }
