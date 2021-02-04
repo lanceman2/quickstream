@@ -156,6 +156,7 @@ char *GetName(int dirfd, const char *path) {
 
 
 char *selectedBlockFile = 0;
+GtkEntry *selectedBlockEntry = 0;
 
 
 static
@@ -213,11 +214,13 @@ rowActivated_CB(GtkTreeView       *tree,
     }
 
     WARN("selectedBlockFile=%s", selectedBlockFile);
+
+    gtk_entry_set_text(selectedBlockEntry, selectedBlockFile);
 }
 
 
 
-void AddBlockSelector(GtkWidget *tree) {
+void AddBlockSelector(GtkWidget *tree, GtkEntry *entry) {
 
     ASSERT(tree);
     treeViewCreate(tree);
@@ -241,6 +244,8 @@ void AddBlockSelector(GtkWidget *tree) {
 
     free(pathLabel);
     free(moduleDir);
+
+    selectedBlockEntry = entry;
 }
 
 

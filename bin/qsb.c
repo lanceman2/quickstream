@@ -24,9 +24,13 @@
 
 #include "../lib/debug.h"
 
+#include "../include/quickstream/app.h"
+
 #include "qsb.h"
 
-#include "../include/quickstream/app.h"
+
+
+struct QsApp *app = 0;
 
 
 static void CSS() {
@@ -181,7 +185,7 @@ setup_widgets(void) {
 
         // TODO: add the window size setting to user preferences
         // just before exiting the app.
-        gtk_window_resize(GTK_WINDOW(window), 1000, 1000);
+        gtk_window_resize(GTK_WINDOW(window), 1200, 1000);
     }
 
     {
@@ -189,8 +193,11 @@ setup_widgets(void) {
         gtk_paned_set_position(hpaned, 700);
     }
 
-     AddBlockSelector(GTK_WIDGET(gtk_builder_get_object(b,
-                     "blockSelectorTree")));
+     AddBlockSelector(
+             GTK_WIDGET(gtk_builder_get_object(b,
+                     "blockSelectorTree")),
+             GTK_ENTRY(gtk_builder_get_object(b,
+                     "selectedBlockEntry")));
  
     noteBook = GTK_NOTEBOOK(gtk_builder_get_object(b, "notebook"));
 

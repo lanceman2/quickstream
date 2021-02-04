@@ -177,6 +177,11 @@
                       </object>
                     </child>
                     <child>
+                      <object id="selectedBlockEntry" class="GtkEntry">
+                        <property name="visible">True</property>
+                      </object>
+                    </child>
+                    <child>
                       <!--*********************************************-->
                       <!--                Tree View                    -->
                       <!--*********************************************-->
