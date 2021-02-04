@@ -35,24 +35,24 @@ non-deterministic operating systems.
 Unlike [GNU radio](https://gnuradio.org/) quickstream does not use a
 synchronous data flow model, that is, in quickstream the stream data is
 not restricted to keep constant ratios of input to output between blocks,
-as it is in GNU radio.  The stream data flow constraints just less than
-those imposed by GNUradio.  [Synchronous data
+as it is in GNU radio.  The stream data flow constraints less
+than those imposed by GNUradio.  [Synchronous data
 flow](https://en.wikipedia.org/wiki/Synchronous_Data_Flow) is not the only
 method that can be used to allow static scheduling and buffering.
 
 The flow scheduler code is not like GNU radio's scheduler.  The run model
 lets the user use any number of threads from thread pools which may have 1
 to N threads.  All quickstream programs can run with one thread or any
-number of threads.  Thread affinity may be set, if needed, for special
-blocks.  quickstream is expected to use much less computer system
-resources than GNU radio in preforming the similar tasks. 
+number of threads.  Thread affinity may be set, if needed, for blocks of
+the users choosing.  quickstream is expected to use much less computer
+system resources than GNU radio in preforming similar tasks. 
 
 quickstream is C code with C++ wrappers.  It consists of the quickstream
 runtime library and block module plugins.  The quickstream runtime library
 and the block module plugins are all created as DSOs (dynamic shared
 objects).  quickstream runtime library includes a super block module
 creation tool that makes it possible to create and use block module
-plugins that are made of many block module plugins.
+plugins that congregate many block module plugins.
 
 quickstream comes with two application builder programs:
 
@@ -63,17 +63,17 @@ quickstream comes with two application builder programs:
     lets you build and run flow stream programs.  It may resemble the GNU
     Radio Companion to some extent.
 
-quickstream APIs (application programming interfaces) are separated into the
+quickstream APIs (application programming interfaces) are separated into
 the three classes of quickstream use:
 
   - **quickstream/app.h** for running flow graphs
 
-  - **quickstream/builder.h** for connecting blocks together to make larger
-    blocks
+  - **quickstream/builder.h** for connecting blocks together to make flow
+    graphs
 
   - **quickstream/block.h** for building plugin module blocks
 
-The block module writer with not likely use *app.h*, and the app writer with
+The block module writer with not likely use *app.h*, and the app writer will
 likely not use *block.h*.
 
 The quickstream starting point is this web page at
@@ -171,7 +171,9 @@ will like to have the *quickstream* software package installed.  Then run
 make
 ```
 
-to build the code.  Then run
+to build the code.  Running *make -j 6* could be much faster.
+
+Then run
 
 ```console
 make install
@@ -183,9 +185,9 @@ set above.
 If you just want to play around with quickstream without installing it,
 you can skip the *make install* step.  As we said before, all quickstream
 programs can run without being installed.  You might think that it would
-be a half-ass way to work on code, but you'd be wrong.  Compilers now
-have an option to do "relative path linking" of shared object libraries.
-Most software package developers just don't what this, and/or how to use
+be a half-ass way to work on code, but you'd be wrong.  Compilers now have
+an option to do "relative path linking" of shared object libraries.  Most
+software package developers just don't what this is, and/or how to use
 these compiler options effectively.  Relative path shared object library
 linking is not that new, it's just not that well known and used yet.  It
 will be likely to catch on when software build systems start using it by
@@ -208,18 +210,14 @@ and your added costume files you can run *./RepoClean*.  Do not run
 *./RepoClean* if you need a clean tarball form of the package source,
 use *make distclean* (after running ./configure) for that.
 
-We use the GNU autotool build system to generate tarball releases.  To
-make a tarball release, after you finish testing and editing, edit
-include/quickstream/app.h changing the version numbers and so on, then you
-can run a sequence of programs something like the following:
+We use the GNU autotool build system to generate tarball releases.
+Tarball releases will contain all files that are kept in the repository,
+plus more files.  To make a tarball release, after you finish testing and
+editing, edit include/quickstream/app.h changing the version numbers and
+so on, then you can run a sequence of programs something like the
+following:
 
-```console
-./RepoClean
-```
-
-then make sure that the files that remain are what you want, if not you
-may need to edit *RepoClean*.  After you're confident that is doing what
-you want run:
+If you have not already run this before, run
 
 ```console
 ./bootstrap
@@ -269,6 +267,10 @@ which overrides "Makefile", at least for GNU make.
 ### quickbuild - quick and easy
 
 Run:
+
+```console
+./bootstrap
+```
 
 ```console
 make
@@ -948,4 +950,22 @@ These questions are helpful in understanding how quickstream works:
   it like command-line arguments.  So we can read very long
   command-line-like-options.  This also enables test driven development,
   which is the most awesome development thing ever.
+
+
+# TODO
+
+
+- *Fd triggers*:  Currently any blocking system call that reads and writes
+  will block and wait in the worker thread that is assigned.  With *Fd
+  triggers* the thread will not get assigned until epoll_wait() shows the
+  fd to be "ready".  Performance may be improved for some use cases.  This
+  will be using the standard UNIX-like non-blocking I/O muliplexing
+  programing model.  A thing that does not exist on Windos, because not
+  all resources can be made into a file.  This would enable users to use
+  timerfd_create(2) without sacrificing a worker thread.  We would need to
+  use an eventfd(2) to force epoll_wait() to return when it would
+  otherwise block forever, like in cases when the determination of when to
+  stop is not gotten from a file descriptor that the trigger is for.
+
+
 

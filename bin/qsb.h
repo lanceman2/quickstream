@@ -17,8 +17,9 @@ extern
 void CleanupBlockSelector(void);
 
 
+
 extern
-char *selectedBlockFile;
+char *GetSelectedBlockFile(void);
 
 
 extern

@@ -155,8 +155,13 @@ char *GetName(int dirfd, const char *path) {
 }
 
 
-char *selectedBlockFile = 0;
 GtkEntry *selectedBlockEntry = 0;
+
+
+const char *GetSelectedBlockFile(void) {
+    DASSERT(selectedBlockEntry);
+    return gtk_entry_get_text(selectedBlockEntry);
+}
 
 
 static
@@ -175,11 +180,7 @@ rowActivated_CB(GtkTreeView       *tree,
         // We just get selections that are children.
         return;
 
-
-    if(selectedBlockFile) {
-        free(selectedBlockFile);
-        selectedBlockFile = 0;
-    }
+    char *selectedBlockFile = 0;
 
 
     gboolean ret = TRUE;
@@ -216,6 +217,8 @@ rowActivated_CB(GtkTreeView       *tree,
     WARN("selectedBlockFile=%s", selectedBlockFile);
 
     gtk_entry_set_text(selectedBlockEntry, selectedBlockFile);
+
+    free(selectedBlockFile);
 }
 
 
@@ -254,8 +257,5 @@ void AddBlockSelector(GtkWidget *tree, GtkEntry *entry) {
 //
 void CleanupBlockSelector(void) {
 
-    if(selectedBlockFile) {
-        free(selectedBlockFile);
-        selectedBlockFile = 0;
-    }
+    DSPEW();
 }

@@ -126,33 +126,6 @@ static int tabCreateCount = 0;
 static GtkWidget *window = 0;
 
 
-#define CREATE_BLOCK_BUTTON   (3) // 3 = left mouse
-
-
-static gboolean WorkArea_buttonReleaseCB(GtkLayout *layout,
-        GdkEventButton *e, void *data) {
-
-
-    if(e->type != GDK_BUTTON_RELEASE) {
-        // This should not happen; but I have seen stupider shit.
-        ASSERT(0, "Did not get GDK_BUTTON_RELEASE event");
-        return FALSE; // FALSE = go to next widget
-    }
-    if(e->button != CREATE_BLOCK_BUTTON)
-        return FALSE; // FALSE = go to next widget
-
-    const char *blockFile = GetSelectedBlockFile();
-    if(!blockFile || !blockFile[0])
-        return TRUE; // Eat this event at this widget
-
-
-    DSPEW("Adding block \"%s\"", GetSelectedBlockFile());
-
-
-    return TRUE; // Eat this event at this widget
-}
-
-
 static inline void MakeWorkArea(void) {
 
     GtkBuilder *b = gtk_builder_new_from_resource(
@@ -172,9 +145,6 @@ static inline void MakeWorkArea(void) {
     gint rt = gtk_notebook_append_page(noteBook, GTK_WIDGET(layout),
             gtk_label_new(tagName));
     ASSERT(rt >= 0);
-
-    g_signal_connect(GTK_WIDGET(layout), "button-release-event",
-            G_CALLBACK(WorkArea_buttonReleaseCB), 0/*userData*/);
 
     // We are done with this builder
     g_object_unref(G_OBJECT(b));
