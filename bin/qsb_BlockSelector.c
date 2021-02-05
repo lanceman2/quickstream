@@ -1,4 +1,9 @@
+// This file is basically a singleton class object for the GTK tree view
+// that we use to select the block file name.  In C that kind of shit is
+// dumb-ass simple.  No fuck'n around.
+
 #ifndef _GNU_SOURCE
+// For get_current_dir_name()
 #  define _GNU_SOURCE
 #endif
 
@@ -14,14 +19,21 @@
 #include "../lib/debug.h"
 #include "qsb_treeView.h"
 
-// One of the crappy things about modules is how do different programs
-// find said modules.  It starts at the OS (operating system) level with
-// the linker/loader system, and there are end user programs that need to
-// find a series of configuration files.  It's at the core of what makes
-// operating systems suck.  What is needed is an OS built with
-// installation management system that is built into the file system;
-// so something like APT is built into the file system.
 
+// One of the crappy things about modules is address how do different
+// programs find said modules.  It starts at the OS (operating system)
+// level with the linker/loader system, and there are end user programs
+// that need to find a series of configuration files.  It's at the core of
+// what makes operating systems suck.  What is needed is an OS built with
+// installation management system that is built into the file system; so
+// something like (Debian) APT is built into the file system.  Of course
+// it'd look more like NixOS Nix package manager than Debian APT.  The Nix
+// package manager shits all over the file system, making it seem obvious
+// that a kernel system hack is what is needed.  Such a file system would
+// be a major part of the ultimate operating system.  Maybe start with all
+// the cool shit that is in the ZFS file system.  Now you are completely
+// lost, but I don't give a shit.  I'm quite insane, or is it the rest of
+// the world just bunch of dumb mother fuckers.
 
 
 // Get the directory based on the path of this running program.
@@ -83,7 +95,6 @@ char *GetModuleDirectory(void) {
 
     return buf;
 }
-
 
 
 static
@@ -155,12 +166,19 @@ char *GetName(int dirfd, const char *path) {
 }
 
 
+static
 GtkEntry *selectedBlockEntry = 0;
 
 
 const char *GetSelectedBlockFile(void) {
     DASSERT(selectedBlockEntry);
-    return gtk_entry_get_text(selectedBlockEntry);
+    const char *blockFile = gtk_entry_get_text(selectedBlockEntry);
+
+    // Stupid GTK returns a string even when it's empty.  We like it
+    // more decisive.
+    //
+    if(!blockFile || !blockFile[0]) return 0;
+    return blockFile;
 }
 
 
