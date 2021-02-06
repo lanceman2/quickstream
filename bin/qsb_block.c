@@ -251,7 +251,7 @@ bool AddBlock(GtkLayout *layout, const char *blockFile,
         //                              x, y, w, h
         MakeBlockLabel(grid, blockFile, 1, 1, 4, 1);
         MakeBlockLabel(grid, block->name, 1, 3, 4, 1);
-
+        //                                             x, y, w, h
         MakeBlockConnector(grid, "constant", Constant, 1, 0, 4, 1);
         MakeBlockConnector(grid, "input", Input, 0, 0, 1, 5);
         MakeBlockConnector(grid, "output", Output, 5, 0, 1, 5);
