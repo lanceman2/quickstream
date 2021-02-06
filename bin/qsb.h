@@ -5,7 +5,7 @@
 
 
 extern
-struct QsApp *app;
+struct QsGraph *graph;
 
 
 struct Block {

@@ -22,15 +22,22 @@
 #include <gdk/gdkevents.h>
 #include <gdk/gdkx.h>
 
-#include "../lib/debug.h"
-
 #include "../include/quickstream/app.h"
+// TODO: Looks like the definition of enum QsParameterType is needed for
+// builder.h.  This breaks the idea of keeping builder.h not dependent on
+// block.h.
+#include "../include/quickstream/block.h"
+#include "../include/quickstream/builder.h"
+
+#include "../lib/debug.h"
 
 #include "qsb.h"
 
 
-
-struct QsApp *app = 0;
+// We have one app.
+// TODO: add more apps.  Maybe not.
+//
+struct QsGraph *graph = 0;
 
 
 static void CSS() {
@@ -48,7 +55,7 @@ static void CSS() {
     gtk_css_provider_load_from_data(provider,
         /* The CSS stuff in GTK3 version 3.24.20 does not work as
          * documented.  All the example codes that I found did not work.
-         * I expect this is a moving target, and this will brake in the
+         * I expect this is a moving target, and this will break in the
          * future.
          */
             // This CSS works for GTK3 version 3.24.20
@@ -59,8 +66,8 @@ static void CSS() {
             // Clearly widget name is not a unique widget ID; it's more
             // like a CSS class name then a name.  The documentation is
             // miss-leading on this.  This is not consistent with regular
-            // www3 CSS.  We can probably count on this braking in new
-            // versions of GTK3.
+            // www3 CSS.  We can probably count on this breaking in new
+            // versions of GTK3 or maybe not.
             //
             // This took 3 days of trial and error.  Yes: GTK3 sucks;
             // maybe a little less than QT.
@@ -83,16 +90,18 @@ static void CSS() {
                 "border: 2px solid rgba(234,12,234,0.8);\n"
                 "}\n"
 
-            "#block > #get,\n"
-            "#block > #set,\n"
+            "#block > #getter,\n"
+            "#block > #setter,\n"
+            "#block > #constant,\n"
             "#block > #input,\n"
             "#block > #output {\n"
                 "background-color: rgba(147,176,223,0.5);\n"
                 "border: 1px solid rgb(118,162,247);\n"
                 "font-size: 130%;\n"
                 "}\n"
-            "#selectedBlock > #get,\n"
-            "#selectedBlock > #set,\n"
+            "#selectedBlock > #getter,\n"
+            "#selectedBlock > #setter,\n"
+            "#selectedBlock > #constant,\n"
             "#selectedBlock > #input,\n"
             "#selectedBlock > #output {\n"
                 "background-color: rgba(76,230,228,0.6);\n"
