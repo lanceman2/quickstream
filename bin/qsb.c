@@ -122,7 +122,7 @@ static void CSS() {
                 "color: black;\n"
                 "}\n"
             "#label {\n"
-                "font-size: 130%;\n"
+                "font-size: 140%;\n"
                 "}\n"
             , -1, &error);
 
