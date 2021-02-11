@@ -15,6 +15,10 @@ struct Block {
 };
 
 
+extern
+void InitCSS(void);
+
+
 // This adds a Gtk tree view to use as the block selecting thingy
 // on the right side of the main window.
 //

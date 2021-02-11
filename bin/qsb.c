@@ -38,98 +38,6 @@
 // TODO: add more apps.  Maybe not.
 //
 struct QsGraph *graph = 0;
-
-
-static void CSS() {
-
-    GtkCssProvider *provider;
-
-    provider = gtk_css_provider_new();
-    gtk_style_context_add_provider_for_screen(
-            gdk_display_get_default_screen(gdk_display_get_default()),
-            GTK_STYLE_PROVIDER(provider),
-            GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-
-    GError *error = 0;
-
-    gtk_css_provider_load_from_data(provider,
-        /* The CSS stuff in GTK3 version 3.24.20 does not work as
-         * documented.  All the example codes that I found did not work.
-         * I expect this is a moving target, and this will break in the
-         * future.
-         */
-            // This CSS works for GTK3 version 3.24.20
-            //
-            // #block > #foo
-            //    is for child of parent named "block" with name "foo"
-            //
-            // Clearly widget name is not a unique widget ID; it's more
-            // like a CSS class name then a name.  The documentation is
-            // miss-leading on this.  This is not consistent with regular
-            // www3 CSS.  We can probably count on this breaking in new
-            // versions of GTK3 or maybe not.
-            //
-            // This took 3 days of trial and error.  Yes: GTK3 sucks;
-            // maybe a little less than QT.
-            //
-            // TODO: It'd be nice to put this in gtk builder files,
-            // and compiling it into the code like the .ui widgets.
-            // There currently does not appear to be a way to do this.
-            "#vpanel {\n"
-                "}\n"
-            "#block {\n"
-                "background-color: rgba(83,138,250,0.0);\n"
-                "border: 2px solid black;\n"
-                "}\n"
-            "#disabledBlock {\n"
-                "background-color: rgba(83,138,250,0.0);\n"
-                "border: 2px solid rgba(118,162,247,0.3);\n"
-                "}\n"
-            "#selectedBlock {\n"
-                "background-color: rgba(83,138,250,0.0);\n"
-                "border: 2px solid rgba(234,12,234,0.8);\n"
-                "}\n"
-
-            "#block > #getter,\n"
-            "#block > #setter,\n"
-            "#block > #constant,\n"
-            "#block > #input,\n"
-            "#block > #output {\n"
-                "background-color: rgba(147,176,223,0.5);\n"
-                "border: 1px solid rgb(118,162,247);\n"
-                "font-size: 130%;\n"
-                "}\n"
-            "#selectedBlock > #getter,\n"
-            "#selectedBlock > #setter,\n"
-            "#selectedBlock > #constant,\n"
-            "#selectedBlock > #input,\n"
-            "#selectedBlock > #output {\n"
-                "background-color: rgba(76,230,228,0.6);\n"
-                "border: 1px solid rgba(8,2,7,0.1);\n"
-                "}\n"
-
-            "#disabledBlock > #label {\n"
-                "background-color: rgba(83,138,250,0.1);\n"
-                "border: 1px solid rgba(118,162,247,0.1);\n"
-                "color: rgba(218,242,247,0.5);\n"
-                "}\n"
-            "#selectedBlock > #label {\n"
-                "background-color: rgba(76,230,228,0.6);\n"
-                "color: rgba(88,88,88,0.6);\n"
-                "}\n"
-            "#block > #label {\n"
-                "background-color: rgba(156,190,224,0.6);\n"
-                "color: black;\n"
-                "}\n"
-            "#label {\n"
-                "font-size: 140%;\n"
-                "}\n"
-            , -1, &error);
-
-    g_object_unref (provider);
-}
-
-
 static GtkNotebook *noteBook = 0;
 static int tabCreateCount = 0;
 static GtkWidget *window = 0;
@@ -219,7 +127,8 @@ setup_widgets(void) {
         geo.min_height = 300;
 
         ASSERT(window);
-        gtk_window_set_geometry_hints(GTK_WINDOW(window), 0, &geo, GDK_HINT_MIN_SIZE);
+        gtk_window_set_geometry_hints(GTK_WINDOW(window), 0,
+                &geo, GDK_HINT_MIN_SIZE);
 
         // TODO: add the window size setting to user preferences
         // just before exiting the app.
@@ -273,7 +182,7 @@ int main(int argc, char *argv[]) {
 
     gtk_init(&argc, &argv);
 
-    CSS();
+    InitCSS();
 
     setup_widgets();
 

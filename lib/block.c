@@ -222,30 +222,15 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         while(*blockName == DIR_CHAR) ++blockName;
 
         {
-            // Strip off the last "/blocks/" if there is one
-#define BLOCKS    (DIR_STR "blocks" DIR_STR)
+            // strip off all leading '/'
             char *s = blockName;
-            size_t bl = strlen(BLOCKS);
             while(*s) {
-                if(strcmp(s, BLOCKS) == 0)
-                    blockName = s + bl;
+                if(*s == DIR_CHAR && *(s+1))
+                    blockName = s + 1;
                 ++s;
             }
-            // now example: blockName = "test/foo/filename"
-        }
-        {
-            // Strip off the '/' before the last '/'
-            char *s = blockName;
-            char *prev = 0;
-             while(*s) {
-                if(*s == DIR_CHAR && *(s+1)) {
-                    if(prev)
-                        blockName = prev;
-                    prev = s+1;
-                }
-                ++s;
-            }
-            // now example: blockName = "foo/filename"
+            DASSERT(*blockName != DIR_CHAR);
+            // now example: blockName = "filename"
         }
 
         uint32_t count = 1;

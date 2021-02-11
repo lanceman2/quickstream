@@ -58,7 +58,8 @@ quickstreamBuilder_SOURCES :=\
  qsb_popup_res.c\
  qsb_treeView.c\
  qsb_BlockSelector.c\
- qsb_block.c
+ qsb_block.c\
+ qsb_CSS.c
 
 quickstreamBuilder_CPPFLAGS := $(GTK_CFLAGS)
 quickstreamBuilder_LDFLAGS := $(quickstream_LDFLAGS) $(GTK_LDFLAGS) -lm

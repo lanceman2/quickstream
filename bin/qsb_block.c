@@ -39,30 +39,30 @@ static inline void GetConnectionColor(enum ConnectorType ctype,
             *r = 1.0;
             *g = 0.0;
             *b = 0.0;
-            *a = 0.5;
+            *a = 0.1;
             break;
         case Output:
             *r = 1.0;
             *g = 0.0;
             *b = 0.0;
-            *a = 0.5;
+            *a = 0.1;
             break;
         case Getter:
             *r = 0.0;
             *g = 0.0;
             *b = 1.0;
-            *a = 0.5;
+            *a = 0.1;
             break;
         case Setter:
             *r = 0.0;
             *g = 0.0;
             *b = 1.0;
-            *a = 0.5;
+            *a = 0.1;
         case Constant:
             *r = 0.0;
             *g = 1.0;
             *b = 1.0;
-            *a = 0.5;
+            *a = 0.1;
     }
 }
 
@@ -87,12 +87,16 @@ static void DrawConnectImageSurface(cairo_surface_t *s,
 
     DASSERT(s);
 
+    cairo_t *cr = cairo_create(s);
+    //                          r, g, b, a
+    cairo_set_source_rgba(cr, 0.9, 0, 0, 0.1);
+    cairo_paint(cr);
+
     double r, g, b, a;
     GetConnectionColor(ctype, &r, &g, &b, &a);
     // override the alpha.
     //a = 0.4;
 
-    cairo_t *cr = cairo_create(s);
     cairo_set_source_rgba(cr, r, g, b, a);
     cairo_set_line_width(cr, 6);
 
@@ -119,8 +123,6 @@ static void DrawConnectImageSurface(cairo_surface_t *s,
 
 #define CONNECT_IMAGE_LEN   (32)
 
-#define CONNECT_LEN  ((double) CONNECT_IMAGE_LEN * 3.2)
-
 
 // TODO: Save and Cleanup cairo_surface_t *s.
 //
@@ -139,10 +141,11 @@ CreateConnectImageSurface(enum ConnectorType ctype, uint32_t rot) {
 static inline void
 MakeBlockLabel(GtkWidget *grid,
         const char *text,
+        const char *className,
         gint x, gint y, gint w, gint h) {
 
     GtkWidget *l = gtk_label_new(text);
-    gtk_widget_set_name(l, "label");
+    gtk_widget_set_name(l, className);
     gtk_widget_show(l);
     gtk_grid_attach(GTK_GRID(grid), l, x, y, w, h);
 }
@@ -249,8 +252,8 @@ bool AddBlock(GtkLayout *layout, const char *blockFile,
         gtk_container_add(GTK_CONTAINER(ebox), grid);
 
         //                              x, y, w, h
-        MakeBlockLabel(grid, blockFile, 1, 1, 4, 1);
-        MakeBlockLabel(grid, block->name, 1, 3, 4, 1);
+        MakeBlockLabel(grid, blockFile, "path", 1, 1, 4, 1);
+        MakeBlockLabel(grid, block->name, "name", 1, 3, 4, 1);
         //                                             x, y, w, h
         MakeBlockConnector(grid, "constant", Constant, 1, 0, 4, 1);
         MakeBlockConnector(grid, "input", Input, 0, 0, 1, 5);
