@@ -44,11 +44,21 @@ enum ConnectorGeo {
 };
 
 
+struct Block;
+
+
 struct Connector {
     enum ConnectorType type;
     enum ConnectorGeo geo; // orientation and flip/flop
     const char *name;
+    struct Block *block;
+};
+
+
+struct Block {
+
     struct QsBlock *block;
+    struct Connector constants, getters, setters, input, output;
 };
 
 
@@ -197,7 +207,7 @@ MakeBlockLabel(GtkWidget *grid,
 
     GtkWidget *l = gtk_label_new(text);
     gtk_widget_set_name(l, className);
-    gtk_widget_set_size_request(l, 120, 20);
+    gtk_widget_set_size_request(l, 120, MIN_BLOCK_LEN);
     gtk_widget_show(l);
     gtk_grid_attach(GTK_GRID(grid), l, x, y, w, h);
 }
@@ -206,7 +216,7 @@ MakeBlockLabel(GtkWidget *grid,
 static void MakeBlockConnector(GtkWidget *grid,
         const char *className/*for CSS*/,
         enum ConnectorType ctype,
-        struct QsBlock *block,
+        struct Block *block,
         gint x, gint y, gint w, gint h) {
 
     GtkWidget *drawArea = gtk_drawing_area_new();
@@ -221,12 +231,29 @@ static void MakeBlockConnector(GtkWidget *grid,
             GDK_STRUCTURE_MASK);
 
     gtk_widget_show(drawArea);
-    gtk_widget_set_size_request(drawArea, 20, 20);
+    gtk_widget_set_size_request(drawArea, MIN_BLOCK_LEN, MIN_BLOCK_LEN);
     gtk_widget_set_name(drawArea, className);
     gtk_grid_attach(GTK_GRID(grid), drawArea, x, y, w, h);
 
-    struct Connector *c = calloc(1, sizeof(*c));
-    ASSERT(c, "calloc(1,%zu) failed", sizeof(*c));
+    struct Connector *c;
+    switch(ctype) {
+        case Constant:
+            c = &block->constants;
+            break;
+        case Getter:
+            c = &block->getters;
+            break;
+        case Setter:
+            c = &block->setters;
+            break;
+        case Input:
+            c = &block->input;
+            break;
+        case Output:
+            c = &block->output;
+            break;
+    }
+
     c->type = ctype;
     c->geo = ICOSG;
     c->block = block;
@@ -240,15 +267,26 @@ static void MakeBlockConnector(GtkWidget *grid,
 }
 
 
+static gboolean
+Block_buttonPressCB(GtkWidget *ebox,
+        GdkEventButton *e, struct Block *block) {
+
+
+    DSPEW();
+
+    return TRUE; // Eat this event at this widget
+}
+
+
 // The top GTK widget of a block is a gtk_event_box.
 //
-// Return true if the block is successfully added, else return false.
+// Return widget if the block is successfully added, else return 0.
 //
 // layout - is the widget we add the block to.
 //
 // The name of the block can be changed later.
 //
-bool AddBlock(GtkLayout *layout, const char *blockFile,
+GtkWidget *AddBlock(GtkLayout *layout, const char *blockFile,
     double x, double y) {
 
     DASSERT(blockFile);
@@ -260,9 +298,12 @@ bool AddBlock(GtkLayout *layout, const char *blockFile,
 
     if(!block)
         // Failed to load block.
-        return false;
+        return 0;
 
-
+    struct Block *b = calloc(1, sizeof(*b));
+    // TODO: free(b);
+    ASSERT(b, "calloc(1,%zu) failed", sizeof(*b));
+    b->block = block;
 
     // As of GTK3 version 3.24.20; gtk widget name is more like a CSS
     // class name.  Name is not a unique ID.  It's more like a CSS class.
@@ -315,14 +356,17 @@ bool AddBlock(GtkLayout *layout, const char *blockFile,
         MakeBlockLabel(grid, blockFile, "path", 1, 1, 4, 1);
         MakeBlockLabel(grid, block->name, "name", 1, 3, 4, 1);
         //                                                     x, y, w, h
-        MakeBlockConnector(grid, "constants", Constant, block, 1, 0, 4, 1);
-        MakeBlockConnector(grid, "input", Input, block, 0, 0, 1, 5);
-        MakeBlockConnector(grid, "output", Output, block, 5, 0, 1, 5);
-        MakeBlockConnector(grid, "setters", Setter, block, 1, 4, 2, 1);
-        MakeBlockConnector(grid, "getters", Getter, block, 3, 4, 2, 1);
+        MakeBlockConnector(grid, "constants", Constant, b, 1, 0, 4, 1);
+        MakeBlockConnector(grid, "input", Input, b, 0, 0, 1, 5);
+        MakeBlockConnector(grid, "output", Output, b, 5, 0, 1, 5);
+        MakeBlockConnector(grid, "setters", Setter, b, 1, 4, 2, 1);
+        MakeBlockConnector(grid, "getters", Getter, b, 3, 4, 2, 1);
+
+        g_signal_connect(GTK_WIDGET(ebox), "button-press-event",
+            G_CALLBACK(Block_buttonPressCB), b/*userData*/);
     }
 
     gtk_layout_put(layout, ebox, x, y);
 
-    return true;
+    return ebox;
 }

@@ -569,7 +569,7 @@ int qsDictionaryInsert(struct QsDictionary *node,
                     if(idict) *idict = node;
 
                     if(node->key) {
-                        DSPEW("Entry with key=\"%s\" exists", key_in);
+                        //DSPEW("Entry with key=\"%s\" exists", key_in);
                         free(eSuffix);
                         free(key);
                         return 1;
@@ -737,7 +737,7 @@ int qsDictionaryInsert(struct QsDictionary *node,
 
     if(node->key) {
         if(idict) *idict = node;
-        DSPEW("Entry with key=\"%s\" exists", key_in);
+        //DSPEW("Entry with key=\"%s\" exists", key_in);
         free(key);
         return 1;
     }
@@ -892,7 +892,7 @@ struct QsDictionary
                 else {
                     // The suffix has more characters that we did not
                     // match.
-                    DSPEW("No key=\"%s\" found", key);
+                    //DSPEW("No key=\"%s\" found", key);
                     return 0;
                 }
             }
@@ -900,7 +900,7 @@ struct QsDictionary
         }
 
         // No more children, but we have unmatched key characters.
-        DSPEW("No key=\"%s\" found", key);
+        //DSPEW("No key=\"%s\" found", key);
         return 0;
     }
 
@@ -1378,7 +1378,7 @@ bool TraverseChildrenAndPrumeBack(struct QsDictionary *node,
         if(*e != 0) {
             // The suffix has more characters that we did not
             // match.
-            DSPEW("No key=\"%s\" found", key);
+            //DSPEW("No key=\"%s\" found", key);
             return false;
         }
     }
@@ -1405,12 +1405,12 @@ bool TraverseChildrenAndPrumeBack(struct QsDictionary *node,
         // No more children, but we have unmatched key characters.
         //
         // Therefore we failed to find the key.
-        DSPEW("No key=\"%s\" found", key);
+        //DSPEW("No key=\"%s\" found", key);
         return false; // not found.
     }
 
     if(!node->key) {
-        DSPEW("No key=\"%s\" found", key);
+        //DSPEW("No key=\"%s\" found", key);
         return false;
     }
 

@@ -8,12 +8,6 @@ extern
 struct QsGraph *graph;
 
 
-struct Block {
-
-  struct QsBlock *block;
-
-};
-
 
 extern
 void InitCSS(void);
@@ -40,5 +34,10 @@ char *GetSelectedBlockFile(void);
 
 // Return true if the block is successfully added, else return false.
 extern
-bool AddBlock(GtkLayout *layout, const char *blockFile,
+GtkWidget *AddBlock(GtkLayout *layout, const char *blockFile,
     double x, double y);
+
+
+// This is uses in gtk_widget_set_size_request() for some of the block
+// widgets.
+#define MIN_BLOCK_LEN     (20)

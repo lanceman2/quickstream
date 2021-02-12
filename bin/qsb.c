@@ -42,6 +42,25 @@ static GtkNotebook *noteBook = 0;
 static int tabCreateCount = 0;
 static GtkWidget *window = 0;
 
+static GtkWidget *movingBlockWidget = 0;
+static double xi, yi;
+
+// List of cursors with images:
+// https://developer.gnome.org/gdk3/stable/gdk3-Cursors.html#GdkCursorType
+static GdkCursor *moveCursor = 0;
+
+
+static inline void SetCursor(GtkWidget *w, GdkCursor *cursor) {
+    gdk_window_set_cursor(gtk_widget_get_window(w), cursor);
+}
+
+
+static inline GdkCursor *GetCursor(const char *type) {
+    return gdk_cursor_new_from_name(gdk_display_get_default(), type);
+}
+
+
+
 
 #define CREATE_BLOCK_BUTTON   (1) // 1 = left mouse
 
@@ -50,19 +69,64 @@ static gboolean WorkArea_buttonReleaseCB(GtkLayout *layout,
         GdkEventButton *e, void *data) {
 
     if(e->type != GDK_BUTTON_RELEASE) {
-        // This should not happen; but I have seen stupider shit.
+        // This should not happen.
         ASSERT(0, "Did not get GDK_BUTTON_RELEASE event");
         return FALSE; // FALSE = go to next widget
     }
     if(e->button != CREATE_BLOCK_BUTTON)
         return FALSE; // FALSE = go to next widget
 
+    if(!movingBlockWidget) return TRUE;
+
+    movingBlockWidget = 0;
+    SetCursor(GTK_WIDGET(layout), 0);
+
+    return TRUE; // Eat this event at this widget
+}
+
+
+static gboolean WorkArea_buttonMotionCB(GtkLayout *layout,
+        GdkEventButton *e, void *data) {
+
+    if(e->type != GDK_MOTION_NOTIFY) {
+        // This should not happen.
+        ASSERT(0, "Did not get GDK_MOTION_NOTIFY event");
+        return FALSE; // FALSE = go to next widget
+    }
+    if(e->button != CREATE_BLOCK_BUTTON)
+        return FALSE; // FALSE = go to next widget
+
+    if(!movingBlockWidget) return TRUE;
+
+    gtk_layout_move(layout, movingBlockWidget,
+            e->x - xi, e->y - yi);
+
+    return TRUE; // Eat this event at this widget
+}
+
+
+static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
+        GdkEventButton *e, void *data) {
+
+    if(e->type != GDK_BUTTON_PRESS) {
+        // This should not happen; but it does.
+        //ASSERT(0, "Did not get GDK_BUTTON_PRESS event");
+        return FALSE; // FALSE = go to next widget
+    }
+    if(e->button != CREATE_BLOCK_BUTTON)
+        return FALSE; // FALSE = go to next widget
+
     const char *blockFile = GetSelectedBlockFile();
-    if(!blockFile)
+    if(!blockFile && !movingBlockWidget)
         return TRUE; // Eat this event at this widget
 
+    if(!movingBlockWidget)
+        movingBlockWidget = AddBlock(layout, blockFile,
+                e->x - (xi = 2*MIN_BLOCK_LEN),
+                e->y - (yi = 2*MIN_BLOCK_LEN));
 
-    AddBlock(layout, blockFile, e->x, e->y);
+    if(movingBlockWidget)
+        SetCursor(GTK_WIDGET(layout), moveCursor);
 
     return TRUE; // Eat this event at this widget
 }
@@ -88,8 +152,16 @@ static inline void MakeWorkArea(void) {
             gtk_label_new(tagName));
     ASSERT(rt >= 0);
 
+    g_signal_connect(GTK_WIDGET(layout), "button-press-event",
+            G_CALLBACK(WorkArea_buttonPressCB), 0/*userData*/);
+
+    g_signal_connect(GTK_WIDGET(layout), "motion-notify-event",
+            G_CALLBACK(WorkArea_buttonMotionCB), 0/*userData*/);
+
     g_signal_connect(GTK_WIDGET(layout), "button-release-event",
             G_CALLBACK(WorkArea_buttonReleaseCB), 0/*userData*/);
+
+
 
     // We are done with this builder
     g_object_unref(G_OBJECT(b));
@@ -113,6 +185,8 @@ Connect(GtkBuilder *builder, const char *id, const char *action,
 
 static inline void
 setup_widgets(void) {
+
+    moveCursor = GetCursor("grabbing");
 
     GtkBuilder *b = gtk_builder_new_from_resource(
             "/quickstreamBuilder/qsb_res.ui");
