@@ -31,6 +31,27 @@ enum ConnectorType {
 };
 
 
+enum ConnectorGeo {
+    ICOSG,
+    OCISG,
+    ISGOC,
+    OSGIC,
+
+    COSGI,
+    CISGO,
+    SGOCI,
+    SGICO
+};
+
+
+struct Connector {
+    enum ConnectorType type;
+    enum ConnectorGeo geo; // orientation and flip/flop
+    const char *name;
+    struct QsBlock *block;
+};
+
+
 static inline void GetConnectionColor(enum ConnectorType ctype,
         double *r, double *g, double *b, double *a) {
 
@@ -68,73 +89,103 @@ static inline void GetConnectionColor(enum ConnectorType ctype,
 
 
 /*
-     Block with 0 degrees rotation:
+     Block with geo: ICOSG (Input,Constant,Output,SetterGetter)
 
- ***************************************
- *                set                  *
- *                                     *
- * input                        output *
- *                                     *
- *                get                  *
- ***************************************
+ *******************************************
+ *       |        constant        |        |
+ *       |************************|        |
+ *       |        path.so         |        |
+ * input |                        | output |
+ *       |         name           |        |
+ *       |************************|        |
+ *       |  setter   |   getter   |        |
+ *******************************************
+
+
+    Block with geo: OCISG (Ouput,Constant,Input,SetterGetter)
+
+ *******************************************
+ *        |        constant        |       |
+ *        |************************|       |
+ *        |        path.so         |       |
+ * output |                        | input |
+ *        |         name           |       |
+ *        |************************|       |
+ *        |  setter   |   getter   |       |
+ *******************************************
+
+
+ and there are 6 more permutations that we allow.  We keep the input and
+ output on opposing sides and the parameters constant opposing setter and
+ getter; with setter always before getter.  That gives 8 total
+ permutations that we allow.
+
  */
 
-// TODO: Save and Cleanup cairo_surface_t *s.
-//
-static void DrawConnectImageSurface(cairo_surface_t *s,
-        enum ConnectorType ctype,
-        uint32_t rot) {
 
-    DASSERT(s);
+static gboolean DrawConnectImage_CB(GtkWidget *widget,
+        cairo_t *cr,
+        struct Connector *c) {
 
-    cairo_t *cr = cairo_create(s);
-    //                          r, g, b, a
-    cairo_set_source_rgba(cr, 0.9, 0, 0, 0.1);
-    cairo_paint(cr);
+    guint width, height;
+    GtkStyleContext *context;
 
-    double r, g, b, a;
-    GetConnectionColor(ctype, &r, &g, &b, &a);
-    // override the alpha.
-    //a = 0.4;
+    context = gtk_widget_get_style_context (widget);
 
-    cairo_set_source_rgba(cr, r, g, b, a);
-    cairo_set_line_width(cr, 6);
+    width = gtk_widget_get_allocated_width (widget);
+    height = gtk_widget_get_allocated_height (widget);
 
-    cairo_translate(cr, 16, 16);
+    gtk_render_background(context, cr, 0, 0, width, height);
 
-    if(ctype == Input || ctype == Output)
-        cairo_rotate(cr, (rot + 2) * M_PI/2.0);
-    else // ctype ==  Constant || ctype == Getter || ctype == Setter
-        cairo_rotate(cr, (rot + 3) * M_PI/2.0);
+    DASSERT(c);
 
-    cairo_rotate(cr, M_PI);
+#if 1
+    GdkRGBA color;
+    gtk_style_context_get_color(context,
+                    gtk_style_context_get_state(context),
+                    &color);
+    gdk_cairo_set_source_rgba(cr, &color);
 
-    cairo_translate(cr, -16, -16);
+    cairo_fill(cr);
 
-    cairo_move_to(cr, 0, 0);
-    cairo_line_to(cr, 31, 15);
-    cairo_line_to(cr, 0, 31);
+    cairo_text_extents_t te;
+    cairo_select_font_face (cr, "Georgia",
+        CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size (cr, 14);
 
-    cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
-    cairo_stroke(cr);
-    cairo_destroy(cr);
-}
+    switch(c->geo) {
+        case ICOSG:
+            switch(c->type) {
+                case Setter:
+                case Getter:
+                case Constant:
+                    cairo_text_extents(cr, c->name, &te);
+                    cairo_move_to(cr, width/2 - te.width/2,
+                            height/2 + te.height/2);
+                    break;
+                case Input:
+                case Output:
+                    cairo_text_extents(cr, c->name, &te);
+                    cairo_rotate(cr, M_PI/2.0);
+                    cairo_move_to(cr, height/2 - te.width/2,
+                            - width/2 - (te.y_bearing + te.height) +
+                            te.height/2);
+                    break;
+            }
+            break;
+        case OCISG:
+        case ISGOC:
+        case OSGIC:
+        case COSGI:
+        case CISGO:
+        case SGOCI:
+        case SGICO:
+            break;
+    }
 
-
-#define CONNECT_IMAGE_LEN   (32)
-
-
-// TODO: Save and Cleanup cairo_surface_t *s.
-//
-static inline cairo_surface_t *
-CreateConnectImageSurface(enum ConnectorType ctype, uint32_t rot) {
-
-    cairo_surface_t *s = cairo_image_surface_create(CAIRO_FORMAT_ARGB32,
-            CONNECT_IMAGE_LEN, CONNECT_IMAGE_LEN);
-    DASSERT(s);
-    DrawConnectImageSurface(s, ctype, rot);
-
-    return s;
+    cairo_show_text (cr, c->name);
+#endif
+    return FALSE;
 }
 
 
@@ -146,20 +197,22 @@ MakeBlockLabel(GtkWidget *grid,
 
     GtkWidget *l = gtk_label_new(text);
     gtk_widget_set_name(l, className);
+    gtk_widget_set_size_request(l, 120, 20);
     gtk_widget_show(l);
     gtk_grid_attach(GTK_GRID(grid), l, x, y, w, h);
 }
 
 
 static void MakeBlockConnector(GtkWidget *grid,
-        const char *className/*for CSS shit*/,
+        const char *className/*for CSS*/,
         enum ConnectorType ctype,
+        struct QsBlock *block,
         gint x, gint y, gint w, gint h) {
 
-    GtkWidget *ebox = gtk_event_box_new();
+    GtkWidget *drawArea = gtk_drawing_area_new();
 
-    gtk_widget_set_can_focus(ebox, TRUE);
-    gtk_widget_set_events(ebox,
+    gtk_widget_set_can_focus(drawArea, TRUE);
+    gtk_widget_add_events(drawArea,
             GDK_STRUCTURE_MASK |
             GDK_SCROLL_MASK |
             GDK_POINTER_MOTION_MASK |
@@ -167,20 +220,23 @@ static void MakeBlockConnector(GtkWidget *grid,
             GDK_BUTTON_PRESS_MASK|
             GDK_STRUCTURE_MASK);
 
-    gtk_widget_show(ebox);
-    gtk_widget_set_name(ebox, className);
-    gtk_grid_attach(GTK_GRID(grid), ebox, x, y, w, h);
+    gtk_widget_show(drawArea);
+    gtk_widget_set_size_request(drawArea, 20, 20);
+    gtk_widget_set_name(drawArea, className);
+    gtk_grid_attach(GTK_GRID(grid), drawArea, x, y, w, h);
 
-    cairo_surface_t *surface = CreateConnectImageSurface(ctype, 0);
+    struct Connector *c = calloc(1, sizeof(*c));
+    ASSERT(c, "calloc(1,%zu) failed", sizeof(*c));
+    c->type = ctype;
+    c->geo = ICOSG;
+    c->block = block;
+    c->name = strdup(className);
+    // TODO: free c->name.
+    ASSERT(c->name, "strdup() failed");
+    // TODO: free c
 
-    GtkWidget *img = gtk_image_new_from_surface(surface);
-    // Decreases the reference count on surface by one.  The GTK image will
-    // add its' own reference.
-    cairo_surface_destroy(surface);
-
-    gtk_container_add(GTK_CONTAINER(ebox), img);
-    //gtk_widget_set_name(img, className); // ebox takes care of this.
-    gtk_widget_show(img);
+    g_signal_connect(G_OBJECT(drawArea), "draw",
+            G_CALLBACK(DrawConnectImage_CB), c/*userData*/);
 }
 
 
@@ -202,6 +258,10 @@ bool AddBlock(GtkLayout *layout, const char *blockFile,
 
     struct QsBlock *block = qsGraphBlockLoad(graph, blockFile, 0);
 
+    if(!block)
+        // Failed to load block.
+        return false;
+
 
 
     // As of GTK3 version 3.24.20; gtk widget name is more like a CSS
@@ -211,8 +271,8 @@ bool AddBlock(GtkLayout *layout, const char *blockFile,
     // Widget sandwich like so (bottom to top user facing top):
     //
     //   event_box : grid :
-    //                       event_box : img  (connections)
-    //                       label            (inner labels)
+    //                       draw_area  (connections)
+    //                       label      (inner labels)
     //
     //
     // Events that fall back to the root event_box are for the block as a
@@ -254,12 +314,12 @@ bool AddBlock(GtkLayout *layout, const char *blockFile,
         //                              x, y, w, h
         MakeBlockLabel(grid, blockFile, "path", 1, 1, 4, 1);
         MakeBlockLabel(grid, block->name, "name", 1, 3, 4, 1);
-        //                                             x, y, w, h
-        MakeBlockConnector(grid, "constant", Constant, 1, 0, 4, 1);
-        MakeBlockConnector(grid, "input", Input, 0, 0, 1, 5);
-        MakeBlockConnector(grid, "output", Output, 5, 0, 1, 5);
-        MakeBlockConnector(grid, "setter", Setter, 1, 4, 2, 1);
-        MakeBlockConnector(grid, "getter", Getter, 3, 4, 2, 1);
+        //                                                     x, y, w, h
+        MakeBlockConnector(grid, "constants", Constant, block, 1, 0, 4, 1);
+        MakeBlockConnector(grid, "input", Input, block, 0, 0, 1, 5);
+        MakeBlockConnector(grid, "output", Output, block, 5, 0, 1, 5);
+        MakeBlockConnector(grid, "setters", Setter, block, 1, 4, 2, 1);
+        MakeBlockConnector(grid, "getters", Getter, block, 3, 4, 2, 1);
     }
 
     gtk_layout_put(layout, ebox, x, y);

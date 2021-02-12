@@ -279,6 +279,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     char *path;
     void *dlhandle = GetDLHandle(fileName, &path);
     if(!dlhandle) {
+        qsDictionaryRemove(graph->blocks, blockName);
         free(path);
         return 0;
     }
@@ -364,7 +365,7 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     if(declare == 0) {
         ERROR("dlsym(, \"declare\") failed: %s", dlerror());
         free(path);
-        qsDictionaryRemove(entry, blockName);
+        qsDictionaryRemove(graph->blocks, blockName);
         qsBlockUnload_noDestory(b);
         return 0;
     }
@@ -399,12 +400,12 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         if(ret < 0) {
             ERROR("delcare() failed for block named \"%s\"", b->name);
             free(path);
-            qsDictionaryRemove(entry, blockName);
+            qsDictionaryRemove(graph->blocks, blockName);
             qsBlockUnload_noDestory(b);
             return 0;
         }
         // In this case we keep a block that is a struct in the program
-        // but there will be no more calling callbacks from the DSO.
+        // but there will be no longer calling callbacks from the DSO.
         DSPEW("declare() returned %d removing callbacks"
                 " for block named \"%s\"",
                 ret, b->name);
