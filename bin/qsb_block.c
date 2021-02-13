@@ -57,6 +57,8 @@ struct Connector {
 
 struct Block {
 
+    GtkWidget *ebox; // block container widget.
+    struct Page *page; // tab page that has this block in it.
     struct QsBlock *block;
     struct Connector constants, getters, setters, input, output;
 };
@@ -266,15 +268,39 @@ static void MakeBlockConnector(GtkWidget *grid,
             G_CALLBACK(DrawConnectImage_CB), c/*userData*/);
 }
 
+static gboolean
+Block_buttonReleaseCB(GtkWidget *ebox,
+        GdkEventButton *e, struct Block *block) {
+
+    if(movingBlockWidget)
+        return FALSE; // FALSE = event to next widget
+
+    return TRUE;
+}
+
+
+static gboolean
+Block_buttonMotionCB(GtkWidget *ebox,
+        GdkEventButton *e, struct Block *block) {
+
+    if(movingBlockWidget)
+        return FALSE; // FALSE = event to next widget
+
+    return TRUE;
+}
+
 
 static gboolean
 Block_buttonPressCB(GtkWidget *ebox,
         GdkEventButton *e, struct Block *block) {
 
+    if(e->button == MOVE_BLOCK_BUTTON) {
 
-    DSPEW();
+        movingBlockWidget = ebox;
+        return FALSE; // FALSE = event to next widget
+    }
 
-    return TRUE; // Eat this event at this widget
+    return TRUE;
 }
 
 
@@ -286,8 +312,9 @@ Block_buttonPressCB(GtkWidget *ebox,
 //
 // The name of the block can be changed later.
 //
-GtkWidget *AddBlock(GtkLayout *layout, const char *blockFile,
-    double x, double y) {
+GtkWidget *AddBlock(struct Page *page,
+        GtkLayout *layout, const char *blockFile,
+        double x, double y) {
 
     DASSERT(blockFile);
 
@@ -304,6 +331,7 @@ GtkWidget *AddBlock(GtkLayout *layout, const char *blockFile,
     // TODO: free(b);
     ASSERT(b, "calloc(1,%zu) failed", sizeof(*b));
     b->block = block;
+    b->page = page;
 
     // As of GTK3 version 3.24.20; gtk widget name is more like a CSS
     // class name.  Name is not a unique ID.  It's more like a CSS class.
@@ -322,6 +350,7 @@ GtkWidget *AddBlock(GtkLayout *layout, const char *blockFile,
     // connections.
 
     GtkWidget *ebox = gtk_event_box_new();
+    b->ebox = ebox;
     gtk_widget_show(ebox);
     gtk_widget_set_can_focus(ebox, TRUE);
     gtk_widget_set_events(ebox,
@@ -364,7 +393,11 @@ GtkWidget *AddBlock(GtkLayout *layout, const char *blockFile,
 
         g_signal_connect(GTK_WIDGET(ebox), "button-press-event",
             G_CALLBACK(Block_buttonPressCB), b/*userData*/);
-    }
+        g_signal_connect(GTK_WIDGET(ebox), "button-release-event",
+            G_CALLBACK(Block_buttonReleaseCB), b/*userData*/);
+        g_signal_connect(GTK_WIDGET(ebox), "motion-notify-event",
+            G_CALLBACK(Block_buttonMotionCB), b/*userData*/);
+      }
 
     gtk_layout_put(layout, ebox, x, y);
 

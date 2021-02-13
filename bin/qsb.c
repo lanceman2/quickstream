@@ -42,7 +42,9 @@ static GtkNotebook *noteBook = 0;
 static int tabCreateCount = 0;
 static GtkWidget *window = 0;
 
-static GtkWidget *movingBlockWidget = 0;
+GtkWidget *movingBlockWidget = 0;
+// The position of the mouse pointer relative to the block at the time of
+// the mouse press event, plus the layout position.
 static double xi, yi;
 
 // List of cursors with images:
@@ -60,13 +62,36 @@ static inline GdkCursor *GetCursor(const char *type) {
 }
 
 
+static void GetWidgetRootXY(GtkWidget *w, double *x, double *y) {
+
+    gint ix, iy;
+    gdk_window_get_origin(gtk_widget_get_window(w), &ix, &iy);
+    *x = ix;
+    *y = iy;
+}
 
 
-#define CREATE_BLOCK_BUTTON   (1) // 1 = left mouse
+// Push a block to the top of the page layout.
+//
+static void PopForwardBlock(GtkLayout *layout, GtkWidget *ebox,
+        double x, double y) {
+
+    // 1. get one more reference to the widget; otherwise
+    //    the widget will be destroyed in the next call.
+    g_object_ref(G_OBJECT(ebox));
+
+    // 2. remove the widget which removes one reference
+    gtk_container_remove(GTK_CONTAINER(layout), ebox);
+    // Now we have at least one reference.
+    // 3. re-add the widget which will take ownership of the
+    //    one reference.
+    gtk_layout_put(layout, ebox, x, y);
+}
+
 
 
 static gboolean WorkArea_buttonReleaseCB(GtkLayout *layout,
-        GdkEventButton *e, void *data) {
+        GdkEventButton *e, struct Page *page) {
 
     if(e->type != GDK_BUTTON_RELEASE) {
         // This should not happen.
@@ -85,31 +110,30 @@ static gboolean WorkArea_buttonReleaseCB(GtkLayout *layout,
 }
 
 
-static gboolean WorkArea_buttonMotionCB(GtkLayout *layout,
-        GdkEventButton *e, void *data) {
+static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
+        GdkEventButton *e, struct Page *page) {
 
     if(e->type != GDK_MOTION_NOTIFY) {
         // This should not happen.
         ASSERT(0, "Did not get GDK_MOTION_NOTIFY event");
         return FALSE; // FALSE = go to next widget
     }
-    if(e->button != CREATE_BLOCK_BUTTON)
-        return FALSE; // FALSE = go to next widget
 
     if(!movingBlockWidget) return TRUE;
 
     gtk_layout_move(layout, movingBlockWidget,
-            e->x - xi, e->y - yi);
+            e->x_root - xi, e->y_root - yi);
 
     return TRUE; // Eat this event at this widget
 }
 
 
 static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
-        GdkEventButton *e, void *data) {
+        GdkEventButton *e, struct Page *page) {
 
     if(e->type != GDK_BUTTON_PRESS) {
         // This should not happen; but it does.
+        // ya. GTK sucks.
         //ASSERT(0, "Did not get GDK_BUTTON_PRESS event");
         return FALSE; // FALSE = go to next widget
     }
@@ -120,19 +144,43 @@ static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
     if(!blockFile && !movingBlockWidget)
         return TRUE; // Eat this event at this widget
 
-    if(!movingBlockWidget)
-        movingBlockWidget = AddBlock(layout, blockFile,
+    if(!movingBlockWidget) {
+        movingBlockWidget = AddBlock(page, layout, blockFile,
                 e->x - (xi = 2*MIN_BLOCK_LEN),
                 e->y - (yi = 2*MIN_BLOCK_LEN));
+    } else {
+        // The block was pressed and set movingBlockWidget.
+        double xb, yb;
+        GetWidgetRootXY(movingBlockWidget, &xb, &yb);
+        xi = e->x_root - xb;
+        yi = e->y_root - yb;
+    }
+    double xl, yl;
+    GetWidgetRootXY(GTK_WIDGET(layout), &xl, &yl);
+    xi += xl;
+    yi += yl;
 
-    if(movingBlockWidget)
-        SetCursor(GTK_WIDGET(layout), moveCursor);
+    SetCursor(GTK_WIDGET(layout), moveCursor);
+
+    PopForwardBlock(layout, movingBlockWidget,
+            e->x_root - xi, e->y_root - yi);
 
     return TRUE; // Eat this event at this widget
 }
 
 
-static inline void MakeWorkArea(void) {
+static gint BlockSelectCompareCB(gconstpointer a, gconstpointer b) {
+
+    if(a > b)
+        return 1;
+    if(a < b)
+        return -1;
+    return 0;
+}
+
+
+
+static inline void MakeWorkArea(struct Page *page) {
 
     GtkBuilder *b = gtk_builder_new_from_resource(
             "/quickstreamBuilder/qsb_workArea_res.ui");
@@ -153,13 +201,13 @@ static inline void MakeWorkArea(void) {
     ASSERT(rt >= 0);
 
     g_signal_connect(GTK_WIDGET(layout), "button-press-event",
-            G_CALLBACK(WorkArea_buttonPressCB), 0/*userData*/);
+            G_CALLBACK(WorkArea_buttonPressCB), page/*userData*/);
 
     g_signal_connect(GTK_WIDGET(layout), "motion-notify-event",
-            G_CALLBACK(WorkArea_buttonMotionCB), 0/*userData*/);
+            G_CALLBACK(WorkArea_mouseMotionCB), page/*userData*/);
 
     g_signal_connect(GTK_WIDGET(layout), "button-release-event",
-            G_CALLBACK(WorkArea_buttonReleaseCB), 0/*userData*/);
+            G_CALLBACK(WorkArea_buttonReleaseCB), page/*userData*/);
 
 
 
@@ -170,7 +218,13 @@ static inline void MakeWorkArea(void) {
 
 static gboolean NewTab(GtkWidget *w, gpointer data) {
 
-    MakeWorkArea();
+    struct Page *page = calloc(1, sizeof(*page));
+    ASSERT(page, "calloc(1,%zu) failed", sizeof(*page));
+    // TODO: free(page) somewhere.
+
+    page->selectedBlocks = g_tree_new(BlockSelectCompareCB);
+
+    MakeWorkArea(page);
     return TRUE;
 }
 

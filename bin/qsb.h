@@ -3,10 +3,17 @@
  * output, and parameter connections between them.
  */
 
+struct Page {
+   GTree *selectedBlocks;
+};
+
 
 extern
 struct QsGraph *graph;
 
+
+extern
+GtkWidget *movingBlockWidget;
 
 
 extern
@@ -34,10 +41,16 @@ char *GetSelectedBlockFile(void);
 
 // Return true if the block is successfully added, else return false.
 extern
-GtkWidget *AddBlock(GtkLayout *layout, const char *blockFile,
-    double x, double y);
+GtkWidget *AddBlock(struct Page *page,
+        GtkLayout *layout, const char *blockFile,
+        double x, double y);
 
 
 // This is uses in gtk_widget_set_size_request() for some of the block
 // widgets.
 #define MIN_BLOCK_LEN     (20)
+
+
+
+#define CREATE_BLOCK_BUTTON   (1) // 1 = left mouse
+#define MOVE_BLOCK_BUTTON     (1) // 1 = left mouse
