@@ -265,15 +265,21 @@ Block_buttonPressCB(GtkWidget *ebox,
 
 void SelectBlock(struct Block *b) {
 
+    if(b->isSelected) return;
+
     gtk_widget_set_name(b->grid, "selectedBlock");
     g_tree_insert(b->page->selectedBlocks, b, b);
+    b->isSelected = true;
 }
 
 
 void UnselectBlock(struct Block *b) {
 
-     gtk_widget_set_name(b->grid, "block");
-     g_tree_remove(b->page->selectedBlocks, b);
+    if(!b->isSelected) return;
+
+    gtk_widget_set_name(b->grid, "block");
+    g_tree_remove(b->page->selectedBlocks, b);
+    b->isSelected = false;
 }
 
 
@@ -306,6 +312,18 @@ struct Block *AddBlock(struct Page *page,
     ASSERT(b, "calloc(1,%zu) failed", sizeof(*b));
     b->block = block;
     b->page = page;
+    b->x = x;
+    b->y = y;
+
+    // Add to the singly linked list of blocks in the page.
+    if(page->blocks) {
+        struct Block *last = page->blocks;
+        while(last->next) last = last->next;
+        last->next = b;
+    } else {
+        page->blocks = b;
+    }
+
 
     // As of GTK3 version 3.24.20; gtk widget name is more like a CSS
     // class name.  Name is not a unique ID.  It's more like a CSS class.
@@ -374,7 +392,7 @@ struct Block *AddBlock(struct Page *page,
             G_CALLBACK(Block_buttonMotionCB), b/*userData*/);
       }
 
-    gtk_layout_put(layout, ebox, x, y);
+    gtk_layout_put(layout, ebox, b->x, b->y);
 
     return b;
 }

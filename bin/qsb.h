@@ -2,13 +2,20 @@
  * quickstream.   quickstreamBuilder builds lists of blocks and input,
  * output, and parameter connections between them.
  */
+struct Block;
+
 
 struct Page {
    GTree *selectedBlocks;
+
+   struct Block *blocks; // singly linked list of blocks.
+
+   // For drawing new lines or selecting box.
+   cairo_surface_t *newDrawSurface;
+
+   // width and height of layout drawing area.
+   gint w, h;
 };
-
-
-struct Block;
 
 
 enum ConnectorType {
@@ -48,6 +55,9 @@ struct Block {
     struct Page *page; // tab page that has this block in it.
     struct QsBlock *block;
     struct Connector constants, getters, setters, input, output;
+    struct Block *next; // for singly linked list of blocks in page.
+    bool isSelected;
+    double x, y; // current position in layout widget.
 };
 
 

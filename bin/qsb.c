@@ -47,9 +47,15 @@ struct Block *movingBlock = 0;
 // the mouse press event, plus the layout position.
 static double xi, yi;
 
+static double x_0, y_0;
+
 // List of cursors with images:
 // https://developer.gnome.org/gdk3/stable/gdk3-Cursors.html#GdkCursorType
 static GdkCursor *moveCursor = 0;
+
+
+static bool haveSelectBox = false;
+static gdouble selectBoxX, selectBoxY;
 
 
 static inline void SetCursor(GtkWidget *w, GdkCursor *cursor) {
@@ -85,6 +91,45 @@ static void UnselectAllBlocks(struct Page *page) {
 }
 
 
+// We have this stupid surface re-allocator because the GTK layout widget
+// will not receive configure events, which are when the widget window
+// resizes.
+//
+// Return true if the surface is reallocated.
+//
+static inline bool
+GetSurface(struct Page *page, GtkWidget *widget, cairo_surface_t **s,
+        gint *w_out, gint *h_out) {
+
+    gint w = gtk_widget_get_allocated_width(widget);
+    gint h = gtk_widget_get_allocated_height(widget);
+
+    if(w_out) *w_out = w;
+    if(h_out) *h_out = h;
+
+    if(*s != 0 && page->w == w && page->h == h)
+        // nothing to do.
+        return false;
+
+    if(*s)
+        cairo_surface_destroy(*s);
+    GdkWindow *win = gtk_widget_get_window(widget);
+
+    *s = gdk_window_create_similar_surface(win,
+            CAIRO_CONTENT_COLOR_ALPHA, w, h);
+
+    cairo_t *cr = cairo_create(*s);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    cairo_set_source_rgba(cr, 0, 0, 0, 0);
+    cairo_paint(cr);
+    cairo_destroy(cr);
+
+    page->w = w;
+    page->h = h;
+
+    return true;
+}
+
 
 // Push a block to the top of the page layout.
 //
@@ -104,8 +149,63 @@ static void PopForwardBlock(GtkLayout *layout, GtkWidget *ebox,
 }
 
 
+static
+gboolean
+WorkArea_drawCB(GtkWidget *layout, cairo_t *cr, struct Page *page) {
 
-static gboolean WorkArea_buttonReleaseCB(GtkLayout *layout,
+    GetSurface(page, layout, &page->newDrawSurface, 0, 0);
+
+
+    cairo_set_source_rgb(cr, 224/255.0, 233/255.0, 244/255.0);
+    cairo_paint(cr);
+
+    if(haveSelectBox) {
+        cairo_set_source_surface(cr, page->newDrawSurface, 0, 0);
+        cairo_paint(cr);
+    }
+ 
+    // TODO: Add the connections that we know so far.
+
+    return FALSE; // FALSE == Call other callbacks
+}
+
+
+static inline
+gboolean SelectBlockInRect(struct Block *b, gint *rect) {
+
+    GtkAllocation alloc;
+    gtk_widget_get_allocation(b->ebox, &alloc);
+
+    //gint w = gtk_widget_get_allocated_width(b->ebox);
+    //gint h = gtk_widget_get_allocated_height(b->ebox);
+
+    if( (alloc.x <= rect[0] + rect[2]) &&
+        ((alloc.x + alloc.width) >= rect[0]) &&
+        (alloc.y <= rect[1] + rect[3]) &&
+        ((alloc.y + alloc.height) >= rect[1]))
+        SelectBlock(b);
+
+    return FALSE; // FALSE == keep going
+}
+
+
+static gboolean MoveBlockCB(struct Block *b,
+        struct Block *val, double *dxy) {
+
+    gtk_layout_move(GTK_LAYOUT(gtk_widget_get_parent(b->ebox)),
+            b->ebox, b->x += dxy[0], b->y += dxy[1]);
+    return FALSE; // FALSE == keep going
+}
+
+
+static void MoveSelectedBlocks(struct Page *page, double dx, double dy) {
+
+    double dxy[2] = { dx, dy };
+    g_tree_foreach(page->selectedBlocks, (GTraverseFunc) MoveBlockCB, dxy);
+}
+
+
+static gboolean WorkArea_buttonReleaseCB(GtkWidget *layout,
         GdkEventButton *e, struct Page *page) {
 
     if(e->type != GDK_BUTTON_RELEASE) {
@@ -116,10 +216,47 @@ static gboolean WorkArea_buttonReleaseCB(GtkLayout *layout,
     if(e->button != CREATE_BLOCK_BUTTON)
         return FALSE; // FALSE = go to next widget
 
+    if(haveSelectBox) {
+
+        DASSERT(movingBlock == 0);
+ 
+        if(!(e->state & GDK_SHIFT_MASK))
+            UnselectAllBlocks(page);
+
+        gint rect[4] = {
+            selectBoxX, selectBoxY, // x, y
+            e->x - selectBoxX, e->y - selectBoxY // width, height
+        };
+
+        // Make sure that the width of the rectangle (rect) is positive.
+        if(rect[2] < 0) {
+            rect[2] = selectBoxX - e->x;
+            rect[0] = e->x;
+        }
+
+        // Make sure that the height of the rectangle (rect) is
+        // positive.
+        if(rect[3] < 0) {
+            rect[3] = selectBoxY - e->y;
+            rect[1] = e->y;
+        }
+
+        for(struct Block *bl = page->blocks; bl; bl = bl->next)
+            SelectBlockInRect(bl, rect);
+
+        haveSelectBox = false;
+        gint w = gtk_widget_get_allocated_width(layout);
+        gint h = gtk_widget_get_allocated_height(layout);
+        /* Now invalidate the affected region of the drawing area to
+         * remove the selection rectangle that we drew. */
+        gtk_widget_queue_draw_area(layout, 0, 0, w, h);
+    }
+
+
     if(!movingBlock) return TRUE;
 
     movingBlock = 0;
-    SetCursor(GTK_WIDGET(layout), 0);
+    SetCursor(layout, 0);
 
     return TRUE; // Eat this event at this widget
 }
@@ -134,10 +271,39 @@ static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
         return FALSE; // FALSE = go to next widget
     }
 
+    if(haveSelectBox) {
+
+        DASSERT(movingBlock == 0);
+        gint w, h;
+        GetSurface(page, GTK_WIDGET(layout), &page->newDrawSurface,
+                &w, &h);
+
+        cairo_t *cr = cairo_create(page->newDrawSurface);
+        cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+        // clear the surface
+        cairo_set_source_rgba(cr, 0, 0, 0, 0.0);
+        cairo_paint(cr);
+
+        cairo_set_source_rgba(cr, 0.0, 1.0, 1.0, 0.4);
+        cairo_rectangle (cr, selectBoxX, selectBoxY,
+                e->x - selectBoxX, e->y - selectBoxY);
+        cairo_fill(cr);
+        cairo_destroy(cr);
+    
+        /* Now invalidate the affected region of the drawing area. */
+        gtk_widget_queue_draw_area(GTK_WIDGET(layout), 0, 0, w, h);
+    }
+
     if(!movingBlock) return TRUE;
 
+#if 0
     gtk_layout_move(layout, movingBlock->ebox,
             e->x_root - xi, e->y_root - yi);
+#endif
+
+    MoveSelectedBlocks(page, e->x_root - x_0, e->y_root - y_0);
+    x_0 = e->x_root;
+    y_0 = e->y_root;
 
     return TRUE; // Eat this event at this widget
 }
@@ -152,29 +318,31 @@ static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
         //ASSERT(0, "Did not get GDK_BUTTON_PRESS event");
         return FALSE; // FALSE = go to next widget
     }
+
+    DASSERT(haveSelectBox == false);
+    
     if(e->button != CREATE_BLOCK_BUTTON)
         return FALSE; // FALSE = go to next widget
 
     const char *blockFile = GetSelectedBlockFile();
 
-    if(!blockFile && !movingBlock) {
-        if(!(e->state & GDK_SHIFT_MASK))
-            UnselectAllBlocks(page);
-        return TRUE; // Eat this event at this widget
-    }
+    if(!(e->state & GDK_SHIFT_MASK) &&
+            (!movingBlock || movingBlock->isSelected == false))
+        UnselectAllBlocks(page);
 
     if(!movingBlock) {
-        movingBlock = AddBlock(page, layout, blockFile,
-                e->x - (xi = 2*MIN_BLOCK_LEN),
-                e->y - (yi = 2*MIN_BLOCK_LEN));
-        if(!(e->state & GDK_SHIFT_MASK))
-            UnselectAllBlocks(page);
-        if(!movingBlock)
-            return TRUE; // eat event
-    } else {
+        if(blockFile)
+            movingBlock = AddBlock(page, layout, blockFile,
+                    e->x - (xi = 2*MIN_BLOCK_LEN),
+                    e->y - (yi = 2*MIN_BLOCK_LEN));
 
-        if(!(e->state & GDK_SHIFT_MASK))
-            UnselectAllBlocks(page);
+        if(!movingBlock) {
+            haveSelectBox = true;
+            selectBoxX = e->x;
+            selectBoxY = e->y;
+            return TRUE; // eat event
+        }
+    } else {
 
         // The block was pressed and set movingBlock.
         double xb, yb;
@@ -187,11 +355,13 @@ static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
     xi += xl;
     yi += yl;
 
+    x_0 = e->x_root;
+    y_0 = e->y_root;
+
     SetCursor(GTK_WIDGET(layout), moveCursor);
 
     PopForwardBlock(layout, movingBlock->ebox,
             e->x_root - xi, e->y_root - yi);
-
 
     SelectBlock(movingBlock);
 
@@ -228,6 +398,10 @@ static inline void MakeWorkArea(struct Page *page) {
     gint rt = gtk_notebook_append_page(noteBook, GTK_WIDGET(layout),
             gtk_label_new(tagName));
     ASSERT(rt >= 0);
+
+
+    g_signal_connect(GTK_WIDGET(layout), "draw",
+            G_CALLBACK(WorkArea_drawCB), page/*userData*/);
 
     g_signal_connect(GTK_WIDGET(layout), "button-press-event",
             G_CALLBACK(WorkArea_buttonPressCB), page/*userData*/);
