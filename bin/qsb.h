@@ -8,12 +8,57 @@ struct Page {
 };
 
 
+struct Block;
+
+
+enum ConnectorType {
+    Input,
+    Constant,
+    Output,
+    Getter,
+    Setter
+};
+
+
+enum ConnectorGeo {
+    ICOSG,
+    OCISG,
+    ISGOC,
+    OSGIC,
+
+    COSGI,
+    CISGO,
+    SGOCI,
+    SGICO
+};
+
+
+struct Connector {
+    enum ConnectorType type;
+    enum ConnectorGeo geo; // orientation and flip/flop
+    const char *name;
+    struct Block *block;
+};
+
+
+struct Block {
+
+    GtkWidget *ebox; // block container widget.
+    GtkWidget *grid; // block ebox child container widget.
+    struct Page *page; // tab page that has this block in it.
+    struct QsBlock *block;
+    struct Connector constants, getters, setters, input, output;
+};
+
+
+
 extern
 struct QsGraph *graph;
 
 
 extern
-GtkWidget *movingBlockWidget;
+struct Block *movingBlock;
+
 
 
 extern
@@ -39,11 +84,18 @@ extern
 char *GetSelectedBlockFile(void);
 
 
-// Return true if the block is successfully added, else return false.
+// Return pointer if the block is successfully added, else return 0.
 extern
-GtkWidget *AddBlock(struct Page *page,
+struct Block *AddBlock(struct Page *page,
         GtkLayout *layout, const char *blockFile,
         double x, double y);
+
+extern
+void SelectBlock(struct Block *b);
+
+
+extern
+void UnselectBlock(struct Block *b);
 
 
 // This is uses in gtk_widget_set_size_request() for some of the block

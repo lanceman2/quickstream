@@ -42,7 +42,7 @@ static GtkNotebook *noteBook = 0;
 static int tabCreateCount = 0;
 static GtkWidget *window = 0;
 
-GtkWidget *movingBlockWidget = 0;
+struct Block *movingBlock = 0;
 // The position of the mouse pointer relative to the block at the time of
 // the mouse press event, plus the layout position.
 static double xi, yi;
@@ -69,6 +69,21 @@ static void GetWidgetRootXY(GtkWidget *w, double *x, double *y) {
     *x = ix;
     *y = iy;
 }
+
+
+static gboolean UnselectCB(struct Block *key, struct Block *val,
+                  gpointer data) {
+    UnselectBlock(key);
+    return FALSE; // Keep traversing.
+}
+
+
+static void UnselectAllBlocks(struct Page *page) {
+
+    DASSERT(page);
+    g_tree_foreach(page->selectedBlocks, (GTraverseFunc) UnselectCB, 0);
+}
+
 
 
 // Push a block to the top of the page layout.
@@ -101,9 +116,9 @@ static gboolean WorkArea_buttonReleaseCB(GtkLayout *layout,
     if(e->button != CREATE_BLOCK_BUTTON)
         return FALSE; // FALSE = go to next widget
 
-    if(!movingBlockWidget) return TRUE;
+    if(!movingBlock) return TRUE;
 
-    movingBlockWidget = 0;
+    movingBlock = 0;
     SetCursor(GTK_WIDGET(layout), 0);
 
     return TRUE; // Eat this event at this widget
@@ -119,9 +134,9 @@ static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
         return FALSE; // FALSE = go to next widget
     }
 
-    if(!movingBlockWidget) return TRUE;
+    if(!movingBlock) return TRUE;
 
-    gtk_layout_move(layout, movingBlockWidget,
+    gtk_layout_move(layout, movingBlock->ebox,
             e->x_root - xi, e->y_root - yi);
 
     return TRUE; // Eat this event at this widget
@@ -141,17 +156,29 @@ static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
         return FALSE; // FALSE = go to next widget
 
     const char *blockFile = GetSelectedBlockFile();
-    if(!blockFile && !movingBlockWidget)
-        return TRUE; // Eat this event at this widget
 
-    if(!movingBlockWidget) {
-        movingBlockWidget = AddBlock(page, layout, blockFile,
+    if(!blockFile && !movingBlock) {
+        if(!(e->state & GDK_SHIFT_MASK))
+            UnselectAllBlocks(page);
+        return TRUE; // Eat this event at this widget
+    }
+
+    if(!movingBlock) {
+        movingBlock = AddBlock(page, layout, blockFile,
                 e->x - (xi = 2*MIN_BLOCK_LEN),
                 e->y - (yi = 2*MIN_BLOCK_LEN));
+        if(!(e->state & GDK_SHIFT_MASK))
+            UnselectAllBlocks(page);
+        if(!movingBlock)
+            return TRUE; // eat event
     } else {
-        // The block was pressed and set movingBlockWidget.
+
+        if(!(e->state & GDK_SHIFT_MASK))
+            UnselectAllBlocks(page);
+
+        // The block was pressed and set movingBlock.
         double xb, yb;
-        GetWidgetRootXY(movingBlockWidget, &xb, &yb);
+        GetWidgetRootXY(movingBlock->ebox, &xb, &yb);
         xi = e->x_root - xb;
         yi = e->y_root - yb;
     }
@@ -162,8 +189,11 @@ static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
 
     SetCursor(GTK_WIDGET(layout), moveCursor);
 
-    PopForwardBlock(layout, movingBlockWidget,
+    PopForwardBlock(layout, movingBlock->ebox,
             e->x_root - xi, e->y_root - yi);
+
+
+    SelectBlock(movingBlock);
 
     return TRUE; // Eat this event at this widget
 }
@@ -177,7 +207,6 @@ static gint BlockSelectCompareCB(gconstpointer a, gconstpointer b) {
         return -1;
     return 0;
 }
-
 
 
 static inline void MakeWorkArea(struct Page *page) {

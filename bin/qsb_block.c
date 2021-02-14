@@ -22,47 +22,6 @@
 #include "qsb.h"
 
 
-enum ConnectorType {
-    Input,
-    Constant,
-    Output,
-    Getter,
-    Setter
-};
-
-
-enum ConnectorGeo {
-    ICOSG,
-    OCISG,
-    ISGOC,
-    OSGIC,
-
-    COSGI,
-    CISGO,
-    SGOCI,
-    SGICO
-};
-
-
-struct Block;
-
-
-struct Connector {
-    enum ConnectorType type;
-    enum ConnectorGeo geo; // orientation and flip/flop
-    const char *name;
-    struct Block *block;
-};
-
-
-struct Block {
-
-    GtkWidget *ebox; // block container widget.
-    struct Page *page; // tab page that has this block in it.
-    struct QsBlock *block;
-    struct Connector constants, getters, setters, input, output;
-};
-
 
 static inline void GetConnectionColor(enum ConnectorType ctype,
         double *r, double *g, double *b, double *a) {
@@ -272,7 +231,7 @@ static gboolean
 Block_buttonReleaseCB(GtkWidget *ebox,
         GdkEventButton *e, struct Block *block) {
 
-    if(movingBlockWidget)
+    if(movingBlock)
         return FALSE; // FALSE = event to next widget
 
     return TRUE;
@@ -283,7 +242,7 @@ static gboolean
 Block_buttonMotionCB(GtkWidget *ebox,
         GdkEventButton *e, struct Block *block) {
 
-    if(movingBlockWidget)
+    if(movingBlock)
         return FALSE; // FALSE = event to next widget
 
     return TRUE;
@@ -296,12 +255,27 @@ Block_buttonPressCB(GtkWidget *ebox,
 
     if(e->button == MOVE_BLOCK_BUTTON) {
 
-        movingBlockWidget = ebox;
+        movingBlock = block;
         return FALSE; // FALSE = event to next widget
     }
 
     return TRUE;
 }
+
+
+void SelectBlock(struct Block *b) {
+
+    gtk_widget_set_name(b->grid, "selectedBlock");
+    g_tree_insert(b->page->selectedBlocks, b, b);
+}
+
+
+void UnselectBlock(struct Block *b) {
+
+     gtk_widget_set_name(b->grid, "block");
+     g_tree_remove(b->page->selectedBlocks, b);
+}
+
 
 
 // The top GTK widget of a block is a gtk_event_box.
@@ -312,7 +286,7 @@ Block_buttonPressCB(GtkWidget *ebox,
 //
 // The name of the block can be changed later.
 //
-GtkWidget *AddBlock(struct Page *page,
+struct Block *AddBlock(struct Page *page,
         GtkLayout *layout, const char *blockFile,
         double x, double y) {
 
@@ -376,6 +350,7 @@ GtkWidget *AddBlock(struct Page *page,
         */
 
         GtkWidget *grid = gtk_grid_new();
+        b->grid = grid;
         gtk_widget_show(grid);
         gtk_widget_set_name(grid, "block");
         gtk_widget_set_visible(grid, TRUE);
@@ -401,5 +376,5 @@ GtkWidget *AddBlock(struct Page *page,
 
     gtk_layout_put(layout, ebox, x, y);
 
-    return ebox;
+    return b;
 }
