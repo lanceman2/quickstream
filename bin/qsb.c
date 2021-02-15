@@ -77,20 +77,6 @@ static void GetWidgetRootXY(GtkWidget *w, double *x, double *y) {
 }
 
 
-static gboolean UnselectCB(struct Block *key, struct Block *val,
-                  gpointer data) {
-    UnselectBlock(key);
-    return FALSE; // Keep traversing.
-}
-
-
-static void UnselectAllBlocks(struct Page *page) {
-
-    DASSERT(page);
-    g_tree_foreach(page->selectedBlocks, (GTraverseFunc) UnselectCB, 0);
-}
-
-
 // We have this stupid surface re-allocator because the GTK layout widget
 // will not receive configure events, which are when the widget window
 // resizes.
@@ -429,14 +415,6 @@ static gboolean NewTab(GtkWidget *w, gpointer data) {
 
     MakeWorkArea(page);
     return TRUE;
-}
-
-
-static inline void
-Connect(GtkBuilder *builder, const char *id, const char *action,
-        void *callback, void *userData) {
-    g_signal_connect(gtk_builder_get_object(builder, id),
-            action, G_CALLBACK(callback), userData);
 }
 
 

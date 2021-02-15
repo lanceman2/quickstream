@@ -107,6 +107,17 @@ void SelectBlock(struct Block *b);
 extern
 void UnselectBlock(struct Block *b);
 
+extern
+void UnselectAllBlocks(struct Page *page);
+
+
+static inline void
+Connect(GtkBuilder *builder, const char *id, const char *action,
+        void *callback, void *userData) {
+    g_signal_connect(gtk_builder_get_object(builder, id),
+            action, G_CALLBACK(callback), userData);
+}
+
 
 // This is uses in gtk_widget_set_size_request() for some of the block
 // widgets.
@@ -116,3 +127,5 @@ void UnselectBlock(struct Block *b);
 
 #define CREATE_BLOCK_BUTTON   (1) // 1 = left mouse
 #define MOVE_BLOCK_BUTTON     (1) // 1 = left mouse
+
+#define BLOCK_POPUP_BUTTON    (3) // 3 = right mouse

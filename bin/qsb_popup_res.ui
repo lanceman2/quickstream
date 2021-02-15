@@ -5,6 +5,12 @@
     <property name="visible">True</property>
     <property name="can_focus">True</property>
     <child>
+      <object id="properties" class="GtkMenuItem">
+        <property name="label">Properties ...</property>
+        <property name="visible">True</property>
+      </object>
+    </child>
+    <child>
       <object id="remove" class="GtkMenuItem">
         <property name="label">Remove</property>
         <property name="visible">True</property>

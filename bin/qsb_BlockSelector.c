@@ -172,13 +172,24 @@ GtkEntry *selectedBlockEntry = 0;
 
 const char *GetSelectedBlockFile(void) {
     DASSERT(selectedBlockEntry);
+
+    static char *ret = 0;
+
+    if(ret) free(ret);
+
+    // This string points to internally allocated storage in the widget
+    // and must not be freed, modified or stored.
     const char *blockFile = gtk_entry_get_text(selectedBlockEntry);
 
-    // Stupid GTK returns a string even when it's empty.  We like it
-    // more decisive.
-    //
-    if(!blockFile || !blockFile[0]) return 0;
-    return blockFile;
+    if(!blockFile || !blockFile[0])
+        ret = 0;
+    else
+        ret = strdup(blockFile);
+
+    // This is why we had to copy the text.
+    gtk_entry_set_text(selectedBlockEntry, "");
+
+    return ret;
 }
 
 
@@ -258,8 +269,7 @@ void AddBlockSelector(GtkWidget *tree, GtkEntry *entry) {
     treeViewAdd(tree, moduleDir, pathLabel, CheckFile, GetName);
     treeViewShow(tree, "Choose Block to Create");
 
-    //"activate-on-single-click"
-    
+    // "activate-on-single-click"
     g_signal_connect(G_OBJECT(tree),"row-activated",
             G_CALLBACK(rowActivated_CB), 0);
 

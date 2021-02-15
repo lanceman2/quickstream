@@ -249,17 +249,44 @@ Block_buttonMotionCB(GtkWidget *ebox,
 }
 
 
+// Popup menu for block button click
+static GtkMenu *popupMenu = 0;
+static struct Block *popupBlock = 0;
+
+
+static gboolean UnselectCB(struct Block *key, struct Block *val,
+                  gpointer data) {
+    UnselectBlock(key);
+    return FALSE; // Keep traversing.
+}
+
+
+void UnselectAllBlocks(struct Page *page) {
+
+    DASSERT(page);
+    g_tree_foreach(page->selectedBlocks, (GTraverseFunc) UnselectCB, 0);
+}
+
+
 static gboolean
 Block_buttonPressCB(GtkWidget *ebox,
         GdkEventButton *e, struct Block *block) {
 
-    if(e->button == MOVE_BLOCK_BUTTON) {
+    switch(e->button) {
 
-        movingBlock = block;
-        return FALSE; // FALSE = event to next widget
+        case MOVE_BLOCK_BUTTON:
+            movingBlock = block;
+            return FALSE; // FALSE = event to next widget
+
+        case BLOCK_POPUP_BUTTON:
+            popupBlock = block;
+            UnselectAllBlocks(block->page);
+            SelectBlock(block);
+            gtk_menu_popup_at_pointer(popupMenu, (GdkEvent *) e);
+            return TRUE; // TRUE Event stops here.
     }
 
-    return TRUE;
+    return TRUE; // TRUE Event stops here.
 }
 
 
@@ -283,6 +310,46 @@ void UnselectBlock(struct Block *b) {
 }
 
 
+static void DestroyBlock(struct Block *b) {
+
+    DASSERT(b);
+    DASSERT(b->page);
+
+    UnselectBlock(b);
+
+    // Remove block from the page blocks list
+    struct Block *prev = 0;
+    struct Block *bl = b->page->blocks;
+    DASSERT(bl);
+    while(bl && bl != b) {
+        prev = bl;
+        bl = bl->next;
+    }
+    DASSERT(bl == b);
+    if(prev)
+        prev->next = b->next;
+    else
+        b->page->blocks = b->next;
+
+    qsBlockUnload(b->block);
+
+    gtk_widget_destroy(b->ebox);
+
+
+#ifdef DEBUG
+    memset(b, 0, sizeof(*b));
+#endif
+    free(b);
+}
+
+
+static void RemovePopupBlockCB(GtkWidget *widget,
+        GdkEvent *e, gpointer data) {
+    DASSERT(popupBlock);
+    DestroyBlock(popupBlock);
+    popupBlock = 0;
+}
+
 
 // The top GTK widget of a block is a gtk_event_box.
 //
@@ -295,6 +362,18 @@ void UnselectBlock(struct Block *b) {
 struct Block *AddBlock(struct Page *page,
         GtkLayout *layout, const char *blockFile,
         double x, double y) {
+
+
+    if(popupMenu == 0) {
+
+        GtkBuilder *popupBuilder = gtk_builder_new_from_resource(
+                "/quickstreamBuilder/qsb_popup_res.ui");
+        popupMenu = GTK_MENU(gtk_builder_get_object(popupBuilder,
+                    "popupMenu"));
+        Connect(popupBuilder, "remove", "activate",
+                RemovePopupBlockCB, 0);
+    }
+
 
     DASSERT(blockFile);
 
