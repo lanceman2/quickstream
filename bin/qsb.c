@@ -43,10 +43,7 @@ static int tabCreateCount = 0;
 static GtkWidget *window = 0;
 
 struct Block *movingBlock = 0;
-// The position of the mouse pointer relative to the block at the time of
-// the mouse press event, plus the layout position.
-static double xi, yi;
-
+// The position of the mouse pointer at the last mouse event.
 static double x_0, y_0;
 
 // List of cursors with images:
@@ -75,6 +72,7 @@ static void GetWidgetRootXY(GtkWidget *w, double *x, double *y) {
     *x = ix;
     *y = iy;
 }
+
 
 
 // We have this stupid surface re-allocator because the GTK layout widget
@@ -282,11 +280,6 @@ static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
 
     if(!movingBlock) return TRUE;
 
-#if 0
-    gtk_layout_move(layout, movingBlock->ebox,
-            e->x_root - xi, e->y_root - yi);
-#endif
-
     MoveSelectedBlocks(page, e->x_root - x_0, e->y_root - y_0);
     x_0 = e->x_root;
     y_0 = e->y_root;
@@ -316,11 +309,14 @@ static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
             (!movingBlock || movingBlock->isSelected == false))
         UnselectAllBlocks(page);
 
+    double xi, yi;
+
     if(!movingBlock) {
+        xi = 2*MIN_BLOCK_LEN;
+        yi = 2*MIN_BLOCK_LEN;
         if(blockFile)
             movingBlock = AddBlock(page, layout, blockFile,
-                    e->x - (xi = 2*MIN_BLOCK_LEN),
-                    e->y - (yi = 2*MIN_BLOCK_LEN));
+                    e->x - xi, e->y - yi);
 
         if(!movingBlock) {
             haveSelectBox = true;

@@ -335,7 +335,6 @@ static void DestroyBlock(struct Block *b) {
 
     gtk_widget_destroy(b->ebox);
 
-
 #ifdef DEBUG
     memset(b, 0, sizeof(*b));
 #endif
