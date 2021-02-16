@@ -615,6 +615,16 @@ struct Block *AddBlock(struct Page *page,
         GtkLayout *layout, const char *blockFile,
         double x, double y) {
 
+    DASSERT(blockFile);
+
+    if(!graph) graph = qsGraphCreate();
+    ASSERT(graph);
+
+    struct QsBlock *block = qsGraphBlockLoad(graph, blockFile, 0);
+
+    if(!block)
+        // Failed to load block.
+        return 0;
 
     if(popupMenu == 0) {
 
@@ -627,19 +637,8 @@ struct Block *AddBlock(struct Page *page,
         Connect(popupBuilder,"rotateCCW", "activate", RotateCCWCB, 0);
         Connect(popupBuilder,"flip", "activate", FlipCB, 0);
         Connect(popupBuilder,"flop", "activate", FlopCB, 0);
-       }
+    }
 
-
-    DASSERT(blockFile);
-
-    if(!graph) graph = qsGraphCreate();
-    ASSERT(graph);
-
-    struct QsBlock *block = qsGraphBlockLoad(graph, blockFile, 0);
-
-    if(!block)
-        // Failed to load block.
-        return 0;
 
     struct Block *b = calloc(1, sizeof(*b));
     // TODO: free(b);
