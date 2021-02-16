@@ -17,14 +17,26 @@
       </object>
     </child>
     <child>
+      <object id="rotateCW" class="GtkMenuItem">
+        <property name="label">Rotate CW</property>
+        <property name="visible">True</property>
+      </object>
+    </child>
+    <child>
       <object id="rotateCCW" class="GtkMenuItem">
         <property name="label">Rotate CCW</property>
         <property name="visible">True</property>
       </object>
     </child>
     <child>
-      <object id="rotateCW" class="GtkMenuItem">
-        <property name="label">Rotate CW</property>
+      <object id="flip" class="GtkMenuItem">
+        <property name="label">Flip</property>
+        <property name="visible">True</property>
+      </object>
+    </child>
+    <child>
+      <object id="flop" class="GtkMenuItem">
+        <property name="label">Flop</property>
         <property name="visible">True</property>
       </object>
     </child>

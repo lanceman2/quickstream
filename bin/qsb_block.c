@@ -63,26 +63,26 @@ static inline void GetConnectionColor(enum ConnectorType ctype,
      Block with geo: ICOSG (Input,Constant,Output,SetterGetter)
 
  *******************************************
- *       |        constant        |        |
+ *       |          const         |        |
  *       |************************|        |
  *       |        path.so         |        |
  * input |                        | output |
  *       |         name           |        |
  *       |************************|        |
- *       |  setter   |   getter   |        |
+ *       |    set    |     get    |        |
  *******************************************
 
 
     Block with geo: OCISG (Ouput,Constant,Input,SetterGetter)
 
  *******************************************
- *        |        constant        |       |
+ *        |         const          |       |
  *        |************************|       |
  *        |        path.so         |       |
  * output |                        | input |
  *        |         name           |       |
  *        |************************|       |
- *        |  setter   |   getter   |       |
+ *        |    set    |    get     |       |
  *******************************************
 
 
@@ -103,8 +103,8 @@ static gboolean DrawConnectImage_CB(GtkWidget *widget,
 
     context = gtk_widget_get_style_context (widget);
 
-    width = gtk_widget_get_allocated_width (widget);
-    height = gtk_widget_get_allocated_height (widget);
+    width = gtk_widget_get_allocated_width(widget);
+    height = gtk_widget_get_allocated_height(widget);
 
     gtk_render_background(context, cr, 0, 0, width, height);
 
@@ -124,8 +124,11 @@ static gboolean DrawConnectImage_CB(GtkWidget *widget,
         CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
     cairo_set_font_size (cr, 14);
 
-    switch(c->geo) {
+    switch(c->block->geo) {
         case ICOSG:
+        case OCISG:
+        case ISGOC:
+        case OSGIC:
             switch(c->type) {
                 case Setter:
                 case Getter:
@@ -144,13 +147,27 @@ static gboolean DrawConnectImage_CB(GtkWidget *widget,
                     break;
             }
             break;
-        case OCISG:
-        case ISGOC:
-        case OSGIC:
         case COSGI:
         case CISGO:
         case SGOCI:
         case SGICO:
+            switch(c->type) {
+                case Input:
+                case Output:
+                    cairo_text_extents(cr, c->name, &te);
+                    cairo_move_to(cr, width/2 - te.width/2,
+                            height/2 + te.height/2);
+                    break;
+                case Setter:
+                case Getter:
+                case Constant:
+                    cairo_text_extents(cr, c->name, &te);
+                    cairo_rotate(cr, M_PI/2.0);
+                    cairo_move_to(cr, height/2 - te.width/2,
+                            - width/2 - (te.y_bearing + te.height) +
+                            te.height/2);
+                    break;
+            }
             break;
     }
 
@@ -216,7 +233,7 @@ static void MakeBlockConnector(GtkWidget *grid,
     }
 
     c->type = ctype;
-    c->geo = ICOSG;
+    c->widget = drawArea;
     c->block = block;
     c->name = strdup(className);
     // TODO: free c->name.
@@ -226,6 +243,9 @@ static void MakeBlockConnector(GtkWidget *grid,
     g_signal_connect(G_OBJECT(drawArea), "draw",
             G_CALLBACK(DrawConnectImage_CB), c/*userData*/);
 }
+
+
+
 
 static gboolean
 Block_buttonReleaseCB(GtkWidget *ebox,
@@ -251,6 +271,7 @@ Block_buttonMotionCB(GtkWidget *ebox,
 
 // Popup menu for block button click
 static GtkMenu *popupMenu = 0;
+// This is the block that the user clicked on.
 static struct Block *popupBlock = 0;
 
 
@@ -342,6 +363,238 @@ static void DestroyBlock(struct Block *b) {
 }
 
 
+// Moves all the connectors to positions given by "geo".
+//
+static void MoveConnectors(struct Block *b, enum ConnectorGeo geo) {
+
+    DASSERT(b);
+
+    // Increase the reference count of widget object, so that when we
+    // remove the widget from the grid it will not destroy it.
+    g_object_ref(b->constants.widget);
+    g_object_ref(b->getters.widget);
+    g_object_ref(b->setters.widget);
+    g_object_ref(b->input.widget);
+    g_object_ref(b->output.widget);
+
+    gtk_container_remove(GTK_CONTAINER(b->grid), b->constants.widget);
+    gtk_container_remove(GTK_CONTAINER(b->grid), b->getters.widget);
+    gtk_container_remove(GTK_CONTAINER(b->grid), b->setters.widget);
+    gtk_container_remove(GTK_CONTAINER(b->grid), b->input.widget);
+    gtk_container_remove(GTK_CONTAINER(b->grid), b->output.widget);
+
+    // First place constants, setters and getters.
+    switch(geo) {
+        case OCISG:
+        case ICOSG:
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->constants.widget, 1, 0, 4, 1);
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->getters.widget, 3, 4, 2, 1);
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->setters.widget, 1, 4, 2, 1);
+            break;
+        case ISGOC:
+        case OSGIC:
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->constants.widget, 1, 4, 4, 1);
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->getters.widget, 3, 0, 2, 1);
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->setters.widget, 1, 0, 2, 1);
+            break;
+        case COSGI:
+        case CISGO:
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->constants.widget, 0, 0, 1, 5);
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->getters.widget, 5, 2, 1, 3);
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->setters.widget, 5, 0, 1, 2);
+            break;
+        case SGOCI:
+        case SGICO:
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->constants.widget, 5, 0, 1, 5);
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->getters.widget, 0, 2, 1, 3);
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->setters.widget, 0, 0, 1, 2);
+            break;
+    }
+
+    // Now place input and output.
+    switch(geo) {
+        case ICOSG:
+        case ISGOC:
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->input.widget, 0, 0, 1, 5);
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->output.widget, 5, 0, 1, 5);
+            break;
+        case OCISG:
+        case OSGIC:
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->input.widget, 5, 0, 1, 5);
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->output.widget, 0, 0, 1, 5);
+            break;
+        case COSGI:
+        case SGOCI:
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->input.widget, 1, 4, 4, 1);
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->output.widget, 1, 0, 4, 1);
+            break;
+        case CISGO:
+        case SGICO:
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->input.widget, 1, 0, 4, 1);
+            gtk_grid_attach(GTK_GRID(b->grid),
+                    b->output.widget, 1, 4, 4, 1);
+            break;
+    }
+
+    gint w = gtk_widget_get_allocated_width(b->grid);
+    gint h = gtk_widget_get_allocated_height(b->grid);
+    gtk_widget_queue_draw_area(b->grid, 0, 0, w, h);
+    b->geo = geo;
+}
+
+
+static void RotateCCWCB(GtkWidget *widget,
+        GdkEvent *e, gpointer data) {
+    DASSERT(popupBlock);
+
+    switch(popupBlock->geo) {
+        case ICOSG:
+            MoveConnectors(popupBlock, COSGI);
+            break;
+        case OCISG:
+            MoveConnectors(popupBlock, CISGO);
+            break;
+        case ISGOC:
+            MoveConnectors(popupBlock, SGOCI);
+            break;
+        case OSGIC:
+            MoveConnectors(popupBlock, SGICO);
+            break;
+        case COSGI:
+            MoveConnectors(popupBlock, OSGIC);
+            break;
+        case CISGO:
+            MoveConnectors(popupBlock, ISGOC);
+            break;
+        case SGOCI:
+            MoveConnectors(popupBlock, OCISG);
+            break;
+        case SGICO:
+            MoveConnectors(popupBlock, ICOSG);
+            break;
+    }
+}
+
+
+static void RotateCWCB(GtkWidget *widget,
+        GdkEvent *e, gpointer data) {
+    DASSERT(popupBlock);
+
+    switch(popupBlock->geo) {
+        case ICOSG:
+            MoveConnectors(popupBlock, SGICO);
+            break;
+        case OCISG:
+            MoveConnectors(popupBlock, SGOCI);
+            break;
+        case ISGOC:
+            MoveConnectors(popupBlock, CISGO);
+            break;
+        case OSGIC:
+            MoveConnectors(popupBlock, COSGI);
+            break;
+        case COSGI:
+            MoveConnectors(popupBlock, ICOSG);
+            break;
+        case CISGO:
+            MoveConnectors(popupBlock, OCISG);
+            break;
+        case SGOCI:
+            MoveConnectors(popupBlock, ISGOC);
+            break;
+        case SGICO:
+            MoveConnectors(popupBlock, OSGIC);
+            break;
+    }
+}
+
+
+static void FlipCB(GtkWidget *widget,
+        GdkEvent *e, gpointer data) {
+    DASSERT(popupBlock);
+
+    switch(popupBlock->geo) {
+        case ICOSG:
+            MoveConnectors(popupBlock, ISGOC);
+            break;
+        case OCISG:
+            MoveConnectors(popupBlock, OSGIC);
+            break;
+        case ISGOC:
+            MoveConnectors(popupBlock, ICOSG);
+            break;
+        case OSGIC:
+            MoveConnectors(popupBlock, OCISG);
+            break;
+        case COSGI:
+            MoveConnectors(popupBlock, CISGO);
+            break;
+        case CISGO:
+            MoveConnectors(popupBlock, COSGI);
+            break;
+        case SGOCI:
+            MoveConnectors(popupBlock, SGICO);
+            break;
+        case SGICO:
+            MoveConnectors(popupBlock, SGOCI);
+            break;
+    }
+}
+
+
+static void FlopCB(GtkWidget *widget,
+        GdkEvent *e, gpointer data) {
+    DASSERT(popupBlock);
+
+    switch(popupBlock->geo) {
+        case ICOSG:
+            MoveConnectors(popupBlock, OCISG);
+            break;
+        case OCISG:
+            MoveConnectors(popupBlock, ICOSG);
+            break;
+        case ISGOC:
+            MoveConnectors(popupBlock, OSGIC);
+            break;
+        case OSGIC:
+            MoveConnectors(popupBlock, ISGOC);
+            break;
+        case COSGI:
+            MoveConnectors(popupBlock, SGOCI);
+            break;
+        case CISGO:
+            MoveConnectors(popupBlock, SGICO);
+            break;
+        case SGOCI:
+            MoveConnectors(popupBlock, COSGI);
+            break;
+        case SGICO:
+            MoveConnectors(popupBlock, CISGO);
+            break;
+    }
+}
+
+
+
 static void RemovePopupBlockCB(GtkWidget *widget,
         GdkEvent *e, gpointer data) {
     DASSERT(popupBlock);
@@ -369,9 +622,12 @@ struct Block *AddBlock(struct Page *page,
                 "/quickstreamBuilder/qsb_popup_res.ui");
         popupMenu = GTK_MENU(gtk_builder_get_object(popupBuilder,
                     "popupMenu"));
-        Connect(popupBuilder, "remove", "activate",
-                RemovePopupBlockCB, 0);
-    }
+        Connect(popupBuilder,"remove", "activate", RemovePopupBlockCB, 0);
+        Connect(popupBuilder,"rotateCW", "activate", RotateCWCB, 0);
+        Connect(popupBuilder,"rotateCCW", "activate", RotateCCWCB, 0);
+        Connect(popupBuilder,"flip", "activate", FlipCB, 0);
+        Connect(popupBuilder,"flop", "activate", FlopCB, 0);
+       }
 
 
     DASSERT(blockFile);
@@ -392,8 +648,10 @@ struct Block *AddBlock(struct Page *page,
     b->page = page;
     b->x = x;
     b->y = y;
+    // The geometric arrangement of the connectors.
+    b->geo = ICOSG;
 
-    // Add to the singly linked list of blocks in the page.
+    // Add to the end of the singly linked list of blocks in the page.
     if(page->blocks) {
         struct Block *last = page->blocks;
         while(last->next) last = last->next;
@@ -456,11 +714,11 @@ struct Block *AddBlock(struct Page *page,
         MakeBlockLabel(grid, blockFile, "path", 1, 1, 4, 1);
         MakeBlockLabel(grid, block->name, "name", 1, 3, 4, 1);
         //                                                     x, y, w, h
-        MakeBlockConnector(grid, "constants", Constant, b, 1, 0, 4, 1);
+        MakeBlockConnector(grid, "const", Constant, b, 1, 0, 4, 1);
+        MakeBlockConnector(grid, "get", Getter, b, 3, 4, 2, 1);
+        MakeBlockConnector(grid, "set", Setter, b, 1, 4, 2, 1);
         MakeBlockConnector(grid, "input", Input, b, 0, 0, 1, 5);
         MakeBlockConnector(grid, "output", Output, b, 5, 0, 1, 5);
-        MakeBlockConnector(grid, "setters", Setter, b, 1, 4, 2, 1);
-        MakeBlockConnector(grid, "getters", Getter, b, 3, 4, 2, 1);
 
         g_signal_connect(GTK_WIDGET(ebox), "button-press-event",
             G_CALLBACK(Block_buttonPressCB), b/*userData*/);
@@ -469,7 +727,6 @@ struct Block *AddBlock(struct Page *page,
         g_signal_connect(GTK_WIDGET(ebox), "motion-notify-event",
             G_CALLBACK(Block_buttonMotionCB), b/*userData*/);
       }
-
     gtk_layout_put(layout, ebox, b->x, b->y);
 
     return b;

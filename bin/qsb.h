@@ -42,8 +42,8 @@ enum ConnectorGeo {
 
 struct Connector {
     enum ConnectorType type;
-    enum ConnectorGeo geo; // orientation and flip/flop
     const char *name;
+    GtkWidget *widget;
     struct Block *block;
 };
 
@@ -56,8 +56,9 @@ struct Block {
     struct QsBlock *block;
     struct Connector constants, getters, setters, input, output;
     struct Block *next; // for singly linked list of blocks in page.
-    bool isSelected;
     double x, y; // current position in layout widget.
+    enum ConnectorGeo geo;
+    bool isSelected;
 };
 
 

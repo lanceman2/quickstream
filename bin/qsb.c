@@ -38,13 +38,15 @@
 // TODO: add more apps.  Maybe not.
 //
 struct QsGraph *graph = 0;
-static GtkNotebook *noteBook = 0;
-static int tabCreateCount = 0;
-static GtkWidget *window = 0;
 
 struct Block *movingBlock = 0;
 // The position of the mouse pointer at the last mouse event.
 static double x_0, y_0;
+
+
+static GtkNotebook *noteBook = 0;
+static int tabCreateCount = 0;
+static GtkWidget *window = 0;
 
 // List of cursors with images:
 // https://developer.gnome.org/gdk3/stable/gdk3-Cursors.html#GdkCursorType
