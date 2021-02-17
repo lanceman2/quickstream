@@ -122,7 +122,7 @@ Connect(GtkBuilder *builder, const char *id, const char *action,
 
 // This is uses in gtk_widget_set_size_request() for some of the block
 // widgets.
-#define MIN_BLOCK_LEN     (20)
+#define MIN_BLOCK_LEN     (24)
 
 
 

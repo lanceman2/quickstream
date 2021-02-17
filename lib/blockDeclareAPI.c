@@ -69,3 +69,39 @@ void *qsRunFileData(void) {
 
     return b->runFileUserData;
 }
+
+
+void qsBlockSetNumInputs(uint32_t min, uint32_t max) {
+
+    struct QsBlock *b = 0;
+    GET_SIMPLEBLOCK_IN_DECLARE(b);
+    struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b; 
+
+    ASSERT(min <= max);
+
+    smB->minNumInputs = min;
+    smB->maxNumInputs = max;
+}
+
+
+void qsBlockSetNumOutputs(uint32_t min, uint32_t max) {
+
+    struct QsBlock *b = 0;
+    GET_SIMPLEBLOCK_IN_DECLARE(b);
+    struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b; 
+
+    ASSERT(min <= max);
+
+    smB->minNumOutputs = min;
+    smB->maxNumOutputs = max;
+}
+
+
+void qsBlockSetNumInputsEqualsNumOutputs(bool inputsEqualsOutputs) {
+
+    struct QsBlock *b = 0;
+    GET_SIMPLEBLOCK_IN_DECLARE(b);
+    struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b; 
+
+    smB->inputsEqualsOutputs = inputsEqualsOutputs;
+}

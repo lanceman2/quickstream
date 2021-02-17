@@ -316,7 +316,11 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         // one.
         if(graph->threadPools)
             qsThreadPoolAddBlock(graph->threadPools, b);
-    }
+
+        // Make these large uint32_t
+        smB->maxNumInputs = -1;
+        smB->maxNumOutputs = -1;
+     }
 
     b->dlhandle = dlhandle;
     b->name = strdup(blockName);

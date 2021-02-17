@@ -772,6 +772,22 @@ int qsTriggerSignalCreate(int signum,
 
 
 
+EXPORT
+extern
+void qsBlockSetNumInputs(uint32_t min, uint32_t max);
+
+
+EXPORT
+extern
+void qsBlockSetNumOutputs(uint32_t min, uint32_t max);
+
+
+EXPORT
+extern
+void qsBlockSetNumInputsEqualsNumOutputs(bool inputsEqualsOutputs);
+
+
+
 /** The block plugin declare module callback function
 
  The block plugin module declare callback, \p declare(), is the only

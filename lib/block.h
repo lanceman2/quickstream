@@ -292,6 +292,14 @@ struct QsSimpleBlock {
     // We do not expect a lot of inter-thread contention for this queue,
     // but we do need a mutex lock to access this queue.
     pthread_mutex_t mutex;
+
+    // Block writer imposed constraints on the number of input ports
+    // and output ports.
+    uint32_t minNumInputs, minNumOutputs,
+             maxNumInputs, maxNumOutputs;
+    // true if the number of input ports must be equal to the number of
+    // output ports.
+    bool inputsEqualsOutputs;
 };
 
 
