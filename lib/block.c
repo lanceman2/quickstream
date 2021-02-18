@@ -92,8 +92,9 @@ done:
 
 static void qsSimpleBlockUnload(struct QsSimpleBlock *b) {
 
-    qsDictionaryDestroy(b->getters); // getters and constants
+    qsDictionaryDestroy(b->getters);
     qsDictionaryDestroy(b->setters);
+    qsDictionaryDestroy(b->constants);
 
     // We will assume that all the triggers are in the waiting list, so
     // the jobs list must be empty.
