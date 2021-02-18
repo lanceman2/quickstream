@@ -442,7 +442,7 @@ const char *qsBlockGetName(const struct QsBlock *block);
 EXPORT
 extern
 struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
-        const char *pname, bool isSetter);
+        const char *pname, enum QsParameterKind kind);
 
 
 /** Get kind of parameter

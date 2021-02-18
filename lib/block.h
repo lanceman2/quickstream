@@ -111,6 +111,14 @@ struct QsBlock {
     int (* start)(uint32_t numInputs, uint32_t numOutputs);
     int (* stop)(uint32_t numInputs, uint32_t numOutputs);
 
+    // Block writer imposed constraints on the number of input ports
+    // and output ports.
+    uint32_t minNumInputs, minNumOutputs,
+             maxNumInputs, maxNumOutputs;
+    // true if the number of input ports must be equal to the number of
+    // output ports.
+    bool inputsEqualsOutputs;
+
 
     // This just lets us know if the memory allocated is a struct
     // QsSimpleBlock or struct QsSuperBlock
@@ -132,7 +140,8 @@ struct QsSimpleBlock {
     struct QsBlock block;
 
     // lists of parameters owned by this block
-    struct QsDictionary *getters; // getters and constants
+    struct QsDictionary *getters; // getters
+    struct QsDictionary *constants; // constants
     struct QsDictionary *setters; // setters
 
     // Since we can't allocate inputs in the declare() function we need to
@@ -293,13 +302,6 @@ struct QsSimpleBlock {
     // but we do need a mutex lock to access this queue.
     pthread_mutex_t mutex;
 
-    // Block writer imposed constraints on the number of input ports
-    // and output ports.
-    uint32_t minNumInputs, minNumOutputs,
-             maxNumInputs, maxNumOutputs;
-    // true if the number of input ports must be equal to the number of
-    // output ports.
-    bool inputsEqualsOutputs;
 };
 
 

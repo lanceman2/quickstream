@@ -18,6 +18,7 @@
 
 #include "../lib/debug.h"
 #include "../lib/block.h"
+#include "../lib/Dictionary.h"
 
 #include "qsb.h"
 
@@ -110,7 +111,53 @@ static gboolean DrawConnectImage_CB(GtkWidget *widget,
 
     DASSERT(c);
 
-#if 1
+
+    switch(c->type) {
+
+        case Input:
+            if(c->block->block->maxNumInputs)
+                break;
+            // Skip drawing text "input".
+            return FALSE;
+        case Output:
+            if(c->block->block->maxNumOutputs)
+                break;
+            // Skip drawing text "output".
+            return FALSE;
+        case Constant:
+            if(c->block->block->isSuperBlock)
+                // TODO:
+                // skip super blocks for now.
+                return FALSE;
+            if(qsDictionaryIsEmpty(
+                    ((struct QsSimpleBlock *) c->block->block)->constants))
+                return FALSE;
+            break;
+        case Setter:
+            if(c->block->block->isSuperBlock)
+                // TODO:
+                // skip super blocks for now.
+                return FALSE;
+            if(qsDictionaryIsEmpty(
+                    ((struct QsSimpleBlock *) c->block->block)->setters))
+                return FALSE;
+            ERROR("have setters");
+            break;
+        case Getter:
+            if(c->block->block->isSuperBlock)
+                // TODO:
+                // skip super blocks for now.
+                return FALSE;
+            if(qsDictionaryIsEmpty(
+                    ((struct QsSimpleBlock *) c->block->block)->getters))
+                return FALSE;
+            break;
+    }
+
+
+    /////////////////////////////////////////////////////////
+    //     Now draw text like "input"
+    //
     GdkRGBA color;
     gtk_style_context_get_color(context,
                     gtk_style_context_get_state(context),
@@ -172,7 +219,8 @@ static gboolean DrawConnectImage_CB(GtkWidget *widget,
     }
 
     cairo_show_text (cr, c->name);
-#endif
+
+
     return FALSE;
 }
 

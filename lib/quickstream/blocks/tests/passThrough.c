@@ -15,6 +15,9 @@ int declare(void) {
     for(uint32_t i=0; i<MAX_INPUTS; ++i)
         qsPassThroughBuffer(i, i);
 
+    qsBlockSetNumInputs(1, MAX_INPUTS);
+    qsBlockSetNumInputsEqualsNumOutputs(true);
+
     return 0; // success
 }
 
@@ -23,8 +26,8 @@ int start(uint32_t numInputs, uint32_t numOutputs) {
 
     // Note: this can work with no inputs and outputs.
 
-    ASSERT(numInputs <= MAX_INPUTS);
-    ASSERT(numInputs == numOutputs);
+    DASSERT(numInputs <= MAX_INPUTS);
+    DASSERT(numInputs == numOutputs);
 
     DSPEW("%" PRIu32 " inputs  %" PRIu32 " outputs",
             numInputs, numOutputs);

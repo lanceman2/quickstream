@@ -841,7 +841,7 @@ int StreamsInit(struct QsGraph *g) {
         for(uint32_t i = b->numOutputs-1; i != -1; --i) {
             size_t maxWrite = 0;
             struct QsParameter *p = qsParameterGetPointer(B,
-                    "OutputMaxWrite", false/*is setter?*/);
+                    "OutputMaxWrite", QsConstant);
             DASSERT(p);
             DASSERT(p->size == sizeof(maxWrite));
             qsParameterGetValue(p, &maxWrite);

@@ -50,10 +50,11 @@ int main(int argc, char **argv) {
     }
     qsDictionaryPrintDot(d, stdout);
 
-
     ASSERT(qsDictionaryRemove(d, "a") == 0);
     ASSERT(qsDictionaryRemove(d, "a_2") == 0);
+    ASSERT(qsDictionaryIsEmpty(d) == false);
     ASSERT(qsDictionaryRemove(d, "a_3") == 0);
+    ASSERT(qsDictionaryIsEmpty(d));
 
     if((isatty(1)))
         fprintf(stderr, "\nTry running: %s | display\n\n", argv[0]);

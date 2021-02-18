@@ -15,14 +15,16 @@ class Stdin: public QsBlock {
 
     Stdin(void) {
         DSPEW();
+        qsBlockSetNumInputs(0,0);
+        qsBlockSetNumOutputs(1,1);
     };
 
 
     int start(uint32_t numInputs, uint32_t numOutputs) {
 
         // This is a sink filter block
-        ASSERT(numInputs == 0);
-        ASSERT(numOutputs == 1);
+        DASSERT(numInputs == 0);
+        DASSERT(numOutputs == 1);
 
         qsParameterGetValueByName("OutputMaxWrite", &maxWrite, sizeof(maxWrite));
 
@@ -37,8 +39,8 @@ class Stdin: public QsBlock {
 
         DASSERT(lens == 0);    // quickstream code error
 
-        ASSERT(numInputs == 0);  // user error
-        ASSERT(numOutputs); // user error
+        DASSERT(numInputs == 0);  // user error
+        DASSERT(numOutputs == 1); // user error
 
         size_t len = maxWrite;
         if(len > outMax)
@@ -52,16 +54,6 @@ class Stdin: public QsBlock {
         if(ret != maxWrite || feof(stdin)) {
             done = 1; // we are done
         }
-
-        for(uint32_t i=1; i<numOutputs; ++i) {
-
-            void *out = qsGetOutputBuffer(i);
-            memcpy(out, out0, ret);
-            qsOutput(i, ret);
-        }
-
-        outMax -= ret;
-        if(outMax == 0) return 1; // done
 
         return done; // 0 for keep going.
     };

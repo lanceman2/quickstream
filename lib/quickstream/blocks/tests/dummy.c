@@ -12,6 +12,9 @@ int declare(void) {
 
     fprintf(stderr, "count = %d", count);
 
+    qsBlockSetNumInputs(0,0);
+    qsBlockSetNumOutputs(0,0);
+
     return 0; // 0 => success
 }
 
@@ -27,11 +30,6 @@ int construct(void) {
     return 0; // success 
 }
 
-int flow(void *buffer[], const size_t len[],
-            uint32_t numInputs, uint32_t numOutputs) {
-
-    return 0;
-}
 
 void destroy() {
 

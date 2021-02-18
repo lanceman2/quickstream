@@ -91,15 +91,15 @@ for run in "${tests[@]}" ; do
     if [ "$ret" = "0" ] ; then
         let pass=$pass+1
         echo "$run === PASSED"
-        passPrograms="$passPrograms ./$run"
+        passPrograms="$passPrograms $run"
     elif [ "$ret" = "3" ] ; then
         let skipped=$skipped+1
         echo "$run === SKIPPED"
-        skippedPrograms="$skippedPrograms ./$run"
+        skippedPrograms="$skippedPrograms $run"
     else
         let fail=$fail+1
         echo "$run === FAILED"
-        failPrograms="$failPrograms ./$run"
+        failPrograms="$failPrograms $run"
     fi
 
     let i=$i+1

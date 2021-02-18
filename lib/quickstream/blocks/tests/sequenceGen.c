@@ -7,6 +7,8 @@
 // for a given stream run.
 #define DEFAULT_TOTAL_LENGTH   ((size_t) 8000)
 
+#define MAX_OUTPUTS  (10) // This MAX_OUTPUTS is pretty arbitrary.
+
 
 static size_t maxWrite = 0;
 static uint64_t totalOut = DEFAULT_TOTAL_LENGTH, count;
@@ -20,6 +22,9 @@ int declare(void) {
             QsUint64, sizeof(totalOut), 0/*setCallback*/,
             0/*userData*/, &totalOut);
 
+    qsBlockSetNumInputs(0,0);
+    qsBlockSetNumOutputs(1,MAX_OUTPUTS);
+
     return 0; // success
 }
 
@@ -27,8 +32,9 @@ int declare(void) {
 int start(uint32_t numInputs, uint32_t numOutputs) {
 
     // This is a source filter block
-    ASSERT(numInputs == 0);
-    ASSERT(numOutputs);
+    DASSERT(numInputs == 0);
+    DASSERT(numOutputs >= 1);
+    DASSERT(numOutputs <= MAX_OUTPUTS);
 
     DSPEW("%" PRIu32 " outputs", numOutputs);
 
@@ -56,10 +62,6 @@ int start(uint32_t numInputs, uint32_t numOutputs) {
 
 int flow(void *buffers[], const size_t lens[],
         uint32_t numInputs, uint32_t numOutputs) {
-
-
-    DASSERT(numInputs == 0);
-    DASSERT(numOutputs);
 
     int ret = 0;
 

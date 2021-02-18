@@ -6,6 +6,8 @@
 
 int declare(void) {
 
+    qsBlockSetNumInputs(1,10);
+    qsBlockSetNumOutputs(0,0);
     return 0;
 }
 
@@ -13,8 +15,8 @@ int declare(void) {
 int start(uint32_t numInputs, uint32_t numOutputs) {
 
     // This is a sink filter block
-    ASSERT(numInputs);
-    ASSERT(numOutputs == 0);
+    DASSERT(numInputs);
+    DASSERT(numOutputs == 0);
 
     return 0;
 }

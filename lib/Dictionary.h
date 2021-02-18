@@ -120,5 +120,12 @@ extern
 void *qsDictionaryGetValue(const struct QsDictionary *dict);
 
 
+// We are using this in ../bin/qsb_block.c
+// so we must export this symbol.
+//
+// TODO: remove this next line by adding a new function
+// that check if parameters exist.  See ../bin/qsb_block.c.
+//
+__attribute__((visibility("default")))
 extern
 bool qsDictionaryIsEmpty(const struct QsDictionary *dict);

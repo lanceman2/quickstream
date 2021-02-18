@@ -19,6 +19,8 @@ int declare(void) {
     qsParameterConstantCreate(0, "seedOffset",
             QsSize, sizeof(seedOffset), 0/*setCallback*/,
             0/*userData*/, &seedOffset);
+    qsBlockSetNumInputs(1,10);
+    qsBlockSetNumOutputs(0,10);
 
     return 0; // success
 }

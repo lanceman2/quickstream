@@ -9,6 +9,8 @@ static size_t maxWrite = 0;
 
 int declare(void) {
 
+    qsBlockSetNumInputs(0,0);
+    qsBlockSetNumOutputs(1,1);
     return 0;
 }
 
@@ -16,8 +18,8 @@ int declare(void) {
 int start(uint32_t numInputs, uint32_t numOutputs) {
 
     // This is a sink filter block
-    ASSERT(numInputs == 0);
-    ASSERT(numOutputs == 1);
+    DASSERT(numInputs == 0);
+    DASSERT(numOutputs == 1);
 
     qsParameterGetValueByName("OutputMaxWrite", &maxWrite, sizeof(maxWrite));
 
@@ -30,8 +32,8 @@ int flow(void *buffers[], const size_t lens[],
 
     DASSERT(lens == 0);    // quickstream code error
 
-    ASSERT(numInputs == 0);  // user error
-    ASSERT(numOutputs == 1); // user error
+    DASSERT(numInputs == 0);  // user error
+    DASSERT(numOutputs == 1); // user error
 
     void *out = qsGetOutputBuffer(0);
 

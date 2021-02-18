@@ -307,8 +307,10 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         b->graph = graph;
 
         // Add parameter dictionaries.
-        smB->getters = qsDictionaryCreate(); // getters and constants
+        smB->getters = qsDictionaryCreate();
         smB->setters = qsDictionaryCreate();
+        smB->constants = qsDictionaryCreate();
+
 
         CHECK(pthread_mutex_init(&smB->mutex, 0));
 
@@ -316,11 +318,11 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         // one.
         if(graph->threadPools)
             qsThreadPoolAddBlock(graph->threadPools, b);
-
-        // Make these large uint32_t
-        smB->maxNumInputs = -1;
-        smB->maxNumOutputs = -1;
      }
+    
+    // Make these large uint32_t
+    b->maxNumInputs = -1;
+    b->maxNumOutputs = -1;
 
     b->dlhandle = dlhandle;
     b->name = strdup(blockName);
@@ -436,7 +438,10 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     // 8. Add built-in parameters
     ///////////////////////////////////////////////////////////////////
 
-    if(!b->isSuperBlock) {
+    if(!b->isSuperBlock && b->maxNumOutputs) {
+
+        // if this has no output (b->maxNumOutputs == 0) we do not setup
+        // parameter "OutputMaxWrite".
 
         // This adds the option for builders to set the output maxWrite
         // for all output ports.  This can be overridden in the block
@@ -447,8 +452,8 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         if(qsParameterConstantCreate(b, "OutputMaxWrite", QsSize,
                     sizeof(maxWrite), 0 /*setCallback*/, b,
                     &maxWrite) == 0) {
-            qsBlockUnload(b);
             b->inWhichCallback = 0;
+            qsBlockUnload(b);
             return 0;
         }
     }

@@ -64,8 +64,12 @@ int ParameterSet(const char *blockName, const char *parameterName,
         ERROR("Block \"%s\" not found", blockName);
         return 1;
     }
+
     struct QsParameter *p =
-        qsParameterGetPointer(b, parameterName, false);
+        qsParameterGetPointer(b, parameterName, QsConstant);
+    if(!p)
+        qsParameterGetPointer(b, parameterName, QsGetter);
+
     if(!p) {
         ERROR("block \"%s\" parameter \"%s\" not found",
                 blockName, parameterName);
@@ -372,21 +376,22 @@ int ProcessCommand(int comm, int numArgs, const char *command,
                 struct QsBlock *b0 = qsGraphGetBlockByName(graph,
                         argv[0]);
                 // The from parameter must not be a setter.
-                struct QsParameter *p0 = b0?
-                    qsParameterGetPointer(b0, argv[1],
-                            false/*isSetter*/):0;
+                struct QsParameter *p0 = 
+                    // It's a constant
+                    qsParameterGetPointer(b0, argv[1], QsConstant);
+                if(!p0)
+                    // Or a Getter.
+                    p0 = qsParameterGetPointer(b0, argv[1], QsGetter);
 
                 struct QsBlock *b1 = qsGraphGetBlockByName(graph,
                         argv[2]);
                 // If p0 is a constant parameter than p1 could be a
                 // setter or a constant.
-                struct QsParameter *p1 = b1?
-                    qsParameterGetPointer(b1, argv[3],
-                            /*isSetter*/true):0;
+                struct QsParameter *p1 =
+                    qsParameterGetPointer(b1, argv[3], QsSetter);
                 if(b1 && !p1 && qsParameterGetKind(p0) == QsConstant)
                     // Okay maybe it's a constant
-                    p1 = qsParameterGetPointer(b1, argv[3],
-                            /*isSetter*/false);
+                    p1 = qsParameterGetPointer(b1, argv[3], QsConstant);
 
                 if(!b0 || !p0 || !b1 || !p1) {
                     fprintf(stderr, "--connect-parameters "

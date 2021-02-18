@@ -208,8 +208,19 @@ struct QsDictionary {
 bool qsDictionaryIsEmpty(const struct QsDictionary *d) {
 
     DASSERT(d);
-    if(d->children || d->suffix || d->key) return false; // not empty
-    return true; // empty
+
+    if(d->children) {
+        // The top children array is never removed.
+        // Looks like that's how we did it.
+        //
+        for(int i=0;i<4;++i) {
+            struct QsDictionary *child = d->children + i;
+            if(child->children || child->key || child->suffix)
+                return false;
+        }
+     }
+
+    return !(d->suffix || d->key);
 }
 
 

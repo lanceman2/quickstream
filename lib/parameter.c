@@ -308,6 +308,8 @@ void *AllocateParameter(const char *parameterKind,
     // 1. This is a setter and we can't have a constant with that name:
     // 2. This is a constant and we can't have a setter with that name:
     //
+    // But a setter and getter can have the same name.
+    //
     // otherwise parameter connection name space rules do not work
     // unambiguously.  It's because getter and constants act the same as
     // far as connecting to setters, but constants can also connect to
@@ -316,9 +318,9 @@ void *AllocateParameter(const char *parameterKind,
     if(kind == QsSetter) {
         // 1. This is a setter and we can't have a constant with that name:
         struct QsParameter *p =
-            // block->getters contains getters and constants.
-            qsDictionaryFind(b->getters, pname);
-        if(p && p->kind == QsConstant) {
+            qsDictionaryFind(b->constants, pname);
+        if(p) {
+            DASSERT(p->kind == QsConstant);
             ERROR("Constant parameter named \"%s\" is already"
                     " in block \"%s\"; setter and constant "
                     "parameter names cannot be the same",
@@ -417,7 +419,7 @@ qsParameterConstantCreate(struct QsBlock *b, const char *pname,
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     struct QsConstant *p = AllocateParameter("Constant",
-        smB, smB->getters, psize, type, b->name, pname,
+        smB, smB->constants, psize, type, b->name, pname,
         QsConstant, sizeof(*p), initialVal);
     if(!p) return 0;
 
@@ -463,7 +465,7 @@ uint32_t qsParameterNumConnections(struct QsParameter *p) {
 
 
 struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
-        const char *pname, bool isSetter) {
+        const char *pname, enum QsParameterKind kind) {
 
     if(!block)
         block = GetBlock();
@@ -477,12 +479,17 @@ struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
 
     DASSERT(smB->setters);
     DASSERT(smB->getters);
- 
+    DASSERT(smB->constants);
+
     struct QsDictionary *d;
-    if(isSetter)
+    if(kind == QsSetter)
         d = smB->setters;
-    else
+    else if(kind == QsGetter)
         d = smB->getters;
+    else {
+        DASSERT(kind == QsConstant);
+        d = smB->constants;
+    }
 
     return (struct QsParameter *) qsDictionaryFind(d, pname);
 }
@@ -490,7 +497,9 @@ struct QsParameter *qsParameterGetPointer(struct QsBlock *block,
 
 void
 qsParameterGetValueByName(const char *pname, void *value, size_t size) {
-    struct QsParameter *p = qsParameterGetPointer(0, pname, 0);
+    struct QsParameter *p = qsParameterGetPointer(0, pname, QsConstant);
+    if(!p) p = qsParameterGetPointer(0, pname, QsGetter);
+
     ASSERT(p, "parameter named \"%s\" not found", pname);
     ASSERT(size == p->size,
             "parameter named \"%s\" is the wrong size",
@@ -1038,6 +1047,9 @@ void qsGraphParametersPrint(struct QsGraph *graph, FILE *file) {
 
     for(struct QsBlock *b = graph->firstBlock; b; b = b->next) {
         if(b->isSuperBlock) continue;
+        qsDictionaryForEach(((struct QsSimpleBlock *)b)->constants,
+                (int (*) (const char *key, void *value,
+                    void *userData)) PrintParameterCB, file);
         qsDictionaryForEach(((struct QsSimpleBlock *)b)->getters,
                 (int (*) (const char *key, void *value,
                     void *userData)) PrintParameterCB, file);
