@@ -141,7 +141,6 @@ static gboolean DrawConnectImage_CB(GtkWidget *widget,
             if(qsDictionaryIsEmpty(
                     ((struct QsSimpleBlock *) c->block->block)->setters))
                 return FALSE;
-            ERROR("have setters");
             break;
         case Getter:
             if(c->block->block->isSuperBlock)
@@ -249,7 +248,8 @@ static void MakeBlockConnector(GtkWidget *grid,
 
     gtk_widget_set_can_focus(drawArea, TRUE);
     gtk_widget_add_events(drawArea,
-            GDK_STRUCTURE_MASK |
+            GDK_ENTER_NOTIFY_MASK|
+            GDK_LEAVE_NOTIFY_MASK |
             GDK_SCROLL_MASK |
             GDK_POINTER_MOTION_MASK |
             GDK_BUTTON_RELEASE_MASK |

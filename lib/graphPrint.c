@@ -41,6 +41,9 @@ const char *GetKindString(const struct QsParameter *p) {
             return GETTER;
         case QsSetter:
             return SETTER;
+        case QsAny:
+            ASSERT(0);
+            return QsAny;
     }
 
     ASSERT(0, "WTF");
@@ -59,6 +62,9 @@ const char *ParameterFillColor(const struct QsParameter *p) {
             return "blue";
         case QsSetter:
             return "orange";
+        case QsAny:
+            ASSERT(0);
+            return 0;
     }
 
     ASSERT(0, "WTF");

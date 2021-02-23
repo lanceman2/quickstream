@@ -36,6 +36,7 @@ qsOutput
 qsParameterConnect
 qsParameterConstantCreate
 qsParameterDisconnect
+qsParameterForEach
 qsParameterGetKind
 qsParameterGetName
 qsParameterGetPointer

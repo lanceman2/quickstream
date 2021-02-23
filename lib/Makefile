@@ -22,7 +22,8 @@ libquickstream.so_SOURCES :=\
  mmapRingBuffer.c\
  blockFlowAPI.c\
  blockStartAPI.c\
- blockDeclareAPI.c
+ blockDeclareAPI.c\
+ parameterForEach.c
 
 
 libquickstream.so_LDFLAGS :=\

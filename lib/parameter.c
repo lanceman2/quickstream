@@ -246,6 +246,9 @@ void FreeParameter(struct QsParameter *p) {
         case QsSetter:
             DisconnectSetterParameter(p);
             break;
+        case QsAny:
+            ASSERT(0);
+            break;
     }
 
     DASSERT(p->value);
@@ -272,6 +275,9 @@ void FreeParameter(struct QsParameter *p) {
             break;
         case QsSetter:
             memset(p, 0, sizeof(struct QsSetter));
+            break;
+        case QsAny:
+            ASSERT(0);
             break;
     }
 #endif
@@ -807,10 +813,13 @@ void qsParameterGetValue(struct QsParameter *p, void *value) {
         case QsConstant:
             ASSERT(mainThread == pthread_self(), "Not graph main thread");
             memcpy(value, p->value, p->size);
-        break;
+            break;
         case QsGetter:
             memcpy(value, p->value, p->size);
-        break;
+            break;
+        case QsAny:
+            ASSERT(0);
+            break;
     };
 }
 
@@ -1008,6 +1017,10 @@ int PrintParameterCB(const char *pname, struct QsParameter *p,
             break;
         case QsSetter:
             fprintf(file, "Setter   ");
+            break;
+        case QsAny:
+            ASSERT(0);
+            break;
     }
 
 

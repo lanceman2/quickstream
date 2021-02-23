@@ -40,6 +40,7 @@ enum QsParameterType {
  */
 enum QsParameterKind {
 
+    QsAny,      /** No particular kind of parameter */
     QsConstant, /** Gets pushed to setters, but not at flow-time */
     QsGetter,   /** Gets pushed to setters at flow-time */
     QsSetter    /** Is set from constant and getter */

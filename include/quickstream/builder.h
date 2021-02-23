@@ -111,9 +111,14 @@ struct QsParameter;
 
 
 /** bit flag used to mark the use of regular expressions to find
- * parameter with qsParameter functions
+ * parameter with qsParameterForEach() function.
  */
 #define QS_PNAME_REGEX     (01)
+/** bit flag used to mark the use case insensitive regular expressions to
+ * find parameter with qsParameterForEach() function.  The QS_PNAME_REGEX
+ * flag must be set too.
+ */
+#define QS_PNAME_ICASE     (02)
 
 
 
@@ -333,57 +338,11 @@ extern
 void qsBlockUnload(struct QsBlock *block);
 
 
-/** Iterate through the getter parameters via a callback function
+/** Iterate through the parameters via a callback function
  
- \param graph is ignored unless \p block is 0.  If \p graph is non-zero and \p
- block is zero, all blocks are iterated through in all selected getter
- parameters in this \p graph.
-
- \param block if block is not 0, restrict the range of the getter
- parameters to iterate through to just getter parameters owned by this
- block.
-
- One of arguments \p graph or \p block must be non-zero.
-
- \param pName if not 0, restrict the range of the parameters to iterate
- through to just parameters with this name.
-
- \param type if not 0, restrict the range of the parameters to iterate
- through to just parameters with this type.
-
- \param callback is the callback function that is called with each
- parameter and with all of the arguments set.  If \p callback() returns
- non-zero than the iteration will stop, and that will be the last time \p
- callback() is called for this call to \p qsParameterGetterForEach().
-
- \param userData is user data that is passed to the callback every time it
- is called.
-
- \param flags if flags includes the bit QS_PNAME_REGEX \p pName will be
- interpreted as a POSIX Regular Expression and all parameters with a name
- matches the regular expression will have the get callback added to it.
- Use 0 otherwise.
-
- \return the number of parameters that have been iterated through; or the
- same as, the number of times \p callback() is called.
-
- */
-EXPORT
-extern
-size_t qsParameterGetterForEach(struct QsGraph *graph, struct QsBlock *block,
-        const char *pName,
-        enum QsParameterType type,
-        int (*callback)(
-            struct QsBlock *block, const char *pName,
-            enum QsParameterType type, void *userData),
-        void *userData, uint32_t flags);
-
-
-/** Iterate through the setter parameters via a callback function
- 
- \param graph is ignored unless \p block is 0.  If \p graph is non-zero and \p
- block is zero, all blocks are iterated through in all selected setter
- parameters in this \p graph.
+ \param graph is ignored unless \p block is 0.  If \p graph is non-zero
+ and \p block is zero, all blocks are iterated through in all selected
+ setter parameters in this \p graph.
 
  \param block if block is not 0, restrict the range of the getter
  parameters to iterate through to just setter parameters owned by this
@@ -392,15 +351,22 @@ size_t qsParameterGetterForEach(struct QsGraph *graph, struct QsBlock *block,
  One of arguments \p graph or \p block must be non-zero.
 
  \param pName if not 0, restrict the range of the parameters to iterate
- through to just parameters with this name.
+ through just parameters with this name.
+
+ \param kind is not QsAny, restrict the kind of the parameters to iterate
+ through just parameters with this kind, otherwise through parameters of
+ any kind: Constants, Getters, and Setters.
 
  \param type if not 0, restrict the range of the parameters to iterate
- through to just parameters with this type.
+ through just parameters with this type.
+
+ \param size if not 0, restrict the size of the parameters to iterate
+ through just parameters with this size.
 
  \param callback is the callback function that is called with each
  parameter and with all of the arguments set.  If \p callback() returns
  non-zero than the iteration will stop, and that will be the last time \p
- callback() is called for this call to \p qsParameterSetterForEach().
+ callback() is called for this call to \p qsParameterForEach().
 
  \param userData is user data that is passed to the callback every time it
  is called.
@@ -412,15 +378,21 @@ size_t qsParameterGetterForEach(struct QsGraph *graph, struct QsBlock *block,
 
  \return the number of parameters that have been iterated through; or the
  same as, the number of times \p callback() is called.
+ Returns -1 on error.
 
  */
 EXPORT
-size_t qsParameterSetterForEach(struct QsGraph *graph,
-        struct QsBlock *block, const char *pName,
+ssize_t qsParameterForEach(struct QsGraph *graph,
+        struct QsBlock *block,
+        enum QsParameterKind kind,
         enum QsParameterType type,
-        int (*callback)(
-            struct QsBlock *block, const char *pName,
-            enum QsParameterType type, void *userData),
+        size_t size,
+        const char *pName,
+        int (*callback)(struct QsParameter *p,
+            enum QsParameterKind kind,
+            enum QsParameterType type,
+            size_t size,
+            const char *pName, void *userData),
         void *userData, uint32_t flags);
 
 
