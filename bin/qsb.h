@@ -18,7 +18,7 @@ struct Page {
 };
 
 
-enum ConnectorType {
+enum ConnectorKind {
     Input,
     Constant,
     Output,
@@ -27,6 +27,14 @@ enum ConnectorType {
 };
 
 
+// enum of geometric orientations types
+//
+// I - Input, O - Output, S - Setter, G - Getter, C - Constant
+//
+// The order in clock-wise rotation from the left side of the block.
+// Note: the Setter is always to the left of the Getter or above it, but
+// we always call them together SG, Setter than Getter.
+//
 enum ConnectorGeo {
     ICOSG,
     OCISG,
@@ -40,11 +48,32 @@ enum ConnectorGeo {
 };
 
 
+#define CONNECTOR_CLASSNAME_LEN  (7) // Largest string is "output"
+
+
 struct Connector {
-    enum ConnectorType type;
-    const char *name;
-    GtkWidget *widget;
+    enum ConnectorKind kind; // See enum for list of kinds.
+    char name[CONNECTOR_CLASSNAME_LEN]; // Largest string is "output"
+    GtkWidget *widget; // GTK drawingArea
     struct Block *block;
+    // The connector will not have connections if there are no inputs,
+    // outputs, or parameters to connect to.  active = true if there is
+    // something to connect to or from associated with this this widget,
+    // else there is no associated inputs, outputs, or parameters to
+    // connect to and the widget just has GTK events go to the bulk block
+    // widget.
+    bool active;
+    // Flag that says that the user has selected a parameter or stream
+    // port number to connect.  Having selectionMade = true means that
+    // the union{} below has a value set.
+    bool selectionMade;
+
+    union {
+      // We are connecting to a parameter or a stream port number.
+      // This is used when the mouse is moving.
+      struct QsParameter *parameter;
+      uint32_t portNum; // input or output
+    };
 };
 
 
@@ -69,6 +98,9 @@ struct QsGraph *graph;
 
 extern
 struct Block *movingBlock;
+
+extern
+struct Connector *fromConnector;
 
 
 
@@ -128,5 +160,6 @@ Connect(GtkBuilder *builder, const char *id, const char *action,
 
 #define CREATE_BLOCK_BUTTON   (1) // 1 = left mouse
 #define MOVE_BLOCK_BUTTON     (1) // 1 = left mouse
+#define CONNECT_BUTTON        (1)
 
 #define BLOCK_POPUP_BUTTON    (3) // 3 = right mouse

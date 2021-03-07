@@ -143,6 +143,8 @@ static void _vspew(FILE *stream, int errn, const char *pre, const char *file,
 
     if(errn)
     {
+        // TODO: GTK+3 keeps setting errno and I'm sick of seeing it.
+        errno = 0;
         char estr[128];
         strerror_r(errn, estr, 128);
         len = snprintf(buffer, BUFLEN,

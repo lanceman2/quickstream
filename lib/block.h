@@ -274,7 +274,7 @@ struct QsSimpleBlock {
     // Some of the elements in the outputs[] array can be zeroed out with
     // the largest index (port) not being zeroed, while the connections
     // are being created; but, we do not let there be any zeroed entries
-    // while the stream is flowing.
+    // while the stream is flowing/running.
     uint32_t numOutputs; // number of output buffers we write to.
     // indexed by output port number 0,1,2,3,...
     struct QsOutput *outputs; // array of struct QsOutput

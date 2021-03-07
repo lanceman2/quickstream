@@ -17,17 +17,47 @@
 #include "../include/quickstream/builder.h"
 
 #include "../lib/debug.h"
+// TODO: Big todo.  This code reaches into the guts of libquickstream;
+// we could instead make a more complete quickstream builder API in
+// libquickstream.  Maybe later, maybe not.  Whatever.  It's just not
+// so clear what a quickstream builder API should look like.
 #include "../lib/block.h"
+#include "../lib/parameter.h"
 #include "../lib/Dictionary.h"
 
 #include "qsb.h"
 
 
 
-static inline void GetConnectionColor(enum ConnectorType ctype,
+// Popup menu for block button click
+static GtkMenu *popupMenuBlock = 0;
+// This is the block that the user clicked on.
+static struct Block *popupBlock = 0;
+
+// This gets rebuilt each time it is used.
+static GtkWidget *connectorPopupMenu = 0;
+
+
+// The whole point of this program is to make blocks and connect the
+// connectors (in these blocks) that are part of the blocks.  This is the
+// current "FROM" connector that we started making a connection at.   This
+// is set to zero after we have the "TO" connector or the user gives up
+// trying to finish this connection that the user initiated.  The user
+// only can make one connection at a time, with the mouse, hence this is
+// just one variable, "fromConnector".
+struct Connector *fromConnector = 0;
+
+// This "to" connector can only be set if there is a "from" connector
+// (fromConnector).   toConnector is the connector that was chosen
+// by the user after the fromConnector.
+static struct Connector *toConnector = 0;
+
+
+
+static inline void GetConnectionColor(enum ConnectorKind ckind,
         double *r, double *g, double *b, double *a) {
 
-    switch(ctype) {
+    switch(ckind) {
         case Input:
             *r = 1.0;
             *g = 0.0;
@@ -61,7 +91,7 @@ static inline void GetConnectionColor(enum ConnectorType ctype,
 
 
 /*
-     Block with geo: ICOSG (Input,Constant,Output,SetterGetter)
+   Block with geo: ICOSG (Input,Constant,Output,SetterGetter)
 
  *******************************************
  *       |          const         |        |
@@ -89,13 +119,13 @@ static inline void GetConnectionColor(enum ConnectorType ctype,
 
  and there are 6 more permutations that we allow.  We keep the input and
  output on opposing sides and the parameters constant opposing setter and
- getter; with setter always before getter.  That gives 8 total
+ getter; with setter always before getter.  That gives 8 total orientation
  permutations that we allow.
 
  */
 
 
-static gboolean DrawConnectImage_CB(GtkWidget *widget,
+static gboolean ConnectorDraw_CB(GtkWidget *widget,
         cairo_t *cr,
         struct Connector *c) {
 
@@ -111,47 +141,7 @@ static gboolean DrawConnectImage_CB(GtkWidget *widget,
 
     DASSERT(c);
 
-
-    switch(c->type) {
-
-        case Input:
-            if(c->block->block->maxNumInputs)
-                break;
-            // Skip drawing text "input".
-            return FALSE;
-        case Output:
-            if(c->block->block->maxNumOutputs)
-                break;
-            // Skip drawing text "output".
-            return FALSE;
-        case Constant:
-            if(c->block->block->isSuperBlock)
-                // TODO:
-                // skip super blocks for now.
-                return FALSE;
-            if(qsDictionaryIsEmpty(
-                    ((struct QsSimpleBlock *) c->block->block)->constants))
-                return FALSE;
-            break;
-        case Setter:
-            if(c->block->block->isSuperBlock)
-                // TODO:
-                // skip super blocks for now.
-                return FALSE;
-            if(qsDictionaryIsEmpty(
-                    ((struct QsSimpleBlock *) c->block->block)->setters))
-                return FALSE;
-            break;
-        case Getter:
-            if(c->block->block->isSuperBlock)
-                // TODO:
-                // skip super blocks for now.
-                return FALSE;
-            if(qsDictionaryIsEmpty(
-                    ((struct QsSimpleBlock *) c->block->block)->getters))
-                return FALSE;
-            break;
-    }
+    if(!c->active) return FALSE;
 
 
     /////////////////////////////////////////////////////////
@@ -175,7 +165,7 @@ static gboolean DrawConnectImage_CB(GtkWidget *widget,
         case OCISG:
         case ISGOC:
         case OSGIC:
-            switch(c->type) {
+            switch(c->kind) {
                 case Setter:
                 case Getter:
                 case Constant:
@@ -197,7 +187,7 @@ static gboolean DrawConnectImage_CB(GtkWidget *widget,
         case CISGO:
         case SGOCI:
         case SGICO:
-            switch(c->type) {
+            switch(c->kind) {
                 case Input:
                 case Output:
                     cairo_text_extents(cr, c->name, &te);
@@ -224,6 +214,112 @@ static gboolean DrawConnectImage_CB(GtkWidget *widget,
 }
 
 
+static
+gboolean ConnectPopupMenuItem_PortNum(GtkMenuItem *menuitem,
+        GdkEventButton *e, uintptr_t port) {
+
+    // the connector could be either the "from" or the "to" if it has be
+    // selected yet.  We don't have a "to" without a "from".
+    struct Connector *c = fromConnector;
+    DASSERT(c);
+    if(toConnector)
+        c = toConnector;
+
+    WARN("Got port %zu for block %s", port, c->block->block->name);
+
+    DASSERT(connectorPopupMenu);
+
+    gtk_widget_destroy(connectorPopupMenu);
+    connectorPopupMenu = 0;
+
+    gtk_grab_add(c->widget);
+
+    return FALSE; // TRUE = eat event
+}
+
+
+
+// Returns the number of items in the popup menu, and 0 if there is no
+// popup, because there are no compatible items.
+//
+// When this is called it should already be determined that connections
+// can be made; so there will be at least one item in the connection
+// popup menu.
+//
+static inline uint32_t
+CreateShowConnectorPopupMenu(struct Connector *c, GdkEvent *e) {
+
+    DASSERT(c->active);
+
+    struct Connector *to = 0;
+    if(fromConnector)
+        // We have the two blocks to connect.
+        to = c;
+
+
+    struct QsBlock *b = c->block->block;
+    struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
+WARN("block=%p  to=%p", smB, to);
+
+    if(connectorPopupMenu)
+         gtk_widget_destroy(connectorPopupMenu);
+    connectorPopupMenu = gtk_menu_new();
+
+    uint32_t numItems = 0;
+
+    switch(c->kind) {
+        case Input:
+        {
+            // Whither c be a starting point (from) of a connection or an
+            // end point (to) the popup items are the same for this
+            // case.
+            //
+            const size_t LABEL_LEN = 64;
+            char label[LABEL_LEN];
+            numItems = b->maxNumInputs;
+WARN("b->maxNumInputs=%" PRIu32,  b->maxNumInputs);
+WARN("numItems=%" PRIu32, numItems);
+
+
+            for(uintptr_t i=0; i<numItems; ++i) {
+                snprintf(label, LABEL_LEN, "Input Port %zu", i);
+                GtkWidget *w = gtk_menu_item_new_with_label(label);
+                gtk_widget_add_events(w, GDK_BUTTON_PRESS_MASK);
+                gtk_menu_attach(GTK_MENU(connectorPopupMenu), w,
+                        0, 1, i, i+1);
+                // Note: we are not using the "activate" signal.  The
+                // "activate" signal used a key release to happen and we
+                // want a key press.
+                g_signal_connect(GTK_WIDGET(w), "button-press-event",
+                        G_CALLBACK(ConnectPopupMenuItem_PortNum),
+                        (void *) i);
+                gtk_widget_show(w);
+                WARN();
+            }
+            break;
+        }
+        case Output:
+
+            break;
+        case Constant:
+
+            break;
+        case Getter:
+
+            break;
+        case Setter:
+
+            break;
+    }
+
+    DASSERT(numItems > 0);
+
+    gtk_menu_popup_at_pointer(GTK_MENU(connectorPopupMenu), e);
+
+    return numItems;
+}
+
+
 static inline void
 MakeBlockLabel(GtkWidget *grid,
         const char *text,
@@ -238,9 +334,234 @@ MakeBlockLabel(GtkWidget *grid,
 }
 
 
+#if 0
+static gboolean ConnectorLeave_CB(GtkWidget *draw,
+        GdkEventButton *e, struct Connector *c) {
+
+WARN("connectorPopupMenu = %p", connectorPopupMenu);
+
+    if(connectorPopupMenu == 0)
+        // This may not ever happen; that we got a leave event without a
+        // enter event.
+        return FALSE;
+
+    // TODO: For now pretent there is a selection from 
+    // connectorPopupMenu.
+    //c->selectionMade = true;
+
+    return FALSE; // FALSE = event to next widget
+}
+
+
+// Here is the complete list of possible kinds of connections:
+//
+//   1. Getter    to  Setter
+//   2. Constant  to  Setter
+//   3. Constant  to  Constant
+//
+static
+int CanConnectParametersCB(struct QsParameter *p,
+            enum QsParameterKind kind,
+            enum QsParameterType type,
+            size_t size,
+            const char *pName, struct QsParameter **connectTo) {
+
+    DASSERT(p);
+    DASSERT(p->kind == kind);
+    DASSERT(p->type == type);
+    DASSERT(p->size == size);
+    DASSERT(*connectTo);
+
+    struct QsParameter *P = *connectTo;
+
+    DASSERT(P->type == type);
+    DASSERT(P->size == size);
+
+    if(kind == QsSetter && p->first)
+        // A setter cannot be connected more than once.
+        return 0;
+    if(P->kind == QsSetter && P->first)
+        // A setter cannot be connected more than once.
+        return 0;
+
+
+    if(
+        (P->kind == QsGetter   &&    kind == QsSetter) ||
+        (   kind == QsGetter   && P->kind == QsSetter) ||
+        (P->kind == QsConstant &&    kind == QsSetter) ||
+        (   kind == QsConstant && P->kind == QsSetter) ||
+        (P->kind == QsConstant &&    kind == QsConstant)) {
+        // We can connect these parameters?  We use *connectTo = 0
+        // as a flag that answers yes to that question.
+        *connectTo = 0;
+        return 1; // Stop calling the this function.
+    }
+
+    // else we cannot connect these parameters.
+    return 0;
+}
+
+
+// Return the Answer the Question: Is a Connection Possible?
+//
+// The from connector, "from", is already selected, but this is deciding
+// whither or not we can connect from "from" to connector "to".  If not
+// the user will not see it as an option.
+//
+static
+bool CheckConnectionPossible(struct Connector *from,
+        struct Connector *to) {
+
+    DASSERT(from);
+    DASSERT(to);
+
+    DASSERT(!from->block->block->isSuperBlock);
+    DASSERT(!to->block->block->isSuperBlock);
+
+
+    switch(from->kind) {
+        case Input:
+            if(to->kind != Output)
+                return false;
+            // Connecting from a Input to an Output.
+            //
+            // Since each output port may have any number of
+            // connections from input ports, we will show all output
+            // ports in the connector popup menu.
+            return true;
+        case Output:
+        {
+            if(to->kind != Input)
+                return false;
+            // Connecting from a Output to an Input.
+            //
+            // There must be an empty input port or we can't connect.
+            struct QsSimpleBlock *smB =
+                (struct QsSimpleBlock *) to->block->block;
+            if(smB->numInputs < smB->block.maxNumInputs)
+                // We are not using all possible input ports, so we go
+                // to the next step.
+                return true;
+            // But we could have unconnected port before the highest
+            // port, so we check for that now.
+            uint32_t i=smB->numInputs-1;
+            for(;i!=-1; --i)
+                if(!smB->inputs[i].block)
+                    // this input port i is not connected.
+                    return true;
+            if(i == -1)
+                // We searched all ports and all are in use.
+                return false;
+            // There is an input port not in use.
+            return true;
+        }
+        case Setter:
+        case Getter:
+        case Constant:
+        {
+            // Now we need to see if there are any parameters that
+            // this "from" blocks' parameter can connect to.
+            struct QsParameter *fromParameter = from->parameter;
+
+            qsParameterForEach(0, to->block->block,
+                QsAny/*kind*/,
+                from->parameter->type,
+                from->parameter->size,
+                0/*name 0=any*/,
+                (int (*)(struct QsParameter *p,
+                    enum QsParameterKind kind,
+                    enum QsParameterType type,
+                    size_t size,
+                    const char *pName, void *))
+                    CanConnectParametersCB/*callback*/,
+                    &fromParameter/*userData*/, 0/*flags*/);
+            return fromParameter?false:true;
+        }
+    }
+
+    DASSERT(0, "We should not get here");
+    return true;
+}
+
+
+static gboolean ConnectorEnter_CB(GtkWidget *draw,
+        GdkEventButton *e, struct Connector *c) {
+
+    DASSERT(c);
+    DASSERT(c->active);
+    ASSERT(c->block->block->isSuperBlock == 0, "Write this code");
+
+WARN("block=%s connectorPopupMenu = %p", c->block->block->name,
+        connectorPopupMenu);
+
+
+    if(fromConnector &&
+            c->block == fromConnector->block &&
+            c->selectionMade)
+        return TRUE; // eat this event
+
+if(fromConnector)
+WARN("c->selectionMade=%hd c->block=%p fromConnector->block=%p",
+        c->selectionMade, c->block, fromConnector->block);
+
+
+
+    if(fromConnector && !CheckConnectionPossible(fromConnector, c))
+        // We cannot connect these connectors.
+        return TRUE; // eat this event
+
+    CreateShowConnectorPopupMenu(c, (GdkEvent *) e);
+
+    return FALSE; // FALSE = event to next widget
+}
+
+
+static gboolean ConnectorMotion_CB(GtkWidget *draw,
+        GdkEventButton *e, struct Connector *c) {
+
+
+    
+
+    return FALSE; // FALSE = event to next widget
+}
+
+
+static gboolean ConnectorPress_CB(GtkWidget *draw,
+        GdkEventButton *e, struct Connector *c) {
+
+    gtk_grab_remove(c->widget);
+
+WARN("PRESS  block=%s", c->block->block->name);
+    //gtk_grab_remove(c->widget);
+
+    return TRUE; // FALSE = event to next widget
+}
+#endif
+
+
+static gboolean ConnectorRelease_CB(GtkWidget *draw,
+        GdkEventButton *e, struct Connector *c) {
+
+    if(fromConnector && e->button == CONNECT_BUTTON) {
+        fromConnector = 0;
+        // TODO: Stop drawing a new connection line.
+    }
+
+WARN();
+    //gtk_grab_remove(c->widget);
+
+    // The layout work area widget may need to get this event;
+    // so by returning FALSE, we do not eat this event and it pops
+    // up to the parent widget, which is the block, which in turn
+    // lets the event go of the 
+    return FALSE; // FALSE = event to next widget
+}
+
+
+
 static void MakeBlockConnector(GtkWidget *grid,
         const char *className/*for CSS*/,
-        enum ConnectorType ctype,
+        enum ConnectorKind ckind,
         struct Block *block,
         gint x, gint y, gint w, gint h) {
 
@@ -261,44 +582,75 @@ static void MakeBlockConnector(GtkWidget *grid,
     gtk_widget_set_name(drawArea, className);
     gtk_grid_attach(GTK_GRID(grid), drawArea, x, y, w, h);
 
+
     struct Connector *c;
-    switch(ctype) {
+    switch(ckind) {
         case Constant:
             c = &block->constants;
+            block->constants.active = qsDictionaryIsEmpty(
+                    ((struct QsSimpleBlock *)
+                        block->block)->constants)?false:true;
             break;
         case Getter:
             c = &block->getters;
+            block->getters.active = qsDictionaryIsEmpty(
+                    ((struct QsSimpleBlock *)
+                        block->block)->getters)?false:true;
             break;
         case Setter:
             c = &block->setters;
+            block->setters.active = qsDictionaryIsEmpty(
+                    ((struct QsSimpleBlock *)
+                        block->block)->setters)?false:true;
             break;
         case Input:
             c = &block->input;
+            block->input.active =
+                (block->block->maxNumInputs)?true:false;
             break;
         case Output:
             c = &block->output;
+            block->output.active =
+                (block->block->maxNumOutputs)?true:false;
             break;
     }
 
-    c->type = ctype;
+    c->kind = ckind;
     c->widget = drawArea;
     c->block = block;
-    c->name = strdup(className);
-    // TODO: free c->name.
-    ASSERT(c->name, "strdup() failed");
-    // TODO: free c
+    snprintf(c->name, CONNECTOR_CLASSNAME_LEN, "%s", className);
 
     g_signal_connect(G_OBJECT(drawArea), "draw",
-            G_CALLBACK(DrawConnectImage_CB), c/*userData*/);
+            G_CALLBACK(ConnectorDraw_CB), c/*userData*/);
+
+
+    if(!c->active)
+        // If the connector is not able to make connections we do not need
+        // the next few callbacks setup.
+        return;
+
+#if 0
+    g_signal_connect(GTK_WIDGET(drawArea), "motion-notify-event",
+            G_CALLBACK(ConnectorMotion_CB), c/*userData*/);
+    g_signal_connect(GTK_WIDGET(drawArea), "enter-notify-event",
+            G_CALLBACK(ConnectorEnter_CB), c/*userData*/);
+    g_signal_connect(GTK_WIDGET(drawArea), "leave-notify-event",
+            G_CALLBACK(ConnectorLeave_CB), c/*userData*/);
+    g_signal_connect(GTK_WIDGET(drawArea), "button-press-event",
+            G_CALLBACK(ConnectorPress_CB), c/*userData*/);
+#endif
+
+    g_signal_connect(GTK_WIDGET(drawArea), "button-release-event",
+            G_CALLBACK(ConnectorRelease_CB), c/*userData*/);
 }
-
-
 
 
 static gboolean
 Block_buttonReleaseCB(GtkWidget *ebox,
         GdkEventButton *e, struct Block *block) {
 
+
+WARN();
     if(movingBlock)
         return FALSE; // FALSE = event to next widget
 
@@ -315,12 +667,6 @@ Block_buttonMotionCB(GtkWidget *ebox,
 
     return TRUE;
 }
-
-
-// Popup menu for block button click
-static GtkMenu *popupMenu = 0;
-// This is the block that the user clicked on.
-static struct Block *popupBlock = 0;
 
 
 static gboolean UnselectCB(struct Block *key, struct Block *val,
@@ -351,7 +697,7 @@ Block_buttonPressCB(GtkWidget *ebox,
             popupBlock = block;
             UnselectAllBlocks(block->page);
             SelectBlock(block);
-            gtk_menu_popup_at_pointer(popupMenu, (GdkEvent *) e);
+            gtk_menu_popup_at_pointer(popupMenuBlock, (GdkEvent *) e);
             return TRUE; // TRUE Event stops here.
     }
 
@@ -642,7 +988,6 @@ static void FlopCB(GtkWidget *widget,
 }
 
 
-
 static void RemovePopupBlockCB(GtkWidget *widget,
         GdkEvent *e, gpointer data) {
     DASSERT(popupBlock);
@@ -674,11 +1019,11 @@ struct Block *AddBlock(struct Page *page,
         // Failed to load block.
         return 0;
 
-    if(popupMenu == 0) {
+    if(popupMenuBlock == 0) {
 
         GtkBuilder *popupBuilder = gtk_builder_new_from_resource(
                 "/quickstreamBuilder/qsb_popup_res.ui");
-        popupMenu = GTK_MENU(gtk_builder_get_object(popupBuilder,
+        popupMenuBlock = GTK_MENU(gtk_builder_get_object(popupBuilder,
                     "popupMenu"));
         Connect(popupBuilder,"remove", "activate", RemovePopupBlockCB, 0);
         Connect(popupBuilder,"rotateCW", "activate", RotateCWCB, 0);

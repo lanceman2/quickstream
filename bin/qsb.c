@@ -194,6 +194,14 @@ static void MoveSelectedBlocks(struct Page *page, double dx, double dy) {
 static gboolean WorkArea_buttonReleaseCB(GtkWidget *layout,
         GdkEventButton *e, struct Page *page) {
 
+WARN();
+
+    if(fromConnector && e->button == CONNECT_BUTTON) {
+        fromConnector = 0;
+        // TODO: Stop drawing a new connection line.
+    }
+
+
     if(e->type != GDK_BUTTON_RELEASE) {
         // This should not happen.
         ASSERT(0, "Did not get GDK_BUTTON_RELEASE event");

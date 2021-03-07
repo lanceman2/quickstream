@@ -24,6 +24,11 @@
 #include "GET_BLOCK.h"
 
 
+#define DEFAULT_MAX_PORTS    (6)
+#define DEFAULT_MAX_INPUTS   DEFAULT_MAX_PORTS
+#define DEFAULT_MAX_OUTPUTS  DEFAULT_MAX_PORTS
+
+
 
 static
 int FindHandle_cb(const char *blockName, struct QsBlock *b, void **dlhh) {
@@ -312,7 +317,6 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         smB->setters = qsDictionaryCreate();
         smB->constants = qsDictionaryCreate();
 
-
         CHECK(pthread_mutex_init(&smB->mutex, 0));
 
         // Add this simple block to the default thread pool if there is
@@ -320,10 +324,9 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         if(graph->threadPools)
             qsThreadPoolAddBlock(graph->threadPools, b);
      }
-    
-    // Make these large uint32_t
-    b->maxNumInputs = -1;
-    b->maxNumOutputs = -1;
+
+    b->maxNumInputs = DEFAULT_MAX_INPUTS;
+    b->maxNumOutputs = DEFAULT_MAX_OUTPUTS;
 
     b->dlhandle = dlhandle;
     b->name = strdup(blockName);
