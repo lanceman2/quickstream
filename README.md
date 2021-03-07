@@ -951,6 +951,88 @@ These questions are helpful in understanding how quickstream works:
   command-line-like-options.  This also enables test driven development,
   which is the most awesome development thing ever.
 
+- Latest Rant about GNUradio
+
+  Similar to GNUradio, but more generic, simpler, and with more restricted
+  interfaces.  It may run flow graphs with any number of threads and with
+  varying inter-module ring buffer sizes; leading to optimization
+  parameters that do not exist in GNUradio.   You can make a block plug-in
+  module with just one short C or C++ file.  GNUradio requires lots of
+  files and your time to make even a small module.  quickstream does not
+  depend on bloat-ware packages, like libboost; as GNUradio does.
+  quickstream will strive to be robust, were-as GNUradio is not, and will
+  never be, given the large amount of legacy code that would be needed to
+  be changed in order to be robust.  The basic design of GNUradio is not
+  robust: it allows modules to share variables between different threads,
+  and does not restrict interfaces between modules.  In effect, it has
+  very little imposed inter-module  structure.  It just has inter-module
+  stream flow control with all other inter-module interactions as an
+  ad-hoc after-thought.
+
+  quickstream strives to be a robust framework for building multi-threaded
+  programs built from modules, called blocks.  Stream data quickly flows
+  between blocks using ring buffers.  Control data is passes between
+  blocks using function callbacks.  quickstream's basic design is
+  minimalistic, so much so that, it had to be completely rewritten three
+  times.  The idea that you can build the "under-ware" later, or we can
+  abstract it out and rewrite later, are computer science and "pointy
+  haired manager" fallacies which do not apply to scope-able minimalistic
+  code.  Fore-site is not always possible and "Oh shit, we need a new
+  mechanism for that" can happen.  We choose not to let bloat be the
+  workaround for lack of fore-site.
+
+
+- quickstream lack of stream data types
+
+  The basic argument is that the choise of stream data type will in most
+  cases be hard coded into the block C/C++ compiled code; so when the user
+  chooses a different stream data type (in most cases) they are
+  effectively choosing a different compiled block.  Though the user is
+  blinded to that in the GNUradio companion (and maybe in the python
+  wrappers); at the block writers level they are different blocks.  This
+  happens because basic functions like sin(3), sinf(3), and sinl(3) are
+  different functions in the standard math library, and there are many
+  more examples.  It does not matter that a block writter uses a C++
+  wrapper that make them look like the same functions, they are not in the
+  compiled code.  Template and/or MACRO coding does not exist in
+  compiled code.  So GNUradio is in this way adding a feature the highest
+  level interface to the block where you are selecting the type of stream
+  data for a block, but under the covers it really selecting between
+  completely different blocks.  Because of this their are some things that
+  the user can't do.  Any feature is always a constraint.  In the case of
+  GNUradio it is tending to be constrainted to be used for software
+  defined radio, because of this stream typing feature.  Actually it's
+  worst than that, GNUradio is constraining software defined radio to only
+  be arrays of simple types transfered between modules.
+
+  quickstream does not add this stream data typing feature.  The blocks
+  with different stream data types are different blocks.  This is also
+  true of GNUradio, but GNUradio tends to hind this artifact from high
+  level users.  For a naive user that can be a good thing.  It maybe
+  that quickstream is not for naive users.  quickstream is also not
+  restricted to use in just software defined radio.
+
+  For complex stream protcols like video compression streams and most
+  stream protocols, the stream data types in GNUradio are not so useful.
+  Most stream-like protcols do not have only streams of arrays of simple
+  types (like float or complex arrays);  stream protocols like TCP, UDP,
+  HTTP, RTCP, and so on, will always be bytes in GNUradio, bytes being the
+  type that is the most flexible.
+
+  Another thing that seems to have come about from GNUradio's idea of
+  stream data being a series of arrays of simple types is that the "stream
+  data flow mode" of GNUradio streams is always "quasi-syncronous", with
+  N/M flow rate model.  This is not the case for quickstream.
+  quickstream streams flow asynchronously with boundaries imposed by block
+  read and write byte length promises.  The promise lengths are fixed
+  while the streams are flowing.  quickstream stream data has no types by
+  design and in same way that most stream-like protocols, like TCP, have
+  type that is carried in the stream; it's just bytes and bits.  GNUradio
+  has types as a fundimental part of the design of what stream data is.
+  In quickstream connected blocks do not need to keep a relative flow
+  rate between them, the flow rates are not even a consideration; the
+  connected block are just constrained to not override each other.
+
 
 # TODO
 
