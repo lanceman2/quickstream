@@ -984,6 +984,8 @@ These questions are helpful in understanding how quickstream works:
 
 - quickstream lack of stream data types
 
+  Note we need to verify all these claims:
+
   The basic argument is that the choise of stream data type will in most
   cases be hard coded into the block C/C++ compiled code; so when the user
   chooses a different stream data type (in most cases) they are
@@ -1032,6 +1034,22 @@ These questions are helpful in understanding how quickstream works:
   In quickstream connected blocks do not need to keep a relative flow
   rate between them, the flow rates are not even a consideration; the
   connected block are just constrained to not override each other.
+
+  In GNUradio the internals of GNUradio decide how much stream data flow
+  through the block at each work() call.  Each work() call has the amount
+  of input data and output data determined by the GNUradio libraries
+  scheduler code.  In quickstream the block developer decides how much
+  stream data flow through the block at each work (flow) call.  This makes
+  the "stream flow scheduling" code in the two libraries fundamentally
+  different.  quickstream stream data flow can be effectively controlled
+  by the blocks themselves at any and all blocks in the graph.  The flow
+  work calls in quickstream can be blocked by any block that chooses to
+  not advance the stream data, input or output.   In a quickstream flow
+  graph a blocks are not forced to keep a relative amount of input to
+  output as they are in GNUradio.  In many use cases a GNUradio decoder
+  block must continue to output data even when the data is not a valid
+  decoding.  This is fucking huge.
+
 
 
 # TODO
