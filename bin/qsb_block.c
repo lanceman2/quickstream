@@ -30,7 +30,7 @@
 
 
 // Popup menu for block button click
-static GtkMenu *popupMenuBlock = 0;
+static GtkMenu *blockPopupMenu = 0;
 // This is the block that the user clicked on.
 static struct Block *popupBlock = 0;
 
@@ -49,7 +49,10 @@ struct Connector *fromConnector = 0;
 
 // This "to" connector can only be set if there is a "from" connector
 // (fromConnector).   toConnector is the connector that was chosen
-// by the user after the fromConnector.
+// by the user after the fromConnector.  This needs to be set so that
+// the user can select the particular thingy to connect to. Though the
+// connector is known, it cannot be connected until the parameter or port
+// to connect to is chosen.
 static struct Connector *toConnector = 0;
 
 
@@ -214,29 +217,62 @@ static gboolean ConnectorDraw_CB(GtkWidget *widget,
 }
 
 
+// The current connector is either the "from" or the "to" connector,
+// depending on this logic here.
+static inline
+struct Connector *GetCurrentConnector(void) {
+
+    if(toConnector) {
+        DASSERT(toConnector != fromConnector);
+        return toConnector;
+    }
+    DASSERT(fromConnector);
+    return fromConnector;
+}
+
+
 static
 gboolean ConnectPopupMenuItem_PortNum(GtkMenuItem *menuitem,
-        GdkEventButton *e, uintptr_t port) {
+        uintptr_t n) {
 
-    // the connector could be either the "from" or the "to" if it has be
-    // selected yet.  We don't have a "to" without a "from".
-    struct Connector *c = fromConnector;
-    DASSERT(c);
-    if(toConnector)
-        c = toConnector;
+    struct Connector *c = GetCurrentConnector();
+    // Set the port number for this connector, c.
+   
+    if(c->selectionMade)
+        WARN("RESELECTING");
 
-    WARN("Got port %zu for block %s", port, c->block->block->name);
+    c->selectionMade = true;
+    c->portNum = n;
+
+    WARN("Got port %" PRIu32 " for block %s", c->portNum,
+            c->block->block->name);
 
     DASSERT(connectorPopupMenu);
 
     gtk_widget_destroy(connectorPopupMenu);
     connectorPopupMenu = 0;
 
-    gtk_grab_add(c->widget);
+    if(c == fromConnector)
+        StartMakingConnection(c->block->page);
 
-    return FALSE; // TRUE = eat event
+    return TRUE; // TRUE = eat event
 }
 
+
+// Called for "selection-done" for connectorPopupMenu; which seems to be
+// when the user does not select anything from the connector popup menu.
+static void
+ConnectSelectionDoneCB(GtkMenuShell *m, void *userdata) {
+
+    gtk_widget_destroy(connectorPopupMenu);
+    connectorPopupMenu = 0;
+
+    DASSERT(!toConnector);
+    if(fromConnector) {
+        fromConnector->selectionMade = false;
+        fromConnector = 0;
+    }
+}
 
 
 // Returns the number of items in the popup menu, and 0 if there is no
@@ -251,21 +287,20 @@ CreateShowConnectorPopupMenu(struct Connector *c, GdkEvent *e) {
 
     DASSERT(c->active);
 
-    struct Connector *to = 0;
-    if(fromConnector)
-        // We have the two blocks to connect.
-        to = c;
-
 
     struct QsBlock *b = c->block->block;
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
-WARN("block=%p  to=%p", smB, to);
+
+WARN("block=%p  toConnector=%p", smB, toConnector);
 
     if(connectorPopupMenu)
          gtk_widget_destroy(connectorPopupMenu);
     connectorPopupMenu = gtk_menu_new();
+    g_signal_connect(GTK_WIDGET(connectorPopupMenu), "selection-done",
+            G_CALLBACK(ConnectSelectionDoneCB), 0/*userData*/);
 
     uint32_t numItems = 0;
+    uint32_t activeItems = 0;
 
     switch(c->kind) {
         case Input:
@@ -277,24 +312,24 @@ WARN("block=%p  to=%p", smB, to);
             const size_t LABEL_LEN = 64;
             char label[LABEL_LEN];
             numItems = b->maxNumInputs;
-WARN("b->maxNumInputs=%" PRIu32,  b->maxNumInputs);
-WARN("numItems=%" PRIu32, numItems);
-
-
             for(uintptr_t i=0; i<numItems; ++i) {
                 snprintf(label, LABEL_LEN, "Input Port %zu", i);
                 GtkWidget *w = gtk_menu_item_new_with_label(label);
                 gtk_widget_add_events(w, GDK_BUTTON_PRESS_MASK);
                 gtk_menu_attach(GTK_MENU(connectorPopupMenu), w,
                         0, 1, i, i+1);
-                // Note: we are not using the "activate" signal.  The
-                // "activate" signal used a key release to happen and we
-                // want a key press.
-                g_signal_connect(GTK_WIDGET(w), "button-press-event",
+                if(i >= smB->numInputs || smB->inputs[i].block == 0) {
+                    // This input port, i, can be connected, because it's
+                    // not connected yet.
+                    ++activeItems;
+                    g_signal_connect(GTK_WIDGET(w), "activate",
                         G_CALLBACK(ConnectPopupMenuItem_PortNum),
                         (void *) i);
+                } else
+                    // This input port, i, is already connected, so we
+                    // cannot connect it again.
+                    gtk_widget_set_sensitive(GTK_WIDGET(w), FALSE);
                 gtk_widget_show(w);
-                WARN();
             }
             break;
         }
@@ -312,7 +347,10 @@ WARN("numItems=%" PRIu32, numItems);
             break;
     }
 
+    ASSERT(numItems > 0, "Write more code HERE");
     DASSERT(numItems > 0);
+    DASSERT(activeItems > 0);
+
 
     gtk_menu_popup_at_pointer(GTK_MENU(connectorPopupMenu), e);
 
@@ -334,26 +372,7 @@ MakeBlockLabel(GtkWidget *grid,
 }
 
 
-#if 0
-static gboolean ConnectorLeave_CB(GtkWidget *draw,
-        GdkEventButton *e, struct Connector *c) {
-
-WARN("connectorPopupMenu = %p", connectorPopupMenu);
-
-    if(connectorPopupMenu == 0)
-        // This may not ever happen; that we got a leave event without a
-        // enter event.
-        return FALSE;
-
-    // TODO: For now pretent there is a selection from 
-    // connectorPopupMenu.
-    //c->selectionMade = true;
-
-    return FALSE; // FALSE = event to next widget
-}
-
-
-// Here is the complete list of possible kinds of connections:
+// Here is the complete list of possible kinds of parameters connections:
 //
 //   1. Getter    to  Setter
 //   2. Constant  to  Setter
@@ -484,79 +503,101 @@ bool CheckConnectionPossible(struct Connector *from,
 }
 
 
-static gboolean ConnectorEnter_CB(GtkWidget *draw,
+// This just answers the question: Is a connection possible "from" this
+// connector?  We do not know the other, "to", connector yet.
+//
+// TODO: This does not bother looking at all the other blocks, to make
+// sure that there is a compatible "to" connector available.  Doing so
+// may make the user interface a little confusing.
+bool
+CheckConnectionFromPossible(struct Connector *c) {
+
+    struct QsBlock *b = c->block->block;
+    ASSERT(!b->isSuperBlock);
+    struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
+
+    switch(c->kind) {
+        case Input:
+        {
+            // Inputs can only be connected to once, so if there
+            // is an unused input port available, then we may be
+            // able to connect to it.
+            //
+            for(uint32_t i = b->maxNumInputs; i != -1; --i) {
+                if(i >= smB->numInputs)
+                    // There is an unused input port possible.
+                    return true;
+                if(smB->inputs[i].block == 0)
+                    // There is an unused input port possible.
+                    return true;
+                // This input port, i, is in use.
+            }
+        }
+        break;
+        case Output:
+        {
+            // MORE CODE HERE...
+            return false;
+        }
+        break;
+        case Getter:
+        case Setter:
+        case Constant:
+        {
+            // MORE CODE HERE...
+            return false;
+        }
+        break;
+    }
+
+    ASSERT(0, "We should not get here");
+    return false;
+}
+
+
+// The connector is a GTK drawingArea widget, "draw".
+static gboolean ConnectorPress_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
 
     DASSERT(c);
     DASSERT(c->active);
     ASSERT(c->block->block->isSuperBlock == 0, "Write this code");
 
-WARN("block=%s connectorPopupMenu = %p", c->block->block->name,
-        connectorPopupMenu);
+    if(e->button != CONNECT_BUTTON)
+        // Event goes to next parent widget.
+        return FALSE;
 
+WARN("fromConnector=%p  toConnector=%p", fromConnector, toConnector);
 
-    if(fromConnector &&
-            c->block == fromConnector->block &&
-            c->selectionMade)
-        return TRUE; // eat this event
+    // This is either the event where a user is first pressing on a
+    // connector, or the user has a "from" connector already selected
+    // and they are pressing on the next "to" connector.
 
-if(fromConnector)
-WARN("c->selectionMade=%hd c->block=%p fromConnector->block=%p",
-        c->selectionMade, c->block, fromConnector->block);
+    toConnector = 0;
 
+    if(!fromConnector || fromConnector == c) {
+        if(CheckConnectionFromPossible(c))
+            fromConnector = c;
+        else {
+            DASSERT(fromConnector == 0);
+            // Event goes to next parent widget.
+            return FALSE;
+        }
+    } else {
+        if(CheckConnectionPossible(fromConnector, c))
+            toConnector = c;
+        else {
+            DSPEW("No connection possible");
+            // Event goes to next parent widget.
+            return FALSE;
+        }
+    }
 
-
-    if(fromConnector && !CheckConnectionPossible(fromConnector, c))
-        // We cannot connect these connectors.
-        return TRUE; // eat this event
 
     CreateShowConnectorPopupMenu(c, (GdkEvent *) e);
 
-    return FALSE; // FALSE = event to next widget
+    return TRUE; // TRUE = eat this event
 }
-
-
-static gboolean ConnectorMotion_CB(GtkWidget *draw,
-        GdkEventButton *e, struct Connector *c) {
-
-
-    
-
-    return FALSE; // FALSE = event to next widget
-}
-
-
-static gboolean ConnectorPress_CB(GtkWidget *draw,
-        GdkEventButton *e, struct Connector *c) {
-
-    gtk_grab_remove(c->widget);
-
-WARN("PRESS  block=%s", c->block->block->name);
-    //gtk_grab_remove(c->widget);
-
-    return TRUE; // FALSE = event to next widget
-}
-#endif
-
-
-static gboolean ConnectorRelease_CB(GtkWidget *draw,
-        GdkEventButton *e, struct Connector *c) {
-
-    if(fromConnector && e->button == CONNECT_BUTTON) {
-        fromConnector = 0;
-        // TODO: Stop drawing a new connection line.
-    }
-
-WARN();
-    //gtk_grab_remove(c->widget);
-
-    // The layout work area widget may need to get this event;
-    // so by returning FALSE, we do not eat this event and it pops
-    // up to the parent widget, which is the block, which in turn
-    // lets the event go of the 
-    return FALSE; // FALSE = event to next widget
-}
-
 
 
 static void MakeBlockConnector(GtkWidget *grid,
@@ -636,12 +677,11 @@ static void MakeBlockConnector(GtkWidget *grid,
             G_CALLBACK(ConnectorEnter_CB), c/*userData*/);
     g_signal_connect(GTK_WIDGET(drawArea), "leave-notify-event",
             G_CALLBACK(ConnectorLeave_CB), c/*userData*/);
-    g_signal_connect(GTK_WIDGET(drawArea), "button-press-event",
-            G_CALLBACK(ConnectorPress_CB), c/*userData*/);
-#endif
-
     g_signal_connect(GTK_WIDGET(drawArea), "button-release-event",
             G_CALLBACK(ConnectorRelease_CB), c/*userData*/);
+#endif
+    g_signal_connect(GTK_WIDGET(drawArea), "button-press-event",
+            G_CALLBACK(ConnectorPress_CB), c/*userData*/);
 }
 
 
@@ -665,7 +705,7 @@ Block_buttonMotionCB(GtkWidget *ebox,
     if(movingBlock)
         return FALSE; // FALSE = event to next widget
 
-    return TRUE;
+    return FALSE;
 }
 
 
@@ -687,6 +727,13 @@ static gboolean
 Block_buttonPressCB(GtkWidget *ebox,
         GdkEventButton *e, struct Block *block) {
 
+
+    if(fromConnector)
+        // If we clicked on a block and got to here, then the making of a
+        // connection was aborted by the user, as we define it.
+        StopMakingConnection(block->page);
+
+
     switch(e->button) {
 
         case MOVE_BLOCK_BUTTON:
@@ -697,7 +744,7 @@ Block_buttonPressCB(GtkWidget *ebox,
             popupBlock = block;
             UnselectAllBlocks(block->page);
             SelectBlock(block);
-            gtk_menu_popup_at_pointer(popupMenuBlock, (GdkEvent *) e);
+            gtk_menu_popup_at_pointer(blockPopupMenu, (GdkEvent *) e);
             return TRUE; // TRUE Event stops here.
     }
 
@@ -856,8 +903,7 @@ static void MoveConnectors(struct Block *b, enum ConnectorGeo geo) {
 }
 
 
-static void RotateCCWCB(GtkWidget *widget,
-        GdkEvent *e, gpointer data) {
+static void RotateCCWCB(GtkWidget *widget, gpointer data) {
     DASSERT(popupBlock);
 
     switch(popupBlock->geo) {
@@ -889,8 +935,7 @@ static void RotateCCWCB(GtkWidget *widget,
 }
 
 
-static void RotateCWCB(GtkWidget *widget,
-        GdkEvent *e, gpointer data) {
+static void RotateCWCB(GtkWidget *widget, gpointer data) {
     DASSERT(popupBlock);
 
     switch(popupBlock->geo) {
@@ -922,8 +967,7 @@ static void RotateCWCB(GtkWidget *widget,
 }
 
 
-static void FlipCB(GtkWidget *widget,
-        GdkEvent *e, gpointer data) {
+static void FlipCB(GtkWidget *widget, gpointer data) {
     DASSERT(popupBlock);
 
     switch(popupBlock->geo) {
@@ -955,8 +999,7 @@ static void FlipCB(GtkWidget *widget,
 }
 
 
-static void FlopCB(GtkWidget *widget,
-        GdkEvent *e, gpointer data) {
+static void FlopCB(GtkWidget *widget, gpointer data) {
     DASSERT(popupBlock);
 
     switch(popupBlock->geo) {
@@ -988,11 +1031,12 @@ static void FlopCB(GtkWidget *widget,
 }
 
 
-static void RemovePopupBlockCB(GtkWidget *widget,
-        GdkEvent *e, gpointer data) {
+static void RemovePopupBlockCB(GtkWidget *widget, gpointer data) {
     DASSERT(popupBlock);
     DestroyBlock(popupBlock);
     popupBlock = 0;
+
+WARN("data=%zu", (uintptr_t) data);
 }
 
 
@@ -1019,11 +1063,11 @@ struct Block *AddBlock(struct Page *page,
         // Failed to load block.
         return 0;
 
-    if(popupMenuBlock == 0) {
+    if(blockPopupMenu == 0) {
 
         GtkBuilder *popupBuilder = gtk_builder_new_from_resource(
                 "/quickstreamBuilder/qsb_popup_res.ui");
-        popupMenuBlock = GTK_MENU(gtk_builder_get_object(popupBuilder,
+        blockPopupMenu = GTK_MENU(gtk_builder_get_object(popupBuilder,
                     "popupMenu"));
         Connect(popupBuilder,"remove", "activate", RemovePopupBlockCB, 0);
         Connect(popupBuilder,"rotateCW", "activate", RotateCWCB, 0);

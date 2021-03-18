@@ -44,7 +44,7 @@ struct Block *movingBlock = 0;
 static double x_0, y_0;
 
 
-static GtkNotebook *noteBook = 0;
+GtkNotebook *noteBook = 0;
 static int tabCreateCount = 0;
 static GtkWidget *window = 0;
 
@@ -67,7 +67,7 @@ static inline GdkCursor *GetCursor(const char *type) {
 }
 
 
-static void GetWidgetRootXY(GtkWidget *w, double *x, double *y) {
+static inline void GetWidgetRootXY(GtkWidget *w, double *x, double *y) {
 
     gint ix, iy;
     gdk_window_get_origin(gtk_widget_get_window(w), &ix, &iy);
@@ -76,42 +76,73 @@ static void GetWidgetRootXY(GtkWidget *w, double *x, double *y) {
 }
 
 
+static inline cairo_surface_t *
+MakeNewLayoutSurface(GtkWidget *widget, cairo_surface_t *old,
+        gint w, gint h) {
+
+    if(old)
+        cairo_surface_destroy(old);
+
+    GdkWindow *win = gtk_widget_get_window(widget);
+    cairo_surface_t *new = gdk_window_create_similar_surface(win,
+            CAIRO_CONTENT_COLOR_ALPHA, w, h);
+    cairo_t *cr = cairo_create(new);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    cairo_set_source_rgba(cr, 0, 0, 0, 0);
+    cairo_paint(cr);
+    cairo_destroy(cr);
+    return new;
+}
+
+
+// This does work.  The position is relative to the root window.
+//
+static void GetPointer(double *x, double *y) {
+
+    GdkDevice *mouse_device;
+
+#if GTK_CHECK_VERSION (3,20,0)
+    GdkSeat *seat =
+        gdk_display_get_default_seat(gdk_display_get_default());
+    mouse_device = gdk_seat_get_pointer(seat);
+#else
+    GdkDeviceManager *devman =
+        gdk_display_get_device_manager(gdk_display_get_default());
+    mouse_device = gdk_device_manager_get_client_pointer(devman);
+#endif
+    GdkScreen *screen = gdk_screen_get_default();
+    gdk_device_get_position_double(mouse_device, &screen, x, y);
+}
+
 
 // We have this stupid surface re-allocator because the GTK layout widget
 // will not receive configure events, which are when the widget window
 // resizes.
 //
-// Return true if the surface is reallocated.
+// Return true if the surfaces are allocated or reallocated.
+//
+// We use more than one surface in drawing the page, so we needed the
+// forceMakeNew flag to cause this to reallocate the surface even when
+// the page
 //
 static inline bool
-GetSurface(struct Page *page, GtkWidget *widget, cairo_surface_t **s,
-        gint *w_out, gint *h_out) {
+GetLayoutSurfaces(struct Page *page, GtkWidget *widget) {
 
     gint w = gtk_widget_get_allocated_width(widget);
     gint h = gtk_widget_get_allocated_height(widget);
 
-    if(w_out) *w_out = w;
-    if(h_out) *h_out = h;
-
-    if(*s != 0 && page->w == w && page->h == h)
+    if(page->w == w && page->h == h)
         // nothing to do.
         return false;
 
-    if(*s)
-        cairo_surface_destroy(*s);
-    GdkWindow *win = gtk_widget_get_window(widget);
-
-    *s = gdk_window_create_similar_surface(win,
-            CAIRO_CONTENT_COLOR_ALPHA, w, h);
-
-    cairo_t *cr = cairo_create(*s);
-    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-    cairo_set_source_rgba(cr, 0, 0, 0, 0);
-    cairo_paint(cr);
-    cairo_destroy(cr);
-
     page->w = w;
     page->h = h;
+
+    // reallocate the 2 page layout Cairo drawing surfaces.
+    page->newDrawSurface =
+        MakeNewLayoutSurface(widget, page->newDrawSurface, w, h);
+    page->oldLines =
+        MakeNewLayoutSurface(widget, page->oldLines, w, h);
 
     return true;
 }
@@ -139,18 +170,32 @@ static
 gboolean
 WorkArea_drawCB(GtkWidget *layout, cairo_t *cr, struct Page *page) {
 
-    GetSurface(page, layout, &page->newDrawSurface, 0, 0);
+
+    if(GetLayoutSurfaces(page, layout)) {
+        // We have newly allocated surfaces.  The page->oldLines
+        // surface needs to have all the current connects drawn on it.
+
+        DSPEW("draw all existing connection lines"); // TODO:
+        // TODO: draw all connection lines on page->oldLines.
+    }
 
 
+    // 1. clear the current surface.
     cairo_set_source_rgb(cr, 224/255.0, 233/255.0, 244/255.0);
     cairo_paint(cr);
 
-    if(haveSelectBox) {
+
+    // 2. draw selection boxes or new lines while the mouse pointer moves.
+    // There can be no layout resizing in these cases.
+    if(haveSelectBox || fromConnector) {
         cairo_set_source_surface(cr, page->newDrawSurface, 0, 0);
         cairo_paint(cr);
     }
- 
-    // TODO: Add the connections that we know so far.
+
+
+    // 3. draw the saved block connecting lines that we know so far.
+    cairo_set_source_surface(cr, page->oldLines, 0, 0);
+    cairo_paint(cr);
 
     return FALSE; // FALSE == Call other callbacks
 }
@@ -195,11 +240,6 @@ static gboolean WorkArea_buttonReleaseCB(GtkWidget *layout,
         GdkEventButton *e, struct Page *page) {
 
 WARN();
-
-    if(fromConnector && e->button == CONNECT_BUTTON) {
-        fromConnector = 0;
-        // TODO: Stop drawing a new connection line.
-    }
 
 
     if(e->type != GDK_BUTTON_RELEASE) {
@@ -256,6 +296,75 @@ WARN();
 }
 
 
+const static double lineWidth = 4.2;
+
+
+static inline void
+DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
+
+    GtkWidget *layout = page->layout;
+
+    GetLayoutSurfaces(page, layout);
+    DASSERT(page->newDrawSurface);
+
+    // Draw the current connection line that the user is currently
+    // dragging.  Call this block of code: DrawDragLine.
+    double x0=0, y0=0, x1, y1;
+// TODO: this:
+//GetConnectionPoint(fromConnector, &x0, &y0);
+    GtkAllocation alloc;
+    gtk_widget_get_allocation(layout, &alloc);
+    GetWidgetRootXY(layout, &x1, &y1);
+
+    if(e) {
+        x1 = e->x_root - x1;
+        y1 = e->y_root - y1;
+    } else {
+        double px, py;
+        GetPointer(&px, &py);
+        x1 = px - x1;
+        y1 = py - y1;
+    } 
+
+    // draw onto page->newDrawSurface
+    cairo_t *cr = cairo_create(page->newDrawSurface);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    // clear the surface
+    cairo_set_source_rgba(cr, 0, 0, 0, 0.0);
+    cairo_paint(cr);
+
+    // Set the line color
+    double r=1.0, g=0, b=0, a=0.4;
+// TODO: this:
+//GetConnectionLineColor(fromConnector, &r, &g, &b, &a);
+    cairo_set_source_rgba(cr, r, g, b, a);
+    cairo_set_line_width(cr, lineWidth);
+    cairo_move_to(cr, x0, y0);
+    cairo_line_to(cr, x1, y1);
+    cairo_stroke(cr);
+    cairo_destroy(cr);
+
+    // The 'draw' event callback, WorkArea_drawCB(), will paste
+    // together all the needed surfaces into the layout widget.
+    gtk_widget_queue_draw_area(layout, 0, 0, page->w, page->h);
+}
+
+
+#if 0
+// FAIL
+static gboolean WorkArea_enterCB(GtkLayout *layout,
+        GdkEventButton *e, struct Page *page) {
+
+    // When the pointer drops finishes with the connection pop up menu we
+    // get this event.
+    if(fromConnector)
+        DrawConnectionDragLine(0, page);
+
+    return FALSE; // FALSE = do not eat this event.
+}
+#endif
+
+
 static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
         GdkEventButton *e, struct Page *page) {
 
@@ -265,12 +374,22 @@ static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
         return FALSE; // FALSE = go to next widget
     }
 
-    if(haveSelectBox) {
+    // Because we only use one pointer/mouse we can't have a selection and
+    // a connection being and move a block all at the same time.  TODO:
+    // What happens if a user clicks two mouse buttons at the same time?
+    // For now fuck it, I do not want to think about it; but at least see
+    // it happen in DEBUG.
+    DASSERT(!haveSelectBox || !fromConnector || !movingBlock);
 
+
+    if(fromConnector) {
+        DrawConnectionDragLine(e, page);
+        return TRUE; // TRUE = eat the event
+    }
+
+    if(haveSelectBox) {
         DASSERT(movingBlock == 0);
-        gint w, h;
-        GetSurface(page, GTK_WIDGET(layout), &page->newDrawSurface,
-                &w, &h);
+        GetLayoutSurfaces(page, GTK_WIDGET(layout));
 
         cairo_t *cr = cairo_create(page->newDrawSurface);
         cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
@@ -285,7 +404,9 @@ static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
         cairo_destroy(cr);
     
         /* Now invalidate the affected region of the drawing area. */
-        gtk_widget_queue_draw_area(GTK_WIDGET(layout), 0, 0, w, h);
+        gtk_widget_queue_draw_area(GTK_WIDGET(layout),
+                0, 0, page->w, page->h);
+        return TRUE; // TRUE eat this event
     }
 
     if(!movingBlock) return TRUE;
@@ -298,6 +419,37 @@ static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
 }
 
 
+void StartMakingConnection(struct Page *page) {
+
+    DASSERT(fromConnector);
+    gtk_grab_add(page->layout);
+
+    // We do not have the mouse position so we can't draw yet.
+    DrawConnectionDragLine(0, page);
+}
+
+
+void StopMakingConnection(struct Page *page) {
+
+    DASSERT(fromConnector);
+    // the user gave up on making a connection by leaving the layout
+    // widget, or clicking in the wrong place of something.
+    //        
+    // clear the page->newDrawSurface
+    cairo_t *cr = cairo_create(page->newDrawSurface);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    cairo_set_source_rgba(cr, 0, 0, 0, 0.0);
+    cairo_paint(cr);
+
+    gtk_widget_queue_draw_area(page->layout, 0, 0, page->w, page->h);
+
+    gtk_grab_remove(page->layout);
+
+    // We no longer have a connection being made by the user.
+    fromConnector = 0;
+}
+
+
 static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
         GdkEventButton *e, struct Page *page) {
 
@@ -306,6 +458,11 @@ static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
         // ya. GTK sucks.
         //ASSERT(0, "Did not get GDK_BUTTON_PRESS event");
         return FALSE; // FALSE = go to next widget
+    }
+
+    if(fromConnector) {
+        StopMakingConnection(page);
+        return FALSE; // FALSE do not eat it.
     }
 
     DASSERT(haveSelectBox == false);
@@ -386,10 +543,13 @@ static inline void MakeWorkArea(struct Page *page) {
     }
 
     GtkLayout *layout = GTK_LAYOUT(gtk_builder_get_object(b, "workArea"));
+    page->layout = GTK_WIDGET(layout);
 
     gint rt = gtk_notebook_append_page(noteBook, GTK_WIDGET(layout),
             gtk_label_new(tagName));
     ASSERT(rt >= 0);
+
+    //gtk_widget_add_events(page->layout, GDK_ENTER_NOTIFY_MASK);
 
 
     g_signal_connect(GTK_WIDGET(layout), "draw",
@@ -404,6 +564,11 @@ static inline void MakeWorkArea(struct Page *page) {
     g_signal_connect(GTK_WIDGET(layout), "button-release-event",
             G_CALLBACK(WorkArea_buttonReleaseCB), page/*userData*/);
 
+    //g_signal_connect(GTK_WIDGET(layout), "enter-notify-event",
+    //        G_CALLBACK(WorkArea_enterCB), page/*userData*/);
+
+    //g_signal_connect(GTK_WIDGET(layout), "leave-notify-event",
+    //        G_CALLBACK(WorkArea_leaveNotifyCB), page/*userData*/);
 
 
     // We are done with this builder
@@ -418,6 +583,9 @@ static gboolean NewTab(GtkWidget *w, gpointer data) {
     // TODO: free(page) somewhere.
 
     page->selectedBlocks = g_tree_new(BlockSelectCompareCB);
+    // Set width and height to invalid values.
+    page->w = -1101;
+    page->h = -1101;
 
     MakeWorkArea(page);
     return TRUE;

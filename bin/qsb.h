@@ -6,15 +6,25 @@ struct Block;
 
 
 struct Page {
-   GTree *selectedBlocks;
+    // This is a g tree list of the blocks that are selected, i.e.
+    // highlighted and shit.  We can move all of them together with the
+    // mouse pointer.
+    GTree *selectedBlocks;
 
-   struct Block *blocks; // singly linked list of blocks.
+    // The widget that is in the page.  We also call it the work area.
+    GtkWidget *layout;
 
-   // For drawing new lines or selecting box.
-   cairo_surface_t *newDrawSurface;
+    struct Block *blocks;// singly linked list of all blocks in the page.
 
-   // width and height of layout drawing area.
-   gint w, h;
+    // For drawing new lines or the pointer selecting box.
+    cairo_surface_t *newDrawSurface;
+    //
+    // Old lines that we drew that are not moving currently.
+    cairo_surface_t *oldLines;
+
+    // width and height of layout drawing area and the above
+    // surfaces.
+    gint w, h;
 };
 
 
@@ -27,7 +37,7 @@ enum ConnectorKind {
 };
 
 
-// enum of geometric orientations types
+// enum of geometric orientations of connector types - ConnectorGeo
 //
 // I - Input, O - Output, S - Setter, G - Getter, C - Constant
 //
@@ -96,9 +106,15 @@ extern
 struct QsGraph *graph;
 
 
+extern GtkNotebook *noteBook;
+
+
 extern
 struct Block *movingBlock;
 
+
+// This is set if we have a "from" connector selected by the user.  For
+// connections in the process of being made.
 extern
 struct Connector *fromConnector;
 
@@ -150,6 +166,14 @@ Connect(GtkBuilder *builder, const char *id, const char *action,
     g_signal_connect(gtk_builder_get_object(builder, id),
             action, G_CALLBACK(callback), userData);
 }
+
+
+extern
+void StopMakingConnection(struct Page *page);
+
+
+extern
+void StartMakingConnection(struct Page *page);
 
 
 // This is uses in gtk_widget_set_size_request() for some of the block
