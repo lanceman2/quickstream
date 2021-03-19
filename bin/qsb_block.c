@@ -23,7 +23,7 @@
 // so clear what a quickstream builder API should look like.
 #include "../lib/block.h"
 #include "../lib/parameter.h"
-#include "../lib/Dictionary.h"
+//#include "../lib/Dictionary.h"
 
 #include "qsb.h"
 
@@ -528,39 +528,35 @@ static void MakeBlockConnector(GtkWidget *grid,
             GDK_BUTTON_PRESS_MASK|
             GDK_STRUCTURE_MASK);
 
+    ASSERT(!block->block->isSuperBlock, "Write more code HERE");
+    struct QsSimpleBlock *smB = (struct QsSimpleBlock *) block->block;
+    
     gtk_widget_show(drawArea);
     gtk_widget_set_size_request(drawArea, MIN_BLOCK_LEN, MIN_BLOCK_LEN);
     gtk_widget_set_name(drawArea, className);
 
     struct Connector *c;
+
     switch(ckind) {
         case Constant:
             c = &block->constants;
-            block->constants.active = qsDictionaryIsEmpty(
-                    ((struct QsSimpleBlock *)
-                        block->block)->constants)?false:true;
+            c->numPins = smB->numConstants;
             break;
         case Getter:
             c = &block->getters;
-            block->getters.active = qsDictionaryIsEmpty(
-                    ((struct QsSimpleBlock *)
-                        block->block)->getters)?false:true;
+            c->numPins = smB->numGetters;
             break;
         case Setter:
             c = &block->setters;
-            block->setters.active = qsDictionaryIsEmpty(
-                    ((struct QsSimpleBlock *)
-                        block->block)->setters)?false:true;
+            c->numPins = smB->numSetters;
             break;
         case Input:
             c = &block->input;
-            block->input.active =
-                (block->block->maxNumInputs)?true:false;
+            c->numPins = block->block->maxNumInputs;
             break;
         case Output:
             c = &block->output;
-            block->output.active =
-                (block->block->maxNumOutputs)?true:false;
+            c->numPins = block->block->maxNumOutputs;
             break;
     }
 
@@ -572,47 +568,12 @@ static void MakeBlockConnector(GtkWidget *grid,
     g_signal_connect(G_OBJECT(drawArea), "draw",
             G_CALLBACK(ConnectorDraw_CB), c/*userData*/);
 
+    c->active = (c->numPins)?true:false;
 
     if(!c->active)
         // If the connector is not able to make connections we do not need
         // the next few callbacks setup.
         return;
-
-    struct QsSimpleBlock *smB = (struct QsSimpleBlock *) c->block->block;
-
-    // The number of connection areas depend on the kind
-    // of connector.
-    switch(c->kind) {
-        case Setter:
-            c->numPins = smB->numSetters;
-            break;
-        case Getter:
-            c->numPins = smB->numGetters;
-            break;
-        case Constant:
-            c->numPins = smB->numConstants;
-            break;
-        case Input:
-            c->numPins = c->block->block->maxNumInputs;
-            break;
-        case Output:
-            c->numPins = c->block->block->maxNumOutputs;
-            break;
-    }
-
-    DASSERT(c->numPins, "This connector has no pins to connect with");
-
-#if 0
-#define MIN_PIN_PIXELS  40.0
-
-    if( ((double)MIN_BLOCK_LEN)/c->numPins < MIN_PIN_PIXELS) {
-        // If the connection pins are too small than we'll make them
-        // bigger.
-        double d = c->numPins * MIN_PIN_PIXELS;
-        gtk_widget_set_size_request(drawArea, MIN_BLOCK_LEN, d);
-    }
-#endif
-
 
     g_signal_connect(GTK_WIDGET(drawArea), "motion-notify-event",
             G_CALLBACK(ConnectorMotion_CB), c/*userData*/);
@@ -875,7 +836,9 @@ struct Block *AddBlock(struct Page *page,
         MakeBlockConnector(grid, "const", Constant, b);
         MakeBlockConnector(grid, "get", Getter, b);
         MakeBlockConnector(grid, "set", Setter, b);
+WARN();
         MakeBlockConnector(grid, "input", Input, b);
+WARN();
         MakeBlockConnector(grid, "output", Output, b);
 
         g_signal_connect(GTK_WIDGET(ebox), "button-press-event",

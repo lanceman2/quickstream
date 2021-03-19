@@ -7,7 +7,7 @@
 // for a given stream run.
 #define DEFAULT_TOTAL_LENGTH   ((size_t) 8000)
 
-#define MAX_OUTPUTS  (10) // This MAX_OUTPUTS is pretty arbitrary.
+#define MAX_OUTPUTS  (14) // This MAX_OUTPUTS is pretty arbitrary.
 
 
 static size_t maxWrite = 0;
