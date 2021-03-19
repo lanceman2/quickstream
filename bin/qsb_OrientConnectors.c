@@ -73,7 +73,7 @@
 
  */
 
-// Just a toning number of pixels for a minimum reasonable size of a
+// For toning, the number of pixels for a minimum reasonable size of a
 // connector pin.
 #define PMIN   (10)
 
