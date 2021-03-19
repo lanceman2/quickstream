@@ -32,10 +32,7 @@
 // Popup menu for block button click
 static GtkMenu *blockPopupMenu = 0;
 // This is the block that the user clicked on.
-static struct Block *popupBlock = 0;
-
-// This gets rebuilt each time it is used.
-static GtkWidget *connectorPopupMenu = 0;
+struct Block *popupBlock = 0;
 
 
 // The whole point of this program is to make blocks and connect the
@@ -46,15 +43,6 @@ static GtkWidget *connectorPopupMenu = 0;
 // only can make one connection at a time, with the mouse, hence this is
 // just one variable, "fromConnector".
 struct Connector *fromConnector = 0;
-
-// This "to" connector can only be set if there is a "from" connector
-// (fromConnector).   toConnector is the connector that was chosen
-// by the user after the fromConnector.  This needs to be set so that
-// the user can select the particular thingy to connect to. Though the
-// connector is known, it cannot be connected until the parameter or port
-// to connect to is chosen.
-static struct Connector *toConnector = 0;
-
 
 
 static inline void GetConnectionColor(enum ConnectorKind ckind,
@@ -95,6 +83,7 @@ static inline void GetConnectionColor(enum ConnectorKind ckind,
 
 /*
    Block with geo: ICOSG (Input,Constant,Output,SetterGetter)
+   rotating round clock-wise.
 
  *******************************************
  *       |          const         |        |
@@ -106,21 +95,8 @@ static inline void GetConnectionColor(enum ConnectorKind ckind,
  *       |    set    |     get    |        |
  *******************************************
 
-
-    Block with geo: OCISG (Ouput,Constant,Input,SetterGetter)
-
- *******************************************
- *        |         const          |       |
- *        |************************|       |
- *        |        path.so         |       |
- * output |                        | input |
- *        |         name           |       |
- *        |************************|       |
- *        |    set    |    get     |       |
- *******************************************
-
-
- and there are 6 more permutations that we allow.  We keep the input and
+ 
+ and there are 7 more permutations that we allow.  We keep the input and
  output on opposing sides and the parameters constant opposing setter and
  getter; with setter always before getter.  That gives 8 total orientation
  permutations that we allow.
@@ -146,9 +122,73 @@ static gboolean ConnectorDraw_CB(GtkWidget *widget,
 
     if(!c->active) return FALSE;
 
+    ASSERT(!c->block->block->isSuperBlock,
+            "Write this code to work with super blocks");
+
+    // We will need a width or height of each strip.
+    double delta;
+    // The drawing fucks up without converting this to a double.
+    // Dividing double by and int is a problem.
+    double numPins = c->numPins;
+
+    // Draw strips that brake up the connectors into sections.
+    // The sections are the pins in the connectors.
+    //
+    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.2);
+    //
+    switch(c->block->geo) {
+        case ICOSG:
+        case OCISG:
+        case ISGOC:
+        case OSGIC:
+            switch(c->kind) {
+                case Setter:
+                case Getter:
+                case Constant:
+                    // Connector is horizontal.
+                    delta = width/numPins;
+                    for(uint32_t i=1; i<c->numPins; i += 2)
+                        cairo_rectangle(cr, i*delta, 0, delta, height);
+                    break;
+                case Input:
+                case Output:
+                    // Connector is vertical.
+                    delta = height/numPins;
+                    for(uint32_t i=1; i<c->numPins; i += 2)
+                        cairo_rectangle(cr, 0, i*delta, width, delta);
+                    break;
+            }
+            break;
+        case COSGI:
+        case CISGO:
+        case SGOCI:
+        case SGICO:
+            switch(c->kind) {
+                case Input:
+                case Output:
+                    // Connector is horizontal.
+                    delta = width/numPins;
+                    for(uint32_t i=1; i<c->numPins; i += 2)
+                        cairo_rectangle(cr, i*delta, 0, delta, height);
+                    break;
+                case Setter:
+                case Getter:
+                case Constant:
+                    // Connector is vertical.
+                    delta = height/numPins;
+                    for(uint32_t i=1; i<c->numPins; i += 2)
+                        cairo_rectangle(cr, 0, i*delta, width, delta);
+                    break;
+            }
+            break;
+    }
+    //
+    cairo_fill(cr);
+
 
     /////////////////////////////////////////////////////////
-    //     Now draw text like "input"
+    //     Now draw text like "input", "output", "set",
+    //     "get", and "const"
     //
     GdkRGBA color;
     gtk_style_context_get_color(context,
@@ -217,148 +257,7 @@ static gboolean ConnectorDraw_CB(GtkWidget *widget,
 }
 
 
-// The current connector is either the "from" or the "to" connector,
-// depending on this logic here.
-static inline
-struct Connector *GetCurrentConnector(void) {
-
-    if(toConnector) {
-        DASSERT(toConnector != fromConnector);
-        return toConnector;
-    }
-    DASSERT(fromConnector);
-    return fromConnector;
-}
-
-
-static
-gboolean ConnectPopupMenuItem_PortNum(GtkMenuItem *menuitem,
-        uintptr_t n) {
-
-    struct Connector *c = GetCurrentConnector();
-    // Set the port number for this connector, c.
-   
-    if(c->selectionMade)
-        WARN("RESELECTING");
-
-    c->selectionMade = true;
-    c->portNum = n;
-
-    WARN("Got port %" PRIu32 " for block %s", c->portNum,
-            c->block->block->name);
-
-    DASSERT(connectorPopupMenu);
-
-    gtk_widget_destroy(connectorPopupMenu);
-    connectorPopupMenu = 0;
-
-    if(c == fromConnector)
-        StartMakingConnection(c->block->page);
-
-    return TRUE; // TRUE = eat event
-}
-
-
-// Called for "selection-done" for connectorPopupMenu; which seems to be
-// when the user does not select anything from the connector popup menu.
-static void
-ConnectSelectionDoneCB(GtkMenuShell *m, void *userdata) {
-
-    gtk_widget_destroy(connectorPopupMenu);
-    connectorPopupMenu = 0;
-
-    DASSERT(!toConnector);
-    if(fromConnector) {
-        fromConnector->selectionMade = false;
-        fromConnector = 0;
-    }
-}
-
-
-// Returns the number of items in the popup menu, and 0 if there is no
-// popup, because there are no compatible items.
-//
-// When this is called it should already be determined that connections
-// can be made; so there will be at least one item in the connection
-// popup menu.
-//
-static inline uint32_t
-CreateShowConnectorPopupMenu(struct Connector *c, GdkEvent *e) {
-
-    DASSERT(c->active);
-
-
-    struct QsBlock *b = c->block->block;
-    struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
-
-WARN("block=%p  toConnector=%p", smB, toConnector);
-
-    if(connectorPopupMenu)
-         gtk_widget_destroy(connectorPopupMenu);
-    connectorPopupMenu = gtk_menu_new();
-    g_signal_connect(GTK_WIDGET(connectorPopupMenu), "selection-done",
-            G_CALLBACK(ConnectSelectionDoneCB), 0/*userData*/);
-
-    uint32_t numItems = 0;
-    uint32_t activeItems = 0;
-
-    switch(c->kind) {
-        case Input:
-        {
-            // Whither c be a starting point (from) of a connection or an
-            // end point (to) the popup items are the same for this
-            // case.
-            //
-            const size_t LABEL_LEN = 64;
-            char label[LABEL_LEN];
-            numItems = b->maxNumInputs;
-            for(uintptr_t i=0; i<numItems; ++i) {
-                snprintf(label, LABEL_LEN, "Input Port %zu", i);
-                GtkWidget *w = gtk_menu_item_new_with_label(label);
-                gtk_widget_add_events(w, GDK_BUTTON_PRESS_MASK);
-                gtk_menu_attach(GTK_MENU(connectorPopupMenu), w,
-                        0, 1, i, i+1);
-                if(i >= smB->numInputs || smB->inputs[i].block == 0) {
-                    // This input port, i, can be connected, because it's
-                    // not connected yet.
-                    ++activeItems;
-                    g_signal_connect(GTK_WIDGET(w), "activate",
-                        G_CALLBACK(ConnectPopupMenuItem_PortNum),
-                        (void *) i);
-                } else
-                    // This input port, i, is already connected, so we
-                    // cannot connect it again.
-                    gtk_widget_set_sensitive(GTK_WIDGET(w), FALSE);
-                gtk_widget_show(w);
-            }
-            break;
-        }
-        case Output:
-
-            break;
-        case Constant:
-
-            break;
-        case Getter:
-
-            break;
-        case Setter:
-
-            break;
-    }
-
-    ASSERT(numItems > 0, "Write more code HERE");
-    DASSERT(numItems > 0);
-    DASSERT(activeItems > 0);
-
-
-    gtk_menu_popup_at_pointer(GTK_MENU(connectorPopupMenu), e);
-
-    return numItems;
-}
-
-
-static inline void
+static inline GtkWidget *
 MakeBlockLabel(GtkWidget *grid,
         const char *text,
         const char *className,
@@ -366,12 +265,14 @@ MakeBlockLabel(GtkWidget *grid,
 
     GtkWidget *l = gtk_label_new(text);
     gtk_widget_set_name(l, className);
-    gtk_widget_set_size_request(l, 120, MIN_BLOCK_LEN);
     gtk_widget_show(l);
     gtk_grid_attach(GTK_GRID(grid), l, x, y, w, h);
+
+    return l;
 }
 
 
+#if 0
 // Here is the complete list of possible kinds of parameters connections:
 //
 //   1. Getter    to  Setter
@@ -553,6 +454,41 @@ CheckConnectionFromPossible(struct Connector *c) {
     ASSERT(0, "We should not get here");
     return false;
 }
+#endif
+
+
+static gboolean ConnectorMotion_CB(GtkWidget *draw,
+        GdkEventButton *e, struct Connector *c) {
+
+
+    return FALSE; // TRUE = eat event
+}
+
+
+static gboolean ConnectorEnter_CB(GtkWidget *draw,
+        GdkEventButton *e, struct Connector *c) {
+
+
+    return TRUE; // TRUE = eat event
+}
+
+
+
+static gboolean ConnectorLeave_CB(GtkWidget *draw,
+        GdkEventButton *e, struct Connector *c) {
+
+
+    return TRUE; // TRUE = eat event
+}
+
+
+
+static gboolean ConnectorRelease_CB(GtkWidget *draw,
+        GdkEventButton *e, struct Connector *c) {
+
+
+    return FALSE; // TRUE = eat event
+}
 
 
 // The connector is a GTK drawingArea widget, "draw".
@@ -563,48 +499,22 @@ static gboolean ConnectorPress_CB(GtkWidget *draw,
     DASSERT(c->active);
     ASSERT(c->block->block->isSuperBlock == 0, "Write this code");
 
-    if(e->button != CONNECT_BUTTON)
+
+    if(e->button == CONNECT_BUTTON) {
         // Event goes to next parent widget.
-        return FALSE;
 
-WARN("fromConnector=%p  toConnector=%p", fromConnector, toConnector);
-
-    // This is either the event where a user is first pressing on a
-    // connector, or the user has a "from" connector already selected
-    // and they are pressing on the next "to" connector.
-
-    toConnector = 0;
-
-    if(!fromConnector || fromConnector == c) {
-        if(CheckConnectionFromPossible(c))
-            fromConnector = c;
-        else {
-            DASSERT(fromConnector == 0);
-            // Event goes to next parent widget.
-            return FALSE;
-        }
-    } else {
-        if(CheckConnectionPossible(fromConnector, c))
-            toConnector = c;
-        else {
-            DSPEW("No connection possible");
-            // Event goes to next parent widget.
-            return FALSE;
-        }
+        return FALSE; // pass the event to the parent block widget.
     }
 
 
-    CreateShowConnectorPopupMenu(c, (GdkEvent *) e);
-
-    return TRUE; // TRUE = eat this event
+    return FALSE; // TRUE = eat this event
 }
 
 
 static void MakeBlockConnector(GtkWidget *grid,
         const char *className/*for CSS*/,
         enum ConnectorKind ckind,
-        struct Block *block,
-        gint x, gint y, gint w, gint h) {
+        struct Block *block) {
 
     GtkWidget *drawArea = gtk_drawing_area_new();
 
@@ -621,8 +531,6 @@ static void MakeBlockConnector(GtkWidget *grid,
     gtk_widget_show(drawArea);
     gtk_widget_set_size_request(drawArea, MIN_BLOCK_LEN, MIN_BLOCK_LEN);
     gtk_widget_set_name(drawArea, className);
-    gtk_grid_attach(GTK_GRID(grid), drawArea, x, y, w, h);
-
 
     struct Connector *c;
     switch(ckind) {
@@ -670,7 +578,42 @@ static void MakeBlockConnector(GtkWidget *grid,
         // the next few callbacks setup.
         return;
 
+    struct QsSimpleBlock *smB = (struct QsSimpleBlock *) c->block->block;
+
+    // The number of connection areas depend on the kind
+    // of connector.
+    switch(c->kind) {
+        case Setter:
+            c->numPins = smB->numSetters;
+            break;
+        case Getter:
+            c->numPins = smB->numGetters;
+            break;
+        case Constant:
+            c->numPins = smB->numConstants;
+            break;
+        case Input:
+            c->numPins = c->block->block->maxNumInputs;
+            break;
+        case Output:
+            c->numPins = c->block->block->maxNumOutputs;
+            break;
+    }
+
+    DASSERT(c->numPins, "This connector has no pins to connect with");
+
 #if 0
+#define MIN_PIN_PIXELS  40.0
+
+    if( ((double)MIN_BLOCK_LEN)/c->numPins < MIN_PIN_PIXELS) {
+        // If the connection pins are too small than we'll make them
+        // bigger.
+        double d = c->numPins * MIN_PIN_PIXELS;
+        gtk_widget_set_size_request(drawArea, MIN_BLOCK_LEN, d);
+    }
+#endif
+
+
     g_signal_connect(GTK_WIDGET(drawArea), "motion-notify-event",
             G_CALLBACK(ConnectorMotion_CB), c/*userData*/);
     g_signal_connect(GTK_WIDGET(drawArea), "enter-notify-event",
@@ -679,7 +622,6 @@ static void MakeBlockConnector(GtkWidget *grid,
             G_CALLBACK(ConnectorLeave_CB), c/*userData*/);
     g_signal_connect(GTK_WIDGET(drawArea), "button-release-event",
             G_CALLBACK(ConnectorRelease_CB), c/*userData*/);
-#endif
     g_signal_connect(GTK_WIDGET(drawArea), "button-press-event",
             G_CALLBACK(ConnectorPress_CB), c/*userData*/);
 }
@@ -689,8 +631,6 @@ static gboolean
 Block_buttonReleaseCB(GtkWidget *ebox,
         GdkEventButton *e, struct Block *block) {
 
-
-WARN();
     if(movingBlock)
         return FALSE; // FALSE = event to next widget
 
@@ -731,7 +671,7 @@ Block_buttonPressCB(GtkWidget *ebox,
     if(fromConnector)
         // If we clicked on a block and got to here, then the making of a
         // connection was aborted by the user, as we define it.
-        StopMakingConnection(block->page);
+        StopDragingConnection(block->page);
 
 
     switch(e->button) {
@@ -804,239 +744,10 @@ static void DestroyBlock(struct Block *b) {
 }
 
 
-// Moves all the connectors to positions given by "geo".
-//
-static void MoveConnectors(struct Block *b, enum ConnectorGeo geo) {
-
-    DASSERT(b);
-
-    // Increase the reference count of widget object, so that when we
-    // remove the widget from the grid it will not destroy it.
-    g_object_ref(b->constants.widget);
-    g_object_ref(b->getters.widget);
-    g_object_ref(b->setters.widget);
-    g_object_ref(b->input.widget);
-    g_object_ref(b->output.widget);
-
-    gtk_container_remove(GTK_CONTAINER(b->grid), b->constants.widget);
-    gtk_container_remove(GTK_CONTAINER(b->grid), b->getters.widget);
-    gtk_container_remove(GTK_CONTAINER(b->grid), b->setters.widget);
-    gtk_container_remove(GTK_CONTAINER(b->grid), b->input.widget);
-    gtk_container_remove(GTK_CONTAINER(b->grid), b->output.widget);
-
-    // First place constants, setters and getters.
-    switch(geo) {
-        case OCISG:
-        case ICOSG:
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->constants.widget, 1, 0, 4, 1);
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->getters.widget, 3, 4, 2, 1);
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->setters.widget, 1, 4, 2, 1);
-            break;
-        case ISGOC:
-        case OSGIC:
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->constants.widget, 1, 4, 4, 1);
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->getters.widget, 3, 0, 2, 1);
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->setters.widget, 1, 0, 2, 1);
-            break;
-        case COSGI:
-        case CISGO:
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->constants.widget, 0, 0, 1, 5);
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->getters.widget, 5, 2, 1, 3);
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->setters.widget, 5, 0, 1, 2);
-            break;
-        case SGOCI:
-        case SGICO:
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->constants.widget, 5, 0, 1, 5);
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->getters.widget, 0, 2, 1, 3);
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->setters.widget, 0, 0, 1, 2);
-            break;
-    }
-
-    // Now place input and output.
-    switch(geo) {
-        case ICOSG:
-        case ISGOC:
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->input.widget, 0, 0, 1, 5);
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->output.widget, 5, 0, 1, 5);
-            break;
-        case OCISG:
-        case OSGIC:
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->input.widget, 5, 0, 1, 5);
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->output.widget, 0, 0, 1, 5);
-            break;
-        case COSGI:
-        case SGOCI:
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->input.widget, 1, 4, 4, 1);
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->output.widget, 1, 0, 4, 1);
-            break;
-        case CISGO:
-        case SGICO:
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->input.widget, 1, 0, 4, 1);
-            gtk_grid_attach(GTK_GRID(b->grid),
-                    b->output.widget, 1, 4, 4, 1);
-            break;
-    }
-
-    gint w = gtk_widget_get_allocated_width(b->grid);
-    gint h = gtk_widget_get_allocated_height(b->grid);
-    gtk_widget_queue_draw_area(b->grid, 0, 0, w, h);
-    b->geo = geo;
-}
-
-
-static void RotateCCWCB(GtkWidget *widget, gpointer data) {
-    DASSERT(popupBlock);
-
-    switch(popupBlock->geo) {
-        case ICOSG:
-            MoveConnectors(popupBlock, COSGI);
-            break;
-        case OCISG:
-            MoveConnectors(popupBlock, CISGO);
-            break;
-        case ISGOC:
-            MoveConnectors(popupBlock, SGOCI);
-            break;
-        case OSGIC:
-            MoveConnectors(popupBlock, SGICO);
-            break;
-        case COSGI:
-            MoveConnectors(popupBlock, OSGIC);
-            break;
-        case CISGO:
-            MoveConnectors(popupBlock, ISGOC);
-            break;
-        case SGOCI:
-            MoveConnectors(popupBlock, OCISG);
-            break;
-        case SGICO:
-            MoveConnectors(popupBlock, ICOSG);
-            break;
-    }
-}
-
-
-static void RotateCWCB(GtkWidget *widget, gpointer data) {
-    DASSERT(popupBlock);
-
-    switch(popupBlock->geo) {
-        case ICOSG:
-            MoveConnectors(popupBlock, SGICO);
-            break;
-        case OCISG:
-            MoveConnectors(popupBlock, SGOCI);
-            break;
-        case ISGOC:
-            MoveConnectors(popupBlock, CISGO);
-            break;
-        case OSGIC:
-            MoveConnectors(popupBlock, COSGI);
-            break;
-        case COSGI:
-            MoveConnectors(popupBlock, ICOSG);
-            break;
-        case CISGO:
-            MoveConnectors(popupBlock, OCISG);
-            break;
-        case SGOCI:
-            MoveConnectors(popupBlock, ISGOC);
-            break;
-        case SGICO:
-            MoveConnectors(popupBlock, OSGIC);
-            break;
-    }
-}
-
-
-static void FlipCB(GtkWidget *widget, gpointer data) {
-    DASSERT(popupBlock);
-
-    switch(popupBlock->geo) {
-        case ICOSG:
-            MoveConnectors(popupBlock, ISGOC);
-            break;
-        case OCISG:
-            MoveConnectors(popupBlock, OSGIC);
-            break;
-        case ISGOC:
-            MoveConnectors(popupBlock, ICOSG);
-            break;
-        case OSGIC:
-            MoveConnectors(popupBlock, OCISG);
-            break;
-        case COSGI:
-            MoveConnectors(popupBlock, CISGO);
-            break;
-        case CISGO:
-            MoveConnectors(popupBlock, COSGI);
-            break;
-        case SGOCI:
-            MoveConnectors(popupBlock, SGICO);
-            break;
-        case SGICO:
-            MoveConnectors(popupBlock, SGOCI);
-            break;
-    }
-}
-
-
-static void FlopCB(GtkWidget *widget, gpointer data) {
-    DASSERT(popupBlock);
-
-    switch(popupBlock->geo) {
-        case ICOSG:
-            MoveConnectors(popupBlock, OCISG);
-            break;
-        case OCISG:
-            MoveConnectors(popupBlock, ICOSG);
-            break;
-        case ISGOC:
-            MoveConnectors(popupBlock, OSGIC);
-            break;
-        case OSGIC:
-            MoveConnectors(popupBlock, ISGOC);
-            break;
-        case COSGI:
-            MoveConnectors(popupBlock, SGOCI);
-            break;
-        case CISGO:
-            MoveConnectors(popupBlock, SGICO);
-            break;
-        case SGOCI:
-            MoveConnectors(popupBlock, COSGI);
-            break;
-        case SGICO:
-            MoveConnectors(popupBlock, CISGO);
-            break;
-    }
-}
-
-
 static void RemovePopupBlockCB(GtkWidget *widget, gpointer data) {
     DASSERT(popupBlock);
     DestroyBlock(popupBlock);
     popupBlock = 0;
-
-WARN("data=%zu", (uintptr_t) data);
 }
 
 
@@ -1122,7 +833,9 @@ struct Block *AddBlock(struct Page *page,
             GDK_SCROLL_MASK |
             GDK_POINTER_MOTION_MASK |
             GDK_BUTTON_RELEASE_MASK |
-            GDK_BUTTON_PRESS_MASK);
+            GDK_BUTTON_PRESS_MASK|
+            GDK_ENTER_NOTIFY_MASK|
+            GDK_LEAVE_NOTIFY_MASK);
 
     {
         /* The Grid of a block is 6x5
@@ -1145,19 +858,25 @@ struct Block *AddBlock(struct Page *page,
         GtkWidget *grid = gtk_grid_new();
         b->grid = grid;
         gtk_widget_show(grid);
+        gtk_grid_set_row_spacing(GTK_GRID(grid), 0);
+        gtk_grid_set_column_spacing(GTK_GRID(grid), 0);
         gtk_widget_set_name(grid, "block");
         gtk_widget_set_visible(grid, TRUE);
         gtk_container_add(GTK_CONTAINER(ebox), grid);
 
-        //                              x, y, w, h
-        MakeBlockLabel(grid, blockFile, "path", 1, 1, 4, 1);
-        MakeBlockLabel(grid, block->name, "name", 1, 3, 4, 1);
-        //                                                     x, y, w, h
-        MakeBlockConnector(grid, "const", Constant, b, 1, 0, 4, 1);
-        MakeBlockConnector(grid, "get", Getter, b, 3, 4, 2, 1);
-        MakeBlockConnector(grid, "set", Setter, b, 1, 4, 2, 1);
-        MakeBlockConnector(grid, "input", Input, b, 0, 0, 1, 5);
-        MakeBlockConnector(grid, "output", Output, b, 5, 0, 1, 5);
+
+
+        b->pathLabel = MakeBlockLabel(grid, blockFile, "path",
+        //      x, y, w, h
+                1, 1, 4, 1);
+        b->nameLabel = MakeBlockLabel(grid, block->name, "name",
+                1, 3, 4, 1);
+
+        MakeBlockConnector(grid, "const", Constant, b);
+        MakeBlockConnector(grid, "get", Getter, b);
+        MakeBlockConnector(grid, "set", Setter, b);
+        MakeBlockConnector(grid, "input", Input, b);
+        MakeBlockConnector(grid, "output", Output, b);
 
         g_signal_connect(GTK_WIDGET(ebox), "button-press-event",
             G_CALLBACK(Block_buttonPressCB), b/*userData*/);
@@ -1165,7 +884,12 @@ struct Block *AddBlock(struct Page *page,
             G_CALLBACK(Block_buttonReleaseCB), b/*userData*/);
         g_signal_connect(GTK_WIDGET(ebox), "motion-notify-event",
             G_CALLBACK(Block_buttonMotionCB), b/*userData*/);
+
+        // Attach the connectors to the grid with, geo, orientations
+        // given by the default that we define here as ICOSG.
+        OrientConnectors(b, ICOSG, false);
       }
+
     gtk_layout_put(layout, ebox, b->x, b->y);
 
     return b;

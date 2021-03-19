@@ -18,8 +18,6 @@ int declare(void) {
             sizeof(double),
             0, 0, &sec);
 
-
-
     return 0; // success
 }
 

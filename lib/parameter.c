@@ -233,18 +233,21 @@ void FreeParameter(struct QsParameter *p) {
     DASSERT(p);
     DASSERT(p->name);
     DASSERT(p->value);
-
+    DASSERT(p->block);
 
     // Make sure it's disconnected from other parameters.
     switch(p->kind) {
         case QsConstant:
             DisconnectConstantParameter(p);
+            --p->block->numConstants;
             break;
         case QsGetter:
             DisconnectGetterParameter(p);
+            --p->block->numGetters;
             break;
         case QsSetter:
             DisconnectSetterParameter(p);
+            --p->block->numSetters;
             break;
         case QsAny:
             ASSERT(0);
@@ -383,6 +386,7 @@ qsParameterGetterCreate(struct QsBlock *b, const char *pname,
         QsGetter, sizeof(*p), initVal);
     if(!p) return 0;
 
+    ++smB->numGetters;
     return (struct QsParameter *) p;
 }
 
@@ -408,6 +412,7 @@ qsParameterSetterCreate(struct QsBlock *b, const char *pname,
     p->mutex = &smB->mutex;
     //p->callbackWhilePaused = flags & QS_SETS_WHILE_PAUSED;
 
+    ++smB->numSetters;
     return (struct QsParameter *) p;
 }
 
@@ -432,6 +437,7 @@ qsParameterConstantCreate(struct QsBlock *b, const char *pname,
     p->setCallback = setCallback;
     p->userData = userData;
 
+    ++smB->numConstants;
     return (struct QsParameter *) p;
 }
 

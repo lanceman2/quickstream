@@ -80,6 +80,10 @@ void qsBlockSetNumInputs(uint32_t min, uint32_t max) {
 
     b->minNumInputs = min;
     b->maxNumInputs = max;
+    if(b->inputsEqualsOutputs) {
+        b->minNumOutputs = min;
+        b->maxNumOutputs = max;
+    }
 }
 
 
@@ -92,6 +96,10 @@ void qsBlockSetNumOutputs(uint32_t min, uint32_t max) {
 
     b->minNumOutputs = min;
     b->maxNumOutputs = max;
+    if(b->inputsEqualsOutputs) {
+        b->minNumInputs = min;
+        b->maxNumInputs = max;
+    }
 }
 
 
@@ -100,5 +108,33 @@ void qsBlockSetNumInputsEqualsNumOutputs(bool inputsEqualsOutputs) {
     struct QsBlock *b = 0;
     GET_BLOCK_IN_DECLARE(b);
 
-    b->inputsEqualsOutputs = inputsEqualsOutputs;
+    // If the user set inputsEqualsOutputs to 2 and true is 1 then this
+    // will make the value we save as true, which it 1.  So ya, bool could
+    // screw you.
+    //
+    // I ask myself what is the value of (2 == true) in C?  That could be
+    // somewhat ambiguous, and could be compiler dependent.  One can't
+    // say, unless the C standard defines it.  I don't have a copy of all
+    // compilers to test with.  So that is why I set
+    // b->inputsEqualsOutputs to true or false and not just
+    // inputsEqualsOutputs.
+    b->inputsEqualsOutputs = inputsEqualsOutputs?true:false;
+
+
+    // This is somewhat arbitrary:  We make the span of ports a minimum,
+    // based on all the min and max values we have.
+    //
+    // TODO: This could burn the user, if they use a certain order of
+    // calling qsBlockSetNumOutputs(), qsBlockSetNumInputs(), and
+    // qsBlockSetNumInputsEqualsNumOutputs().
+    //
+    if(b->maxNumOutputs > b->maxNumInputs)
+        b->maxNumOutputs = b->maxNumInputs;
+    else if(b->maxNumInputs > b->maxNumOutputs)
+        b->maxNumInputs = b->maxNumOutputs;
+
+    if(b->minNumOutputs < b->minNumInputs)
+        b->minNumOutputs = b->minNumInputs;
+    else if(b->minNumInputs < b->minNumOutputs)
+        b->minNumInputs = b->minNumOutputs;
 }

@@ -15,8 +15,8 @@ int declare(void) {
     for(uint32_t i=0; i<MAX_INPUTS; ++i)
         qsPassThroughBuffer(i, i);
 
-    qsBlockSetNumInputs(1, MAX_INPUTS);
     qsBlockSetNumInputsEqualsNumOutputs(true);
+    qsBlockSetNumInputs(1, MAX_INPUTS);
 
     return 0; // success
 }

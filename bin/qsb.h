@@ -57,15 +57,21 @@ enum ConnectorGeo {
     SGICO
 };
 
-
+// We need the length to include the '\0' string terminator.
 #define CONNECTOR_CLASSNAME_LEN  (7) // Largest string is "output"
 
 
 struct Connector {
+
     enum ConnectorKind kind; // See enum for list of kinds.
     char name[CONNECTOR_CLASSNAME_LEN]; // Largest string is "output"
     GtkWidget *widget; // GTK drawingArea
     struct Block *block;
+
+    // Number of things we can connect to in this connector.  Or put
+    // another way: the number of pins in this connector.
+    uint32_t numPins;
+
     // The connector will not have connections if there are no inputs,
     // outputs, or parameters to connect to.  active = true if there is
     // something to connect to or from associated with this this widget,
@@ -73,6 +79,7 @@ struct Connector {
     // connect to and the widget just has GTK events go to the bulk block
     // widget.
     bool active;
+
     // Flag that says that the user has selected a parameter or stream
     // port number to connect.  Having selectionMade = true means that
     // the union{} below has a value set.
@@ -91,11 +98,14 @@ struct Block {
 
     GtkWidget *ebox; // block container widget.
     GtkWidget *grid; // block ebox child container widget.
+    GtkWidget *pathLabel; // block path label widget.
+    GtkWidget *nameLabel; // block name label widget.
     struct Page *page; // tab page that has this block in it.
     struct QsBlock *block;
     struct Connector constants, getters, setters, input, output;
     struct Block *next; // for singly linked list of blocks in page.
     double x, y; // current position in layout widget.
+
     enum ConnectorGeo geo;
     bool isSelected;
 };
@@ -118,7 +128,8 @@ struct Block *movingBlock;
 extern
 struct Connector *fromConnector;
 
-
+extern
+struct Block *popupBlock;
 
 extern
 void InitCSS(void);
@@ -169,11 +180,26 @@ Connect(GtkBuilder *builder, const char *id, const char *action,
 
 
 extern
-void StopMakingConnection(struct Page *page);
+void StopDragingConnection(struct Page *page);
 
 
 extern
-void StartMakingConnection(struct Page *page);
+void StartDragingConnection(struct Page *page);
+
+
+// declared in qsb_OrientConnectors.c
+extern
+void OrientConnectors(struct Block *b,
+        enum ConnectorGeo geo, bool detachFirst);
+extern
+void RotateCCWCB(GtkWidget *widget, gpointer data);
+extern
+void RotateCWCB(GtkWidget *widget, gpointer data);
+extern
+void FlipCB(GtkWidget *widget, gpointer data);
+extern
+void FlopCB(GtkWidget *widget, gpointer data);
+
 
 
 // This is uses in gtk_widget_set_size_request() for some of the block

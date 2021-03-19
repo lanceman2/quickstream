@@ -144,6 +144,10 @@ struct QsSimpleBlock {
     struct QsDictionary *constants; // constants
     struct QsDictionary *setters; // setters
 
+    // Keep a tally of the number of these in the above lists.
+    uint32_t numGetters, numConstants, numSetters;
+
+
     // Since we can't allocate inputs in the declare() function we need to
     // store an list that tells us what input ports will use passThrough
     // ring buffers.

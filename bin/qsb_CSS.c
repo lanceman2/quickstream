@@ -45,10 +45,15 @@ void InitCSS() {
                 "background-color: rgba(83,134,240,0.4);\n"
                 "border: 4px solid rgba(217,217,217,0.8);\n"
                 "}\n"
+
            "#selectedBlock {\n"
                 "background-color: rgba(83,134,240,0.5);\n"
                 "border: 4px solid rgba(4,255,232,0.7);\n"
                 "}\n"
+
+            "#name {\n"
+                "background-color: rgba(183,134,240,0.2);\n"
+                "}\n"            
 
             "#block > #get {\n"
                 "background-color: rgba(232,211,22,0.5);\n"

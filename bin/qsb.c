@@ -239,8 +239,6 @@ static void MoveSelectedBlocks(struct Page *page, double dx, double dy) {
 static gboolean WorkArea_buttonReleaseCB(GtkWidget *layout,
         GdkEventButton *e, struct Page *page) {
 
-WARN();
-
 
     if(e->type != GDK_BUTTON_RELEASE) {
         // This should not happen.
@@ -350,21 +348,6 @@ DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
 }
 
 
-#if 0
-// FAIL
-static gboolean WorkArea_enterCB(GtkLayout *layout,
-        GdkEventButton *e, struct Page *page) {
-
-    // When the pointer drops finishes with the connection pop up menu we
-    // get this event.
-    if(fromConnector)
-        DrawConnectionDragLine(0, page);
-
-    return FALSE; // FALSE = do not eat this event.
-}
-#endif
-
-
 static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
         GdkEventButton *e, struct Page *page) {
 
@@ -419,17 +402,14 @@ static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
 }
 
 
-void StartMakingConnection(struct Page *page) {
+void StartDragingConnection(struct Page *page) {
 
     DASSERT(fromConnector);
-    gtk_grab_add(page->layout);
-
-    // We do not have the mouse position so we can't draw yet.
     DrawConnectionDragLine(0, page);
 }
 
 
-void StopMakingConnection(struct Page *page) {
+void StopDragingConnection(struct Page *page) {
 
     DASSERT(fromConnector);
     // the user gave up on making a connection by leaving the layout
@@ -443,8 +423,6 @@ void StopMakingConnection(struct Page *page) {
 
     gtk_widget_queue_draw_area(page->layout, 0, 0, page->w, page->h);
 
-    gtk_grab_remove(page->layout);
-
     // We no longer have a connection being made by the user.
     fromConnector = 0;
 }
@@ -453,6 +431,7 @@ void StopMakingConnection(struct Page *page) {
 static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
         GdkEventButton *e, struct Page *page) {
 
+
     if(e->type != GDK_BUTTON_PRESS) {
         // This should not happen; but it does.
         // ya. GTK sucks.
@@ -460,10 +439,6 @@ static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
         return FALSE; // FALSE = go to next widget
     }
 
-    if(fromConnector) {
-        StopMakingConnection(page);
-        return FALSE; // FALSE do not eat it.
-    }
 
     DASSERT(haveSelectBox == false);
     
@@ -550,6 +525,8 @@ static inline void MakeWorkArea(struct Page *page) {
     ASSERT(rt >= 0);
 
     //gtk_widget_add_events(page->layout, GDK_ENTER_NOTIFY_MASK);
+    //gtk_widget_add_events(page->layout, GDK_LEAVE_NOTIFY_MASK);
+
 
 
     g_signal_connect(GTK_WIDGET(layout), "draw",
@@ -566,9 +543,6 @@ static inline void MakeWorkArea(struct Page *page) {
 
     //g_signal_connect(GTK_WIDGET(layout), "enter-notify-event",
     //        G_CALLBACK(WorkArea_enterCB), page/*userData*/);
-
-    //g_signal_connect(GTK_WIDGET(layout), "leave-notify-event",
-    //        G_CALLBACK(WorkArea_leaveNotifyCB), page/*userData*/);
 
 
     // We are done with this builder
