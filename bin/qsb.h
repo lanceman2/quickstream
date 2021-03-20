@@ -22,6 +22,9 @@ struct Page {
     // Old lines that we drew that are not moving currently.
     cairo_surface_t *oldLines;
 
+    // Widget that pops up help balloons for the connector pins.
+    GtkWidget *connectorsPopover;
+
     // width and height of layout drawing area and the above
     // surfaces.
     gint w, h;
@@ -178,6 +181,11 @@ Connect(GtkBuilder *builder, const char *id, const char *action,
             action, G_CALLBACK(callback), userData);
 }
 
+extern
+void MakeBlockConnector(GtkWidget *grid,
+        const char *className/*for CSS*/,
+        enum ConnectorKind ckind,
+        struct Block *block);
 
 extern
 void StopDragingConnection(struct Page *page);

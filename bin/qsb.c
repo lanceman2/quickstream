@@ -561,6 +561,13 @@ static gboolean NewTab(GtkWidget *w, gpointer data) {
     page->w = -1101;
     page->h = -1101;
 
+    GtkWidget *plabel = gtk_label_new("Connector Help Text");
+    GtkWidget *popover = gtk_popover_new(0);
+    page->connectorsPopover = popover;
+    gtk_container_add(GTK_CONTAINER(popover), plabel);
+    gtk_container_set_border_width(GTK_CONTAINER(popover), 6);
+    gtk_widget_show(plabel);
+// HERE LANCEMAN -------------------------------------------
     MakeWorkArea(page);
     return TRUE;
 }
