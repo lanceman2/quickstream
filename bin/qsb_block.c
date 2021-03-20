@@ -186,6 +186,69 @@ static gboolean ConnectorDraw_CB(GtkWidget *widget,
     cairo_fill(cr);
 
 
+    const double radius= 2.3;
+    const double delta2 = delta/2.0;
+    double h2 = height;
+    h2 /= 2.0;
+    double w2 = width;
+    w2 /= 2.0;
+
+    // Draw pin circles in the center of the strips that brake up the
+    // connectors into sections.  The sections are the pins in the
+    // connectors.
+    //
+    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.3);
+    //
+    switch(c->block->geo) {
+        case ICOSG:
+        case OCISG:
+        case ISGOC:
+        case OSGIC:
+            switch(c->kind) {
+                case Setter:
+                case Getter:
+                case Constant:
+                    // Connector is horizontal.
+                    for(uint32_t i=0; i<c->numPins; ++i)
+                        cairo_arc(cr, i*delta + delta2, h2,
+                                radius, 0, 2.0*M_PI);
+                    break;
+                case Input:
+                case Output:
+                    // Connector is vertical.
+                    for(uint32_t i=0; i<c->numPins; ++i)
+                        cairo_arc(cr, w2, i*delta + delta2,
+                                radius, 0, 2.0*M_PI);
+                    break;
+            }
+            break;
+        case COSGI:
+        case CISGO:
+        case SGOCI:
+        case SGICO:
+            switch(c->kind) {
+                case Input:
+                case Output:
+                    // Connector is horizontal.
+                    for(uint32_t i=0; i<c->numPins; ++i)
+                          cairo_arc(cr, i*delta + delta2, h2,
+                                radius, 0, 2.0*M_PI);
+                    break;
+                case Setter:
+                case Getter:
+                case Constant:
+                    // Connector is vertical.
+                    for(uint32_t i=0; i<c->numPins; ++i)
+                        cairo_arc(cr, w2, i*delta + delta2,
+                                radius, 0, 2.0*M_PI);
+                    break;
+            }
+            break;
+    }
+    //
+    cairo_fill(cr);
+
+
     /////////////////////////////////////////////////////////
     //     Now draw text like "input", "output", "set",
     //     "get", and "const"
@@ -847,7 +910,7 @@ struct Block *AddBlock(struct Page *page,
             G_CALLBACK(Block_buttonMotionCB), b/*userData*/);
 
         // Attach the connectors to the grid with, geo, orientations
-        // given by the default that we define here as ICOSG.
+        // given by the default that we define here as:
         OrientConnectors(b, ICOSG, false);
       }
 

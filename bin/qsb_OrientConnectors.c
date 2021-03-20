@@ -73,9 +73,10 @@
 
  */
 
+
 // For toning, the number of pixels for a minimum reasonable size of a
 // connector pin.
-#define PMIN   (10)
+static const guint PMIN = 18;
 
 
 static inline
