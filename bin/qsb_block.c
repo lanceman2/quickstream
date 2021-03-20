@@ -836,9 +836,7 @@ struct Block *AddBlock(struct Page *page,
         MakeBlockConnector(grid, "const", Constant, b);
         MakeBlockConnector(grid, "get", Getter, b);
         MakeBlockConnector(grid, "set", Setter, b);
-WARN();
         MakeBlockConnector(grid, "input", Input, b);
-WARN();
         MakeBlockConnector(grid, "output", Output, b);
 
         g_signal_connect(GTK_WIDGET(ebox), "button-press-event",
