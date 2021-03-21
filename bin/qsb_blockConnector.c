@@ -352,9 +352,9 @@ static gboolean ConnectorDraw_CB(GtkWidget *widget,
                                 length, direction);
                     break;
                 case Constant:
-                    // Connector is horizontal with no direction.
+                    // Connector is vertical with no direction.
                     for(uint32_t i = 0; i < c->numPins; ++i)
-                        cairo_arc(cr, i*delta + delta2, h2,
+                        cairo_arc(cr, w2, i*delta + delta2,
                                 radius, 0, 2.0*M_PI);
                     cairo_fill(cr);
                     break;
@@ -595,7 +595,7 @@ CheckConnectionFromPossible(struct Connector *c) {
 static gboolean ConnectorMotion_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
 
-
+WARN();
     return FALSE; // TRUE = eat event
 }
 
@@ -603,7 +603,7 @@ static gboolean ConnectorMotion_CB(GtkWidget *draw,
 static gboolean ConnectorEnter_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
 
-
+WARN();
     return TRUE; // TRUE = eat event
 }
 
