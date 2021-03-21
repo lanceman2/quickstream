@@ -454,8 +454,8 @@ static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
     double xi, yi;
 
     if(!movingBlock) {
-        xi = 2*MIN_BLOCK_LEN;
-        yi = 2*MIN_BLOCK_LEN;
+        xi = 2*CONNECTOR_THICKNESS;
+        yi = 2*CONNECTOR_THICKNESS;
         if(blockFile)
             movingBlock = AddBlock(page, layout, blockFile,
                     e->x - xi, e->y - yi);

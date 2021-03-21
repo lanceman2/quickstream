@@ -76,18 +76,24 @@
 
 // For toning, the number of pixels for a minimum reasonable size of a
 // connector pin.
-static const guint PMIN = 18;
+//
+// TODO: Tone the multiplier.
+static const double _pmin = CONNECTOR_THICKNESS*1.0001;
+//static const double _pmin = CONNECTOR_THICKNESS*0.6;
+// Compilers some time do bad conversions from double to unsigned int, so
+// we burn an extra double so as to not get bad things.
+static const guint PMIN = (guint) (_pmin);
 
 
 static inline
 void SetHorizontal1ConnectorSize(struct Connector *c, gint *w) {
 
-    gint connectorWidth = MIN_BLOCK_LEN;
+    gint connectorWidth = CONNECTOR_THICKNESS;
     if(connectorWidth < c->numPins*PMIN)
         connectorWidth = c->numPins*PMIN;
 
     gtk_widget_set_size_request(c->widget,
-            connectorWidth, MIN_BLOCK_LEN);
+            connectorWidth, CONNECTOR_THICKNESS);
 
     if(*w < connectorWidth)
         *w = connectorWidth;
@@ -98,20 +104,20 @@ static inline
 void SetHorizontal2ConnectorSizes(struct Connector *c1,
         struct Connector *c2, gint *w) {
 
-    gint connectorWidth1 = MIN_BLOCK_LEN;
+    gint connectorWidth1 = CONNECTOR_THICKNESS;
     if(connectorWidth1 < c1->numPins*PMIN)
         connectorWidth1 = c1->numPins*PMIN;
 
     gtk_widget_set_size_request(c1->widget,
-            connectorWidth1, MIN_BLOCK_LEN);
+            connectorWidth1, CONNECTOR_THICKNESS);
     
 
-    gint connectorWidth2 = MIN_BLOCK_LEN;
+    gint connectorWidth2 = CONNECTOR_THICKNESS;
     if(connectorWidth2 < c2->numPins*PMIN)
         connectorWidth2 = c2->numPins*PMIN;
 
     gtk_widget_set_size_request(c2->widget,
-            connectorWidth2, MIN_BLOCK_LEN);
+            connectorWidth2, CONNECTOR_THICKNESS);
 
     // The block name label will be the size of these two connectors
     // if it is not already larger.
@@ -123,15 +129,15 @@ void SetHorizontal2ConnectorSizes(struct Connector *c1,
 static inline
 void SetVertical1ConnectorSize(struct Connector *c, gint *h) {
 
-    gint connectorHeight = MIN_BLOCK_LEN;
+    gint connectorHeight = CONNECTOR_THICKNESS;
     if(connectorHeight < c->numPins*PMIN)
         connectorHeight = c->numPins*PMIN;
 
     gtk_widget_set_size_request(c->widget,
-            MIN_BLOCK_LEN, connectorHeight);
+            CONNECTOR_THICKNESS, connectorHeight);
 
-    if(*h < connectorHeight - 2*MIN_BLOCK_LEN)
-        *h = connectorHeight - 2*MIN_BLOCK_LEN;
+    if(*h < connectorHeight - 2*CONNECTOR_THICKNESS)
+        *h = connectorHeight - 2*CONNECTOR_THICKNESS;
 }
 
 
@@ -139,24 +145,24 @@ static inline
 void SetVertical2ConnectorSizes(struct Connector *c1,
         struct Connector *c2,  gint *h) {
 
-    gint connectorHeight1 = MIN_BLOCK_LEN;
+    gint connectorHeight1 = CONNECTOR_THICKNESS;
     if(connectorHeight1 < c1->numPins*PMIN)
         connectorHeight1 = c1->numPins*PMIN;
 
     gtk_widget_set_size_request(c1->widget,
-            MIN_BLOCK_LEN, connectorHeight1);
+            CONNECTOR_THICKNESS, connectorHeight1);
 
 
-    gint connectorHeight2 = MIN_BLOCK_LEN;
+    gint connectorHeight2 = CONNECTOR_THICKNESS;
     if(connectorHeight2 < c2->numPins*PMIN)
         connectorHeight2 = c2->numPins*PMIN;
 
     gtk_widget_set_size_request(c2->widget,
-            MIN_BLOCK_LEN, connectorHeight2);
+            CONNECTOR_THICKNESS, connectorHeight2);
 
 
-    if(*h < connectorHeight1 + connectorHeight2 - 2*MIN_BLOCK_LEN)
-        *h = connectorHeight1 + connectorHeight2 - 2*MIN_BLOCK_LEN;
+    if(*h < connectorHeight1 + connectorHeight2 - 2*CONNECTOR_THICKNESS)
+        *h = connectorHeight1 + connectorHeight2 - 2*CONNECTOR_THICKNESS;
 }
 
 
@@ -195,7 +201,7 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
     // These values, w, and h, will grow with the connector sizes in the
     // code to follow.
     gint w = 110;
-    gint h = 2*MIN_BLOCK_LEN;
+    gint h = 2*CONNECTOR_THICKNESS;
 
 
     // First place constants, setters and getters.

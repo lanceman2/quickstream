@@ -210,9 +210,15 @@ void FlopCB(GtkWidget *widget, gpointer data);
 
 
 
-// This is uses in gtk_widget_set_size_request() for some of the block
-// widgets.
-#define MIN_BLOCK_LEN     (24)
+// This, CONNECTOR_THICKNESS, is used in gtk_widget_set_size_request() for
+// some of the inner block widgets.  This is a toning parameter.  It is
+// the thickness of a connector widget, as they are like border that wrap
+// the block.  Lots of the derived dimensions come from this number, so if
+// you change it, do some testing to confirm that blocks and connectors
+// draw nicely.
+//
+//#define CONNECTOR_THICKNESS     (100) // bigger
+#define CONNECTOR_THICKNESS     (29) // normal
 
 
 

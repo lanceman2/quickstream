@@ -80,7 +80,68 @@ static inline void GetConnectionColor(enum ConnectorKind ckind,
  getter; with setter always before getter.  That gives 8 total orientation
  permutations that we allow.
 
+
+
+
+
+
+
+
  */
+
+// Draw a glyph that looks like this circle arrow thingy:
+//
+//
+//  -------> x
+//  |
+//  |
+//  |     |                    |     
+//  V     |<---- length ------>|
+//  y     |                    |
+//
+//                        *
+//            * *         * *
+//          *     *       *   *
+//         *        *******     *
+//         *                     *
+//         *        *******     *
+//          *     *       *   *
+//            * *         * *
+//                        *
+//
+//
+//
+//
+//  The height a small faction of the length
+//
+//  angle =  0  points right
+//  angle =  90 points down
+//  angle = -90 points up
+//  angle = 180 points left
+//
+static void DrawArrowGlyph(cairo_t *cr, double x, double y,
+        double length, double angle/*in degrees*/) {
+
+    cairo_new_path(cr);
+    cairo_translate(cr, x, y);
+    if(angle)
+        cairo_rotate(cr, angle*M_PI/180.0);
+    cairo_arc(cr, -0.4*length, 0.0, 0.1*length,
+            //90.0*M_PI/180.0, 270.0*M_PI/180.0);
+            30.0*M_PI/180.0, 330.0*M_PI/180.0);
+    cairo_rel_line_to(cr, 0.3*length, 0);
+    double p1[2];
+    cairo_get_current_point(cr, p1, p1+1);
+    cairo_rel_line_to(cr, 0, - length/10.0); // y min
+    cairo_line_to(cr, 0.5*length, 0.0); // arrow point
+    cairo_line_to(cr, p1[0], length/10.0 + - p1[1]); // y max
+    cairo_line_to(cr, p1[0], - p1[1]);
+    cairo_close_path(cr); // implied
+    if(angle)
+        cairo_rotate(cr, -angle*M_PI/180.0);
+    cairo_translate(cr, -x, -y);
+    cairo_fill(cr);
+}
 
 
 static gboolean ConnectorDraw_CB(GtkWidget *widget,
@@ -110,12 +171,15 @@ static gboolean ConnectorDraw_CB(GtkWidget *widget,
     // Dividing double by and int is a problem.
     double numPins = c->numPins;
 
+    const enum ConnectorGeo geo = c->block->geo;
+
+    //////////////////////////////////////////////////////////////
     // Draw strips that brake up the connectors into sections.
     // The sections are the pins in the connectors.
     //
-    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.2);
+    cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.07);
     //
-    switch(c->block->geo) {
+    switch(geo) {
         case ICOSG:
         case OCISG:
         case ISGOC:
@@ -126,14 +190,14 @@ static gboolean ConnectorDraw_CB(GtkWidget *widget,
                 case Constant:
                     // Connector is horizontal.
                     delta = width/numPins;
-                    for(uint32_t i=1; i<c->numPins; i += 2)
+                    for(uint32_t i=1; i < c->numPins; i += 2)
                         cairo_rectangle(cr, i*delta, 0, delta, height);
                     break;
                 case Input:
                 case Output:
                     // Connector is vertical.
                     delta = height/numPins;
-                    for(uint32_t i=1; i<c->numPins; i += 2)
+                    for(uint32_t i=1; i < c->numPins; i += 2)
                         cairo_rectangle(cr, 0, i*delta, width, delta);
                     break;
             }
@@ -147,7 +211,7 @@ static gboolean ConnectorDraw_CB(GtkWidget *widget,
                 case Output:
                     // Connector is horizontal.
                     delta = width/numPins;
-                    for(uint32_t i=1; i<c->numPins; i += 2)
+                    for(uint32_t i=1; i < c->numPins; i += 2)
                         cairo_rectangle(cr, i*delta, 0, delta, height);
                     break;
                 case Setter:
@@ -155,7 +219,7 @@ static gboolean ConnectorDraw_CB(GtkWidget *widget,
                 case Constant:
                     // Connector is vertical.
                     delta = height/numPins;
-                    for(uint32_t i=1; i<c->numPins; i += 2)
+                    for(uint32_t i=1; i < c->numPins; i += 2)
                         cairo_rectangle(cr, 0, i*delta, width, delta);
                     break;
             }
@@ -165,40 +229,101 @@ static gboolean ConnectorDraw_CB(GtkWidget *widget,
     cairo_fill(cr);
 
 
-    const double radius= 2.3;
+
+    //////////////////////////////////////////////////////////////////
+    //     Now draw connector pins.  They are a dot with an arrow.
+    //
+    const double radius= ((double)CONNECTOR_THICKNESS)/8.0;
+    const double length = CONNECTOR_THICKNESS*0.74;
     const double delta2 = delta/2.0;
+    double direction; // angle in degrees
+
+    // These could be one-liners, but the compiler will fuck-up the type
+    // converted value in the one-liner.  Weird shit.
     double h2 = height;
     h2 /= 2.0;
     double w2 = width;
     w2 /= 2.0;
-
+    //
     // Draw pin circles in the center of the strips that brake up the
-    // connectors into sections.  The sections are the pins in the
+    // connectors into sections.  The circles are the pins in the
     // connectors.
     //
     cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.3);
     //
-    switch(c->block->geo) {
+    switch(geo) {
         case ICOSG:
         case OCISG:
         case ISGOC:
         case OSGIC:
             switch(c->kind) {
                 case Setter:
+                    // Connector is horizontal
+                    if(geo == ISGOC || geo == OSGIC)
+                        direction = 90.0; // pointing down
+                    else
+                        direction = -90.0; // pointing up
+                    for(uint32_t i = 0; i < c->numPins; ++i)
+                        DrawArrowGlyph(cr, i*delta + delta2, h2,
+                                length, direction);
+                    break;
                 case Getter:
+                    // Connector is horizontal
+                    if(geo == ISGOC || geo == OSGIC)
+                        direction = -90.0; // pointing up
+                    else
+                        direction = 90.0; // pointing down
+                    for(uint32_t i = 0; i < c->numPins; ++i)
+                        DrawArrowGlyph(cr, i*delta + delta2, h2,
+                                length, direction);
+                    break;
                 case Constant:
-                    // Connector is horizontal.
-                    for(uint32_t i=0; i<c->numPins; ++i)
+                    // Connector is horizontal with no direction.
+                    for(uint32_t i = 0; i < c->numPins; ++i)
                         cairo_arc(cr, i*delta + delta2, h2,
                                 radius, 0, 2.0*M_PI);
+                    cairo_fill(cr);
                     break;
                 case Input:
                 case Output:
-                    // Connector is vertical.
-                    for(uint32_t i=0; i<c->numPins; ++i)
-                        cairo_arc(cr, w2, i*delta + delta2,
-                                radius, 0, 2.0*M_PI);
+                {
+                    // Connector is vertical with direction right or left.
+                    // Red connectors are required to be connected.
+                    // Black connectors are not required to be connected.
+                    uint32_t i = 0;
+                    uint32_t n;
+                    if(c->kind == Input) {
+                        if(geo == ICOSG || geo == ISGOC)
+                            // input is on the left side of the block.
+                            direction = 0.0; // points to the right
+                        else
+                            // input is on the right side of the block.
+                            direction = 180.0; // points to the left
+                        n = c->block->block->minNumInputs;
+                    } else {
+                        if(geo == OCISG || geo == OSGIC)
+                            // output is on the left side of the block.
+                            direction = 180.0; // points to the left
+                        else
+                            // output is on the right side of the block.
+                            direction = 0.0; // points to the right
+                        n = c->block->block->minNumOutputs;
+                    }
+                    if(n)
+                        // We're going red now.
+                        cairo_set_source_rgba(cr, 1.0, 0.0, 0.0, 0.9);
+                    for(; i < n; ++i)
+                        DrawArrowGlyph(cr, w2, i*delta + delta2,
+                                length, direction);
+                    if(i < c->numPins) {
+                        // Yes I'm Back In Black. (AC/DC)
+                        cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.3);
+                    }
+                    for(; i < c->numPins; ++i)
+                        DrawArrowGlyph(cr, w2, i*delta + delta2,
+                                length, direction);
                     break;
+                }
             }
             break;
         case COSGI:
@@ -206,93 +331,76 @@ static gboolean ConnectorDraw_CB(GtkWidget *widget,
         case SGOCI:
         case SGICO:
             switch(c->kind) {
-                case Input:
-                case Output:
-                    // Connector is horizontal.
-                    for(uint32_t i=0; i<c->numPins; ++i)
-                          cairo_arc(cr, i*delta + delta2, h2,
+                case Setter:
+                    // Connector is vertical
+                    if(geo == SGOCI || geo == SGICO)
+                        direction = 0.0; // pointing to the right
+                    else
+                        direction = 180.0; // pointing to the left
+                    for(uint32_t i = 0; i < c->numPins; ++i)
+                        DrawArrowGlyph(cr, w2, i*delta + delta2,
+                                length, direction);
+                    break;
+                case Getter:
+                    // Connector is vertical
+                    if(geo == SGOCI || geo == SGICO)
+                        direction = 180.0; // pointing to the left
+                    else
+                        direction = 0.0; // pointing to the right
+                    for(uint32_t i = 0; i < c->numPins; ++i)
+                        DrawArrowGlyph(cr, w2, i*delta + delta2,
+                                length, direction);
+                    break;
+                case Constant:
+                    // Connector is horizontal with no direction.
+                    for(uint32_t i = 0; i < c->numPins; ++i)
+                        cairo_arc(cr, i*delta + delta2, h2,
                                 radius, 0, 2.0*M_PI);
-                    break;
-                case Setter:
-                case Getter:
-                case Constant:
-                    // Connector is vertical.
-                    for(uint32_t i=0; i<c->numPins; ++i)
-                        cairo_arc(cr, w2, i*delta + delta2,
-                                radius, 0, 2.0*M_PI);
-                    break;
-            }
-            break;
-    }
-    //
-    cairo_fill(cr);
-
-
-    /////////////////////////////////////////////////////////
-    //     Now draw text like "input", "output", "set",
-    //     "get", and "const"
-    //
-    GdkRGBA color;
-    gtk_style_context_get_color(context,
-                    gtk_style_context_get_state(context),
-                    &color);
-    gdk_cairo_set_source_rgba(cr, &color);
-
-    cairo_fill(cr);
-
-    cairo_text_extents_t te;
-    cairo_select_font_face (cr, "Georgia",
-        CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-    cairo_set_font_size (cr, 14);
-
-    switch(c->block->geo) {
-        case ICOSG:
-        case OCISG:
-        case ISGOC:
-        case OSGIC:
-            switch(c->kind) {
-                case Setter:
-                case Getter:
-                case Constant:
-                    cairo_text_extents(cr, c->name, &te);
-                    cairo_move_to(cr, width/2 - te.width/2,
-                            height/2 + te.height/2);
+                    cairo_fill(cr);
                     break;
                 case Input:
                 case Output:
-                    cairo_text_extents(cr, c->name, &te);
-                    cairo_rotate(cr, M_PI/2.0);
-                    cairo_move_to(cr, height/2 - te.width/2,
-                            - width/2 - (te.y_bearing + te.height) +
-                            te.height/2);
+                {
+                    // Connector is horizontal with direction up or down.
+                    // Red connectors are required to be connected.
+                    // Black connectors are not required to be connected.
+                    uint32_t i = 0;
+                    uint32_t n;
+                    if(c->kind == Input) {
+                        if(geo == CISGO || geo == SGICO)
+                            // input is on the top side of the block.
+                            direction = 90.0; // points down
+                        else
+                            // input is on the bottom side of the block.
+                            direction = -90.0; // points up
+                        n = c->block->block->minNumInputs;
+                    } else { // Output
+                        if(geo == COSGI || geo == SGOCI)
+                            // output is on the top side of the block.
+                            direction = -90.0; // points up
+                        else
+                            // output is on the botton side of the block.
+                            direction = 90.0; // points down
+                        n = c->block->block->minNumOutputs;
+                    }
+                    if(n)
+                        // We're going red now.
+                        cairo_set_source_rgba(cr, 1.0, 0.0, 0.0, 0.9);
+                    for(; i < n; ++i)
+                        DrawArrowGlyph(cr, i*delta + delta2, h2,
+                                length, direction);
+                    if(i < c->numPins) {
+                        // Yes I'm Back In Black. (AC/DC)
+                        cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.3);
+                    }
+                    for(; i < c->numPins; ++i)
+                        DrawArrowGlyph(cr, i*delta + delta2, h2,
+                                length, direction);
                     break;
+                }
+                break;
             }
-            break;
-        case COSGI:
-        case CISGO:
-        case SGOCI:
-        case SGICO:
-            switch(c->kind) {
-                case Input:
-                case Output:
-                    cairo_text_extents(cr, c->name, &te);
-                    cairo_move_to(cr, width/2 - te.width/2,
-                            height/2 + te.height/2);
-                    break;
-                case Setter:
-                case Getter:
-                case Constant:
-                    cairo_text_extents(cr, c->name, &te);
-                    cairo_rotate(cr, M_PI/2.0);
-                    cairo_move_to(cr, height/2 - te.width/2,
-                            - width/2 - (te.y_bearing + te.height) +
-                            te.height/2);
-                    break;
-            }
-            break;
     }
-
-    cairo_show_text (cr, c->name);
 
 
     return FALSE;
@@ -559,7 +667,7 @@ void MakeBlockConnector(GtkWidget *grid,
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) block->block;
     
     gtk_widget_show(drawArea);
-    gtk_widget_set_size_request(drawArea, MIN_BLOCK_LEN, MIN_BLOCK_LEN);
+    gtk_widget_set_size_request(drawArea, CONNECTOR_THICKNESS, CONNECTOR_THICKNESS);
     gtk_widget_set_name(drawArea, className);
 
     struct Connector *c;
