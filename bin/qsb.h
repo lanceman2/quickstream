@@ -239,9 +239,9 @@ void FlopCB(GtkWidget *widget, gpointer data);
 // draw nicely.
 //
 //#define CONNECTOR_THICKNESS     (100) // bigger
-#define CONNECTOR_THICKNESS     (29) // normal
+#define CONNECTOR_THICKNESS     (24) // normal
 
-#define MIN_POPOVER_WIDTH   (175)
+#define MIN_POPOVER_WIDTH   (160)
 
 
 
