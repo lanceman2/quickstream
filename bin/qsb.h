@@ -115,10 +115,7 @@ struct Connector {
     // widget.
     bool active;
 
-    // Flag that says that the user has selected a parameter or stream
-    // port number to connect.  Having selectionMade = true means that
-    // the union{} below has a value set.
-    //bool selectionMade;
+    uint32_t selectedPin;
 
     // is it oriented horizontally, otherwise it's oriented vertically.
     bool isHorizontal;
@@ -154,10 +151,10 @@ extern
 struct Block *movingBlock;
 
 
-// This is set if we have a "from" connector selected by the user.  For
-// connections in the process of being made.
+// This is set if we have a "from" connector and pin selected by the user.
+// For connections in the process of being made.
 extern
-struct Connector *fromConnector;
+struct Pin *fromPin;
 
 extern
 struct Block *popupBlock;
@@ -258,6 +255,8 @@ void FlopCB(GtkWidget *widget, gpointer data);
 #define CONNECTOR_THICKNESS     (24) // normal
 
 #define MIN_POPOVER_WIDTH   (160)
+#define MIN_POPOVER_HEIGHT  CONNECTOR_THICKNESS
+
 
 
 

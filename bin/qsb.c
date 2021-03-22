@@ -178,7 +178,7 @@ WorkArea_drawCB(GtkWidget *layout, cairo_t *cr, struct Page *page) {
 
     // 2. draw selection boxes or new lines while the mouse pointer moves.
     // There can be no layout resizing in these cases.
-    if(haveSelectBox || fromConnector) {
+    if(haveSelectBox || fromPin) {
         cairo_set_source_surface(cr, page->newDrawSurface, 0, 0);
         cairo_paint(cr);
     }
@@ -300,7 +300,7 @@ DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
     // dragging.  Call this block of code: DrawDragLine.
     double x0=0, y0=0, x1, y1;
 // TODO: this:
-//GetConnectionPoint(fromConnector, &x0, &y0);
+//GetConnectionPoint(fromPin, &x0, &y0);
     GtkAllocation alloc;
     gtk_widget_get_allocation(layout, &alloc);
     GetWidgetRootXY(layout, &x1, &y1);
@@ -325,7 +325,7 @@ DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
     // Set the line color
     double r=1.0, g=0, b=0, a=0.4;
 // TODO: this:
-//GetConnectionLineColor(fromConnector, &r, &g, &b, &a);
+//GetConnectionLineColor(fromPin, &r, &g, &b, &a);
     cairo_set_source_rgba(cr, r, g, b, a);
     cairo_set_line_width(cr, lineWidth);
     cairo_move_to(cr, x0, y0);
@@ -353,10 +353,10 @@ static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
     // What happens if a user clicks two mouse buttons at the same time?
     // For now fuck it, I do not want to think about it; but at least see
     // it happen in DEBUG.
-    DASSERT(!haveSelectBox || !fromConnector || !movingBlock);
+    DASSERT(!haveSelectBox || !fromPin || !movingBlock);
 
 
-    if(fromConnector) {
+    if(fromPin) {
         DrawConnectionDragLine(e, page);
         return TRUE; // TRUE = eat the event
     }
@@ -395,14 +395,14 @@ static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
 
 void StartDragingConnection(struct Page *page) {
 
-    DASSERT(fromConnector);
+    DASSERT(fromPin);
     DrawConnectionDragLine(0, page);
 }
 
 
 void StopDragingConnection(struct Page *page) {
 
-    DASSERT(fromConnector);
+    DASSERT(fromPin);
     // the user gave up on making a connection by leaving the layout
     // widget, or clicking in the wrong place of something.
     //        
@@ -415,7 +415,7 @@ void StopDragingConnection(struct Page *page) {
     gtk_widget_queue_draw_area(page->layout, 0, 0, page->w, page->h);
 
     // We no longer have a connection being made by the user.
-    fromConnector = 0;
+    fromPin = 0;
 }
 
 
@@ -560,7 +560,7 @@ static gboolean NewTab(GtkWidget *w, gpointer data) {
     gtk_widget_set_name(page->connectorsPopover.container, "popover");
     // initialize the layout position to a value that is invalid
     gtk_widget_set_size_request(page->connectorsPopover.container,
-            MIN_POPOVER_WIDTH, CONNECTOR_THICKNESS);
+            MIN_POPOVER_WIDTH, MIN_POPOVER_HEIGHT);
 
     MakeWorkArea(page);
 

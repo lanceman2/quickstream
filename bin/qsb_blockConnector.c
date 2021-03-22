@@ -592,7 +592,8 @@ CheckConnectionFromPossible(struct Connector *c) {
 #endif
 
 
-// When fromConnector is set we are dragging a connection line.
+// When fromPin is set we are dragging a connection line from that
+// connector pin.
 
 // When this is set we are doing "connector pin hovering"
 // on the layout widget.
@@ -642,8 +643,8 @@ static void ShowPinBalloon(GtkWidget *draw, GdkEventButton *e,
     double height = gtk_widget_get_allocated_height(draw);
 
     if(c->isHorizontal) {
-        // It's oriented horizontally; so the pin number depends on the x
-        // position of the pointer.
+        // The connector is oriented horizontally; so the pin number
+        // depends on the x position of the pointer.
         delta = e->x_root - pos[0];
         p = numPins*delta/width;
         if(p < 0.0) pinNum = 0;
@@ -652,15 +653,16 @@ static void ShowPinBalloon(GtkWidget *draw, GdkEventButton *e,
         x = pos[0] + pinNum*(width/numPins) - layoutPos[0];
         y = (pos[1] + height) - layoutPos[1];
     } else {
-        // It's oriented vertically, so the pin number depends on the y
-        // position of the pointer.
+        // The connector is oriented vertically, so the pin number depends
+        // on the y position of the pointer.
         delta = e->y_root - pos[1];
         p = numPins*delta/height;
         if(p < 0.0) pinNum = 0;
         else if(p >= numPins) pinNum = numPins - 1;
         else pinNum = p;
         x = pos[0] + width - layoutPos[0];
-        y = pos[1] + pinNum*(height/numPins) - layoutPos[1];
+        y = pos[1] + pinNum*(height/numPins) - layoutPos[1] +
+                (height/numPins - MIN_POPOVER_HEIGHT)/2.0;
         //delta = height/numPins;
         //pos.y = pinNum*delta + delta/2.0;
         //pos.x = CONNECTOR_THICKNESS/2;
@@ -778,11 +780,11 @@ static gboolean ConnectorRelease_CB(GtkWidget *draw,
 static gboolean ConnectorPress_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
 
+ERROR();
     DASSERT(c);
     DASSERT(draw == c->widget);
     DASSERT(c->active);
     ASSERT(c->block->block->isSuperBlock == 0, "Write this code");
-
 
     if(e->button == CONNECT_BUTTON) {
         // Event goes to next parent widget.

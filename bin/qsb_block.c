@@ -36,12 +36,9 @@ struct Block *popupBlock = 0;
 
 // The whole point of this program is to make blocks and connect the
 // connectors (in these blocks) that are part of the blocks.  This is the
-// current "FROM" connector that we started making a connection at.   This
-// is set to zero after we have the "TO" connector or the user gives up
-// trying to finish this connection that the user initiated.  The user
-// only can make one connection at a time, with the mouse, hence this is
-// just one variable, "fromConnector".
-struct Connector *fromConnector = 0;
+// current "FROM" connector and pin that we started making a connection
+// at. 
+struct Pin *fromPin = 0;
 
 
 
@@ -105,7 +102,7 @@ Block_buttonPressCB(GtkWidget *ebox,
         GdkEventButton *e, struct Block *block) {
 
 
-    if(fromConnector)
+    if(fromPin)
         // If we clicked on a block and got to here, then the making of a
         // connection was aborted by the user, as we define it.
         StopDragingConnection(block->page);
