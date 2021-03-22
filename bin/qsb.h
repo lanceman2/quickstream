@@ -5,6 +5,15 @@
 struct Block;
 
 
+// We make our own popover widget because we could not get GTK+3 to play
+// nice.
+struct Popover {
+
+    GtkWidget *container;
+    GtkWidget *label;
+};
+
+
 struct Page {
     // This is a g tree list of the blocks that are selected, i.e.
     // highlighted and shit.  We can move all of them together with the
@@ -23,7 +32,7 @@ struct Page {
     cairo_surface_t *oldLines;
 
     // Widget that pops up help balloons for the connector pins.
-    GtkWidget *connectorsPopover;
+    struct Popover connectorsPopover;
 
     // width and height of layout drawing area and the above
     // surfaces.
@@ -87,6 +96,9 @@ struct Connector {
     // port number to connect.  Having selectionMade = true means that
     // the union{} below has a value set.
     bool selectionMade;
+
+    // is it oriented horizontally, otherwise it's oriented vertically.
+    bool isHorizontal;
 
     union {
       // We are connecting to a parameter or a stream port number.
@@ -174,6 +186,15 @@ extern
 void UnselectAllBlocks(struct Page *page);
 
 
+static inline void GetWidgetRootXY(GtkWidget *w, double *x, double *y) {
+
+    gint ix, iy;
+    gdk_window_get_origin(gtk_widget_get_window(w), &ix, &iy);
+    *x = ix;
+    *y = iy;
+}
+
+
 static inline void
 Connect(GtkBuilder *builder, const char *id, const char *action,
         void *callback, void *userData) {
@@ -219,6 +240,8 @@ void FlopCB(GtkWidget *widget, gpointer data);
 //
 //#define CONNECTOR_THICKNESS     (100) // bigger
 #define CONNECTOR_THICKNESS     (29) // normal
+
+#define MIN_POPOVER_WIDTH   (175)
 
 
 

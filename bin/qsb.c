@@ -67,15 +67,6 @@ static inline GdkCursor *GetCursor(const char *type) {
 }
 
 
-static inline void GetWidgetRootXY(GtkWidget *w, double *x, double *y) {
-
-    gint ix, iy;
-    gdk_window_get_origin(gtk_widget_get_window(w), &ix, &iy);
-    *x = ix;
-    *y = iy;
-}
-
-
 static inline cairo_surface_t *
 MakeNewLayoutSurface(GtkWidget *widget, cairo_surface_t *old,
         gint w, gint h) {
@@ -561,14 +552,18 @@ static gboolean NewTab(GtkWidget *w, gpointer data) {
     page->w = -1101;
     page->h = -1101;
 
-    GtkWidget *plabel = gtk_label_new("Connector Help Text");
-    GtkWidget *popover = gtk_popover_new(0);
-    page->connectorsPopover = popover;
-    gtk_container_add(GTK_CONTAINER(popover), plabel);
-    gtk_container_set_border_width(GTK_CONTAINER(popover), 6);
-    gtk_widget_show(plabel);
-// HERE LANCEMAN -------------------------------------------
+    page->connectorsPopover.label = gtk_label_new("Connector Help Text");
+    page->connectorsPopover.container = gtk_frame_new(0);
+    gtk_container_add(GTK_CONTAINER(page->connectorsPopover.container),
+            page->connectorsPopover.label);
+    gtk_widget_show(page->connectorsPopover.label);
+    gtk_widget_set_name(page->connectorsPopover.container, "popover");
+    // initialize the layout position to a value that is invalid
+    gtk_widget_set_size_request(page->connectorsPopover.container,
+            MIN_POPOVER_WIDTH, -1);
+
     MakeWorkArea(page);
+
     return TRUE;
 }
 

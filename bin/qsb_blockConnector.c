@@ -592,10 +592,124 @@ CheckConnectionFromPossible(struct Connector *c) {
 #endif
 
 
+// When fromConnector is set we are dragging a connection line.
+
+// When this is set we are doing "connector pin hovering"
+// on the layout widget.
+static struct Popover *connectorsPopover = 0;
+// The popover label that we change as the mouse pointer moves over the
+// different connector pins.
+static GtkWidget *currentWidget = 0;
+static uint32_t currentPinNum = -1;
+static bool popoverShowing = false;
+
+
+static void ShowPinBalloon(GtkWidget *draw, GdkEventButton *e,
+        struct Connector *c) {
+
+    if(!connectorsPopover)
+        // Somehow we get motion events after we leave the widget.
+        return;
+
+
+    if(movingBlock) {
+        if(popoverShowing) {
+            gtk_widget_hide(connectorsPopover->container);
+            popoverShowing = false;
+        }
+        return;
+    }
+
+
+    DASSERT(c);
+    DASSERT(draw == c->widget);
+    DASSERT(connectorsPopover);
+    double numPins = c->numPins;
+    DASSERT(numPins);
+
+    // Check the current pin number that the pointer is hovering over.
+    uint32_t pinNum;
+
+    double pos[2];
+    double layoutPos[2];
+    double p;
+    double x, y;
+    double delta;
+    GetWidgetRootXY(draw, pos, pos+1);
+    GetWidgetRootXY(c->block->page->layout, layoutPos, layoutPos+1);
+
+    double width = gtk_widget_get_allocated_width(draw);
+    double height = gtk_widget_get_allocated_height(draw);
+
+    if(c->isHorizontal) {
+        // It's oriented horizontally; so the pin number depends on the x
+        // position of the pointer.
+        delta = e->x_root - pos[0];
+        p = numPins*delta/width;
+        if(p < 0.0) pinNum = 0;
+        else if(p >= numPins) pinNum = numPins - 1;
+        else pinNum = p;
+        x = pos[0] + pinNum*(width/numPins) - layoutPos[0];
+        y = (pos[1] + height) - layoutPos[1];
+    } else {
+        // It's oriented vertically, so the pin number depends on the y
+        // position of the pointer.
+        delta = e->y_root - pos[1];
+        p = numPins*delta/height;
+        if(p < 0.0) pinNum = 0;
+        else if(p >= numPins) pinNum = numPins - 1;
+        else pinNum = p;
+        x = pos[0] + width - layoutPos[0];
+        y = pos[1] + pinNum*(height/numPins) - layoutPos[1];
+        //delta = height/numPins;
+        //pos.y = pinNum*delta + delta/2.0;
+        //pos.x = CONNECTOR_THICKNESS/2;
+    }
+
+
+    if(currentWidget != draw) {
+        // Act like the pin number changed, because it's a different set
+        // of pins, and it's a change even if the pin number is the same.
+        currentPinNum = -1;
+    }
+
+    // If the pin is not changed we do not need to move the popover.
+    if(currentPinNum != pinNum) {
+        // The pin number changed.
+
+        char text[64];
+        snprintf(text, 64, "pin number %" PRIu32 "  %g", pinNum, p);
+        gtk_label_set_text(GTK_LABEL(connectorsPopover->label), text);
+        
+        if(currentWidget != draw) {
+            // Popup the Popover and move it.
+            g_object_ref(G_OBJECT(connectorsPopover->container));
+
+            // remove the widget which removes one reference
+            gtk_container_remove(GTK_CONTAINER(c->block->page->layout),
+                    connectorsPopover->container);
+            // Now we have at least one reference.
+            // re-add the widget which will take ownership of the
+            // one remaining reference.
+            gtk_layout_put(GTK_LAYOUT(c->block->page->layout),
+                    connectorsPopover->container, x, y);
+            currentWidget = draw;
+        } else
+            // Just move the Popover
+            gtk_layout_move(GTK_LAYOUT(c->block->page->layout),
+                    connectorsPopover->container, x, y);
+
+        currentPinNum = pinNum;
+    }
+}
+
+
+
 static gboolean ConnectorMotion_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
-
 WARN();
+    ShowPinBalloon(draw, e, c);
+
     return FALSE; // TRUE = eat event
 }
 
@@ -603,25 +717,59 @@ WARN();
 static gboolean ConnectorEnter_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
 
+    DASSERT(c);
+    DASSERT(c->numPins);
+    DASSERT(draw == c->widget);
 WARN();
-    return TRUE; // TRUE = eat event
-}
+    if(!connectorsPopover) {
+        // GTK+3 does not keep the order of events in a sensible way.
+        // We sometimes get 2 enter events with no leave event.
+        connectorsPopover = &c->block->page->connectorsPopover;
+    }
 
+    if(movingBlock) {
+        if(popoverShowing) {
+            gtk_widget_hide(connectorsPopover->container);
+            popoverShowing = false;
+        }
+        return FALSE; // TRUE = eat event
+    }
+
+
+    gtk_widget_show(connectorsPopover->container);
+    ShowPinBalloon(draw, e, c);
+
+    return FALSE; // TRUE = eat event
+}
 
 
 static gboolean ConnectorLeave_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
 
+    DASSERT(c);
+    DASSERT(c->numPins);
+    DASSERT(draw == c->widget);
+    //DASSERT(connectorsPopover);
+WARN();
 
-    return TRUE; // TRUE = eat event
+    if(connectorsPopover) {
+
+        gtk_widget_hide(connectorsPopover->container);
+        popoverShowing = false;
+        connectorsPopover = 0;
+        currentPinNum = -1;
+        currentWidget = 0;
+    }
+
+    return FALSE; // TRUE = eat event
 }
-
 
 
 static gboolean ConnectorRelease_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
 
 
+    DASSERT(draw == c->widget);
     return FALSE; // TRUE = eat event
 }
 
@@ -631,6 +779,7 @@ static gboolean ConnectorPress_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
 
     DASSERT(c);
+    DASSERT(draw == c->widget);
     DASSERT(c->active);
     ASSERT(c->block->block->isSuperBlock == 0, "Write this code");
 
@@ -667,7 +816,8 @@ void MakeBlockConnector(GtkWidget *grid,
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) block->block;
     
     gtk_widget_show(drawArea);
-    gtk_widget_set_size_request(drawArea, CONNECTOR_THICKNESS, CONNECTOR_THICKNESS);
+    gtk_widget_set_size_request(drawArea, CONNECTOR_THICKNESS,
+            CONNECTOR_THICKNESS);
     gtk_widget_set_name(drawArea, className);
 
     struct Connector *c;

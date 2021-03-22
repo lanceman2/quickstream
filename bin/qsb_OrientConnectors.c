@@ -209,6 +209,9 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case OCISG:
         case ICOSG:
             // horizontal connectors.
+            b->constants.isHorizontal = true;
+            b->getters.isHorizontal = true;
+            b->setters.isHorizontal = true;
             SetHorizontal1ConnectorSize(&b->constants, &w);
             SetHorizontal2ConnectorSizes(&b->setters, &b->getters, &w);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -221,6 +224,9 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case ISGOC:
         case OSGIC:
             // horizontal connectors.
+            b->constants.isHorizontal = true;
+            b->getters.isHorizontal = true;
+            b->setters.isHorizontal = true;
             SetHorizontal1ConnectorSize(&b->constants, &w);
             SetHorizontal2ConnectorSizes(&b->setters, &b->getters, &w);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -233,6 +239,9 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case COSGI:
         case CISGO:
             // vertical connectors.
+            b->constants.isHorizontal = false;
+            b->getters.isHorizontal = false;
+            b->setters.isHorizontal = false;
             SetVertical1ConnectorSize(&b->constants, &h);
             SetVertical2ConnectorSizes(&b->setters, &b->getters, &h);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -245,6 +254,9 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case SGOCI:
         case SGICO:
             // vertical connectors.
+            b->constants.isHorizontal = false;
+            b->getters.isHorizontal = false;
+            b->setters.isHorizontal = false;
             SetVertical1ConnectorSize(&b->constants, &h);
             SetVertical2ConnectorSizes(&b->setters, &b->getters, &h);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -261,6 +273,8 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case ICOSG:
         case ISGOC:
             // vertical connectors.
+            b->input.isHorizontal = false;
+            b->output.isHorizontal = false;
             SetVertical1ConnectorSize(&b->input, &h);
             SetVertical1ConnectorSize(&b->output, &h);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -271,6 +285,8 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case OCISG:
         case OSGIC:
             // vertical connectors.
+            b->input.isHorizontal = false;
+            b->output.isHorizontal = false;
             SetVertical1ConnectorSize(&b->input, &h);
             SetVertical1ConnectorSize(&b->output, &h);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -281,6 +297,8 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case COSGI:
         case SGOCI:
             // horizontal connectors.
+            b->input.isHorizontal = true;
+            b->output.isHorizontal = true;
             SetHorizontal1ConnectorSize(&b->input, &w);
             SetHorizontal1ConnectorSize(&b->output, &w);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -291,6 +309,8 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case CISGO:
         case SGICO:
             // horizontal connectors.
+            b->input.isHorizontal = true;
+            b->output.isHorizontal = true;
             SetHorizontal1ConnectorSize(&b->input, &w);
             SetHorizontal1ConnectorSize(&b->output, &w);
             gtk_grid_attach(GTK_GRID(b->grid),

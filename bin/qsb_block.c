@@ -76,6 +76,9 @@ static gboolean
 Block_buttonMotionCB(GtkWidget *ebox,
         GdkEventButton *e, struct Block *block) {
 
+    // The moving of the block is done in the layout event catchers in
+    // qsb.c.
+
     if(movingBlock)
         return FALSE; // FALSE = event to next widget
 
