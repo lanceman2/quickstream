@@ -35,3 +35,7 @@ void CheckMakeWorkerThreads(struct QsThreadPool *tp) {
         // Launch another worker thread.
         LaunchWorkerThread(tp);
 }
+
+
+extern
+bool CallTriggerCallback(struct QsTrigger *t, struct QsThreadPool *tp);

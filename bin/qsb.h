@@ -69,6 +69,25 @@ enum ConnectorGeo {
     SGICO
 };
 
+
+#define DESC_LEN (128)
+
+// A connector pin.
+struct Pin {
+
+    struct Connector *connector;
+
+    // The popover description.
+    char desc[DESC_LEN];
+
+    union {
+      // We are connecting to a parameter or a stream port number.
+      struct QsParameter *parameter;
+      uint32_t portNum; // input or output
+    };
+};
+
+
 // We need the length to include the '\0' string terminator.
 #define CONNECTOR_CLASSNAME_LEN  (7) // Largest string is "output"
 
@@ -84,6 +103,10 @@ struct Connector {
     // another way: the number of pins in this connector.
     uint32_t numPins;
 
+    // This is an array that is allocated.  The array size is numPins.
+    // If numPins is zero this is zero too, and is not allocated.
+    struct Pin *pins;
+
     // The connector will not have connections if there are no inputs,
     // outputs, or parameters to connect to.  active = true if there is
     // something to connect to or from associated with this this widget,
@@ -95,17 +118,10 @@ struct Connector {
     // Flag that says that the user has selected a parameter or stream
     // port number to connect.  Having selectionMade = true means that
     // the union{} below has a value set.
-    bool selectionMade;
+    //bool selectionMade;
 
     // is it oriented horizontally, otherwise it's oriented vertically.
     bool isHorizontal;
-
-    union {
-      // We are connecting to a parameter or a stream port number.
-      // This is used when the mouse is moving.
-      struct QsParameter *parameter;
-      uint32_t portNum; // input or output
-    };
 };
 
 

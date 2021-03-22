@@ -32,6 +32,7 @@
 #include "threadPool.h"
 #include "triggerJobsLists.h"
 #include "stream.h"
+#include "run.h"
 
 
 
@@ -554,7 +555,7 @@ bool IsFlowableAndSetPointers(struct QsSimpleBlock *b) {
 // This needs to let other blocks get worker threads by not looping
 // forever.  Even when there is only one worker thread, that will
 // naturally happen when the output quick-stream gets clogged with too
-// much data.  The ring buffer settings with determine when that is.
+// much data.  The ring buffer settings will determine when that is.
 // Adjusting the ring buffer settings can optimise performance, and here
 // is where that happens.
 //
@@ -565,6 +566,8 @@ int StreamFlow_callback(struct QsSimpleBlock *b) {
 
     DASSERT(b->flow);
     DASSERT(b->callingFlow == false);
+    // The trigger job queue should be empty:
+    DASSERT(b->firstJob == 0);
 
     // Mark that no other worker thread should call this block's flow() or
     // queue up this block's stream flow() call.  There is no need to queue
@@ -578,6 +581,29 @@ int StreamFlow_callback(struct QsSimpleBlock *b) {
     bool isFlowable;
 
     do {
+
+        // In order to be able to quickly control the stream flow:
+        //
+        // All other trigger types have higher priority over the stream
+        // flow, so we check and run all trigger callbacks that are
+        // currently queued before we do another flow() call.
+        //
+        // First time through this loop will not happen, because like I
+        // said, all the other trigger callbacks which have higher
+        // priority will have been called already.
+        while(b->firstJob) {
+            DASSERT(b->busy);
+            struct QsTrigger *t = PopJobBackToTriggers(b);
+            DASSERT(t);
+            CallTriggerCallback(t, b->threadPool);
+            // If a setter parameter change happened, the block writer may
+            // now have new state information that makes it's flow() call
+            // stop/abort by returning non-zero.
+        }
+
+        // The stream flow() callback should be last in the queue, so the
+        // queue should be empty now.
+        DASSERT(b->firstJob == 0);
 
         // Ready the arguments for calling flow():
         for(uint32_t i = b->numInputs-1; i != -1; --i) {
@@ -596,6 +622,7 @@ int StreamFlow_callback(struct QsSimpleBlock *b) {
         CHECK(pthread_mutex_unlock(b->threadPool->mutex));
         // and now we don't have the lock.
 
+        // Calling the block writers flow() callback.
         ret = b->flow(b->inputBuffers, b->inputLens,
                 b->numInputs, b->numOutputs);
 

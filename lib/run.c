@@ -34,7 +34,6 @@
 // Returns true if the trigger changed its' run/call state and it is a
 // source trigger, and false if not.
 //
-static inline
 bool CallTriggerCallback(struct QsTrigger *t, struct QsThreadPool *tp) {
 
 
@@ -46,6 +45,9 @@ bool CallTriggerCallback(struct QsTrigger *t, struct QsThreadPool *tp) {
     CHECK(pthread_setspecific(_qsGraphKey, t->block));
     // This is the call of a function in a simple block module or
     // a wrapper that calls it.
+    //
+    // If this thread has the mutex lock now, at some point the callback()
+    // will unlock and later lock the mutex.
     int ret = t->callback(t->userData);
     CHECK(pthread_setspecific(_qsGraphKey, 0));
 
@@ -78,7 +80,6 @@ bool CallTriggerCallback(struct QsTrigger *t, struct QsThreadPool *tp) {
     // play, at least for this run, and is the trigger a source trigger?
     return t->isSource;
 }
-
 
 
 // TODO: we may want to optimize this by having different versions of this

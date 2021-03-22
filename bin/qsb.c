@@ -560,7 +560,7 @@ static gboolean NewTab(GtkWidget *w, gpointer data) {
     gtk_widget_set_name(page->connectorsPopover.container, "popover");
     // initialize the layout position to a value that is invalid
     gtk_widget_set_size_request(page->connectorsPopover.container,
-            MIN_POPOVER_WIDTH, -1);
+            MIN_POPOVER_WIDTH, CONNECTOR_THICKNESS);
 
     MakeWorkArea(page);
 
