@@ -453,8 +453,8 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
         // is set for all output ports for the block before the start()
         // function is called; hence the start() can override it.
         size_t maxWrite = QS_DEFAULTMAXWRITE;
-        if(qsParameterConstantCreate(b, "OutputMaxWrite", QsSize,
-                    sizeof(maxWrite), 0 /*setCallback*/, b,
+        if(qsParameterConstantCreate(b, "OutputMaxWrite", QsUint64,
+                    sizeof(uint64_t), 0 /*setCallback*/, b,
                     &maxWrite) == 0) {
             b->inWhichCallback = 0;
             qsBlockUnload(b);

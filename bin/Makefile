@@ -61,7 +61,8 @@ quickstreamBuilder_SOURCES :=\
  qsb_block.c\
  qsb_CSS.c\
  qsb_OrientConnectors.c\
- qsb_blockConnector.c
+ qsb_blockConnector.c\
+ qsb_blockConnectorCBs.c
 
 quickstreamBuilder_CPPFLAGS := $(GTK_CFLAGS)
 quickstreamBuilder_LDFLAGS := $(quickstream_LDFLAGS) $(GTK_LDFLAGS) -lm

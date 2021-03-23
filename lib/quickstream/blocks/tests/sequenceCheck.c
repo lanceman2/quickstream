@@ -3,7 +3,7 @@
 
 #include "Sequence.h"
 
-#define DEFAULT_SEEDOFFSET ((size_t) 0)
+#define DEFAULT_SEEDOFFSET ((uint64_t) 0)
 
 
 static size_t maxWrite = 0;
@@ -11,13 +11,13 @@ static char **compare;
 
 static struct RandomString *rs;
 
-static size_t seedOffset = DEFAULT_SEEDOFFSET;
+static uint64_t seedOffset = DEFAULT_SEEDOFFSET;
 
 
 int declare(void) {
 
     qsParameterConstantCreate(0, "seedOffset",
-            QsSize, sizeof(seedOffset), 0/*setCallback*/,
+            QsUint64, sizeof(uint64_t), 0/*setCallback*/,
             0/*userData*/, &seedOffset);
     qsBlockSetNumInputs(1,14);
     qsBlockSetNumOutputs(0,14);

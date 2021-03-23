@@ -230,6 +230,9 @@ static void MoveSelectedBlocks(struct Page *page, double dx, double dy) {
 static gboolean WorkArea_buttonReleaseCB(GtkWidget *layout,
         GdkEventButton *e, struct Page *page) {
 
+    if(fromPin)
+        StopDragingConnection(page);
+
 
     if(e->type != GDK_BUTTON_RELEASE) {
         // This should not happen.
@@ -291,6 +294,8 @@ const static double lineWidth = 4.2;
 static inline void
 DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
 
+    DASSERT(fromPin);
+
     GtkWidget *layout = page->layout;
 
     GetLayoutSurfaces(page, layout);
@@ -298,22 +303,22 @@ DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
 
     // Draw the current connection line that the user is currently
     // dragging.  Call this block of code: DrawDragLine.
-    double x0=0, y0=0, x1, y1;
-// TODO: this:
-//GetConnectionPoint(fromPin, &x0, &y0);
+    double x3, y3; // Will be the mouse pointer point in the layout.
     GtkAllocation alloc;
     gtk_widget_get_allocation(layout, &alloc);
-    GetWidgetRootXY(layout, &x1, &y1);
+    GetWidgetRootXY(layout, &x3, &y3);
 
     if(e) {
-        x1 = e->x_root - x1;
-        y1 = e->y_root - y1;
+        x3 = e->x_root - x3;
+        y3 = e->y_root - y3;
     } else {
         double px, py;
         GetPointer(&px, &py);
-        x1 = px - x1;
-        y1 = py - y1;
-    } 
+        x3 = px - x3;
+        y3 = py - y3;
+    }
+    // Now x3, y3 is the mouse pointer point in the layout.
+
 
     // draw onto page->newDrawSurface
     cairo_t *cr = cairo_create(page->newDrawSurface);
@@ -324,12 +329,26 @@ DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
 
     // Set the line color
     double r=1.0, g=0, b=0, a=0.4;
+
 // TODO: this:
 //GetConnectionLineColor(fromPin, &r, &g, &b, &a);
+
     cairo_set_source_rgba(cr, r, g, b, a);
     cairo_set_line_width(cr, lineWidth);
+
+    // starting point
+    double x0 = fromPin->connector->x, y0 = fromPin->connector->y;
+    // 2nd point
+    double x1, y1;
+    // distance to from the pin to the mouse pointer.
+    double dr = CONNECTOR_THICKNESS + sqrt((x0-x3)*(x0-x3) + (y0-y3)*(y0-y3));
+    if(dr > 4.0*CONNECTOR_THICKNESS)
+        dr = 4.0*CONNECTOR_THICKNESS;
+    x1 = x0 + dr*fromPin->connector->dx;
+    y1 = y0 + dr*fromPin->connector->dy;
+
     cairo_move_to(cr, x0, y0);
-    cairo_line_to(cr, x1, y1);
+    cairo_curve_to(cr, x1, y1, x3, y3, x3, y3);
     cairo_stroke(cr);
     cairo_destroy(cr);
 
@@ -421,6 +440,9 @@ void StopDragingConnection(struct Page *page) {
 
 static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
         GdkEventButton *e, struct Page *page) {
+
+
+    if(fromPin) return FALSE;
 
 
     if(e->type != GDK_BUTTON_PRESS) {

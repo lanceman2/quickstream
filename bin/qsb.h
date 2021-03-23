@@ -77,7 +77,7 @@ struct Pin {
 
     struct Connector *connector;
 
-    // The popover description.
+    // The popover description, that we put in the popover label.
     char desc[DESC_LEN];
 
     union {
@@ -115,10 +115,27 @@ struct Connector {
     // widget.
     bool active;
 
-    uint32_t selectedPin;
+    // When the fromPin is selected we have a mouse button pressed and the
+    // user is dragging/drawing a line from it.
+    //uint32_t selectedPin;
+    //
+    double x, y; // point to draw the line from for the connection.
+    //
+    // dx,dy marks the direction of the line from the connection pin,
+    // "fromPin.  A cubic Bézier spline is what we draw from the fromPin.
+    // dx, dy help use calculate the 2nd of the 4 control points that are
+    // needed to draw a cubic Bézier spline.  dx,dy = 1, 0 is to the
+    // right,  -1, 0 is to the left,  0, 1 is down, and 0, -1 is up; and
+    // that's all the values dx, dy can have; right, left, down, and up.
+    // We get these at the mouse press and as the mouse moves we do not
+    // need to calculate them again until the next mouse press with a
+    // fromPin.
+    double dx, dy;
 
-    // is it oriented horizontally, otherwise it's oriented vertically.
+    // Is it oriented horizontally? Otherwise it's oriented vertically.
     bool isHorizontal;
+    // If it is on the right or on the bottom of the block.
+    bool isSouthWestOfBlock;
 };
 
 
@@ -241,6 +258,33 @@ extern
 void FlipCB(GtkWidget *widget, gpointer data);
 extern
 void FlopCB(GtkWidget *widget, gpointer data);
+
+
+
+// Block Connector GTK3+ widget event callback functions:
+extern
+gboolean ConnectorDraw_CB(GtkWidget *widget, cairo_t *cr,
+        struct Connector *c);
+//
+extern
+gboolean ConnectorMotion_CB(GtkWidget *draw,
+        GdkEventButton *e, struct Connector *c);
+//
+extern
+gboolean ConnectorEnter_CB(GtkWidget *draw,
+        GdkEventButton *e, struct Connector *c);
+//
+extern
+gboolean ConnectorLeave_CB(GtkWidget *draw,
+        GdkEventButton *e, struct Connector *c);
+//
+extern
+gboolean ConnectorRelease_CB(GtkWidget *draw,
+        GdkEventButton *e, struct Connector *c);
+//
+extern
+gboolean ConnectorPress_CB(GtkWidget *draw,
+        GdkEventButton *e, struct Connector *c);
 
 
 

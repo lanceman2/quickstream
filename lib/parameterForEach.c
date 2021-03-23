@@ -52,9 +52,9 @@ struct Parameter_St {
 static inline
 int CallCallback(struct QsParameter *p, struct Parameter_St *st) {
 
-    DASSERT(strcmp(st->name, p->name) == 0 || st->useRegex);
+    DASSERT(!st->name || strcmp(st->name, p->name) == 0 || st->useRegex);
     DASSERT(p->kind == st->kind || st->kind == QsAny);
-    DASSERT(p->size == st->size);
+    DASSERT(!st->size || p->size == st->size);
 
     if(st->useRegex && regexec(&st->regex, p->name, 0, 0, 0))
         return 0;
@@ -69,7 +69,8 @@ static
 int BlockForEachParameter_CB(const char *key, struct QsParameter *p,
         struct Parameter_St *st) {
 
-    if(st->type != p->type || st->size != p->size)
+    if((st->type && st->type != p->type) || 
+             (st->size && st->size != p->size))
         return 0;
 
     if(CallCallback(p, st))
@@ -88,14 +89,14 @@ int GraphForEachBlock_CB(const char *key, struct QsBlock *b,
         // super blocks do not have any parameters.
         return 0;
 
-    
+
     struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
 
     if(st->name && !st->useRegex) {
         struct QsParameter *p;
         switch(st->kind) {
 
-            case QsAny:
+            case QsAny: // 0
                 p = qsDictionaryFind(smB->constants, st->name);
                 if(p && CallCallback(p, st))
                     return 1;

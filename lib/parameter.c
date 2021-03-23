@@ -1037,14 +1037,8 @@ int PrintParameterCB(const char *pname, struct QsParameter *p,
         case QsDouble:
             fprintf(file, "QsDouble %4zu ", p->size);
             break;
-        case QsFloat:
-            fprintf(file, "QsFloat  %4zu ", p->size);
-            break;
         case QsUint64:
             fprintf(file, "QsUint64 %4zu ", p->size);
-            break;
-        case QsSize:
-            fprintf(file, "QsSize   %4zu ", p->size);
             break;
         case QsString:
             fprintf(file, "QsString %4zu ", p->size);

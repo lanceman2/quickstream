@@ -210,8 +210,11 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case ICOSG:
             // horizontal connectors.
             b->constants.isHorizontal = true;
+            b->constants.isSouthWestOfBlock = false;
             b->getters.isHorizontal = true;
             b->setters.isHorizontal = true;
+            b->getters.isSouthWestOfBlock = true;
+            b->setters.isSouthWestOfBlock = true;
             SetHorizontal1ConnectorSize(&b->constants, &w);
             SetHorizontal2ConnectorSizes(&b->setters, &b->getters, &w);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -225,8 +228,11 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case OSGIC:
             // horizontal connectors.
             b->constants.isHorizontal = true;
+            b->constants.isSouthWestOfBlock = true;
             b->getters.isHorizontal = true;
             b->setters.isHorizontal = true;
+            b->getters.isSouthWestOfBlock = false;
+            b->setters.isSouthWestOfBlock = false;
             SetHorizontal1ConnectorSize(&b->constants, &w);
             SetHorizontal2ConnectorSizes(&b->setters, &b->getters, &w);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -240,8 +246,11 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case CISGO:
             // vertical connectors.
             b->constants.isHorizontal = false;
+            b->constants.isSouthWestOfBlock = false;
             b->getters.isHorizontal = false;
             b->setters.isHorizontal = false;
+            b->getters.isSouthWestOfBlock = true;
+            b->setters.isSouthWestOfBlock = true;
             SetVertical1ConnectorSize(&b->constants, &h);
             SetVertical2ConnectorSizes(&b->setters, &b->getters, &h);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -255,8 +264,11 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case SGICO:
             // vertical connectors.
             b->constants.isHorizontal = false;
+            b->constants.isSouthWestOfBlock = true;
             b->getters.isHorizontal = false;
             b->setters.isHorizontal = false;
+            b->getters.isSouthWestOfBlock = false;
+            b->setters.isSouthWestOfBlock = false;
             SetVertical1ConnectorSize(&b->constants, &h);
             SetVertical2ConnectorSizes(&b->setters, &b->getters, &h);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -274,7 +286,9 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case ISGOC:
             // vertical connectors.
             b->input.isHorizontal = false;
+            b->input.isSouthWestOfBlock = false;
             b->output.isHorizontal = false;
+            b->output.isSouthWestOfBlock = true;
             SetVertical1ConnectorSize(&b->input, &h);
             SetVertical1ConnectorSize(&b->output, &h);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -286,7 +300,9 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case OSGIC:
             // vertical connectors.
             b->input.isHorizontal = false;
+            b->input.isSouthWestOfBlock = true;
             b->output.isHorizontal = false;
+            b->output.isSouthWestOfBlock = false;
             SetVertical1ConnectorSize(&b->input, &h);
             SetVertical1ConnectorSize(&b->output, &h);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -298,7 +314,9 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case SGOCI:
             // horizontal connectors.
             b->input.isHorizontal = true;
+            b->input.isSouthWestOfBlock = true;
             b->output.isHorizontal = true;
+            b->output.isSouthWestOfBlock = false;
             SetHorizontal1ConnectorSize(&b->input, &w);
             SetHorizontal1ConnectorSize(&b->output, &w);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -310,7 +328,9 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
         case SGICO:
             // horizontal connectors.
             b->input.isHorizontal = true;
+            b->input.isSouthWestOfBlock = false;
             b->output.isHorizontal = true;
+            b->output.isSouthWestOfBlock = true;
             SetHorizontal1ConnectorSize(&b->input, &w);
             SetHorizontal1ConnectorSize(&b->output, &w);
             gtk_grid_attach(GTK_GRID(b->grid),

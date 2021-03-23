@@ -65,7 +65,7 @@ Block_buttonReleaseCB(GtkWidget *ebox,
     if(movingBlock)
         return FALSE; // FALSE = event to next widget
 
-    return TRUE;
+    return FALSE;
 }
 
 
@@ -101,11 +101,6 @@ static gboolean
 Block_buttonPressCB(GtkWidget *ebox,
         GdkEventButton *e, struct Block *block) {
 
-
-    if(fromPin)
-        // If we clicked on a block and got to here, then the making of a
-        // connection was aborted by the user, as we define it.
-        StopDragingConnection(block->page);
 
 
     switch(e->button) {
@@ -146,6 +141,18 @@ void UnselectBlock(struct Block *b) {
 }
 
 
+static inline void FreePins(struct Connector *c) {
+
+    if(c->pins) {
+        DASSERT(c->numPins);
+#ifdef DEBUG
+        memset(c->pins, 0,  c->numPins *sizeof(*c->pins));
+#endif
+        free(c->pins);
+    }
+}
+
+
 static void DestroyBlock(struct Block *b) {
 
     DASSERT(b);
@@ -170,6 +177,12 @@ static void DestroyBlock(struct Block *b) {
     qsBlockUnload(b->block);
 
     gtk_widget_destroy(b->ebox);
+
+    FreePins(&b->input);
+    FreePins(&b->output);
+    FreePins(&b->constants);
+    FreePins(&b->getters);
+    FreePins(&b->setters);
 
 #ifdef DEBUG
     memset(b, 0, sizeof(*b));

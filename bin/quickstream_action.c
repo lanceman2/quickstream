@@ -112,23 +112,6 @@ int ParameterSet(const char *blockName, const char *parameterName,
         }
             break;
 
-        case QsSize:
-        {
-            char *endptr = 0;
-            size_t val = strtoul(*values, &endptr, 10);
-            if(*values == endptr) {
-                fprintf(stderr, "--parameter-set %s %s %s\n"
-                        "  Failed to convert %s "
-                        "to unsigned long\n",
-                        blockName, parameterName,
-                            *values, *values);
-                return 1;
-            }
-            if(qsParameterSetValue(p, &val))
-                return 1; // error
-        }
-            break;
-
         case QsUint64:
         {
             char *endptr = 0;
@@ -147,7 +130,6 @@ int ParameterSet(const char *blockName, const char *parameterName,
         }
             break;
 
-        case QsFloat:
         case QsNone:
             ASSERT(0, "Write this code");
             break;
