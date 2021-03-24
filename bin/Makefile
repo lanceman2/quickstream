@@ -65,7 +65,7 @@ quickstreamBuilder_SOURCES :=\
  qsb_blockConnectorCBs.c
 
 quickstreamBuilder_CPPFLAGS := $(GTK_CFLAGS)
-quickstreamBuilder_LDFLAGS := $(quickstream_LDFLAGS) $(GTK_LDFLAGS) -lm
+quickstreamBuilder_LDFLAGS := $(quickstream_LDFLAGS) $(GTK_LDFLAGS) -lX11 -lm
 
 endif
 

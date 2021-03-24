@@ -102,6 +102,11 @@ Block_buttonPressCB(GtkWidget *ebox,
         GdkEventButton *e, struct Block *block) {
 
 
+    if(fromPin) {
+        XUngrabPointer(gdk_x11_display_get_xdisplay(
+                    gdk_display_get_default()), CurrentTime);
+        return FALSE;
+    }
 
     switch(e->button) {
 

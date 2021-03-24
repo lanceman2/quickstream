@@ -287,7 +287,6 @@ gboolean ConnectorPress_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c);
 
 
-
 // This, CONNECTOR_THICKNESS, is used in gtk_widget_set_size_request() for
 // some of the inner block widgets.  This is a toning parameter.  It is
 // the thickness of a connector widget, as they are like border that wrap

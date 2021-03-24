@@ -24,6 +24,10 @@
 
 
 
+//XUngrabPointer
+
+
+
 static inline void GetConnectionColor(enum ConnectorKind ckind,
         double *r, double *g, double *b, double *a) {
 
@@ -716,6 +720,13 @@ static void ShowPinBalloon(GtkWidget *draw, GdkEventButton *e,
 gboolean ConnectorMotion_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
 WARN();
+    if(!connectorsPopover && !(fromPin && fromPin->connector == c)) {
+        // GTK+3 does not keep the order of events in a sensible way.
+        // We sometimes get 2 enter events with no leave event.
+        connectorsPopover = &c->block->page->connectorsPopover;
+        gtk_widget_show(connectorsPopover->container);
+    }
+
     ShowPinBalloon(draw, e, c);
 
     return FALSE; // TRUE = eat event
@@ -729,11 +740,6 @@ gboolean ConnectorEnter_CB(GtkWidget *draw,
     DASSERT(c->numPins);
     DASSERT(draw == c->widget);
 WARN();
-    if(!connectorsPopover) {
-        // GTK+3 does not keep the order of events in a sensible way.
-        // We sometimes get 2 enter events with no leave event.
-        connectorsPopover = &c->block->page->connectorsPopover;
-    }
 
     if(movingBlock) {
         if(popoverShowing) {
@@ -743,9 +749,13 @@ WARN();
         return FALSE; // TRUE = eat event
     }
 
-
-    gtk_widget_show(connectorsPopover->container);
-    ShowPinBalloon(draw, e, c);
+    if(!connectorsPopover && !(fromPin && fromPin->connector == c)) {
+        // GTK+3 does not keep the order of events in a sensible way.
+        // We sometimes get 2 enter events with no leave event.
+        connectorsPopover = &c->block->page->connectorsPopover;
+        gtk_widget_show(connectorsPopover->container);
+        ShowPinBalloon(draw, e, c);
+    }
 
     return FALSE; // TRUE = eat event
 }
@@ -776,6 +786,7 @@ WARN();
 gboolean ConnectorRelease_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
 
+WARN("                     %s", c->block->block->name);
 
     if(fromPin) {
         StopDragingConnection(c->block->page);
@@ -854,12 +865,36 @@ ERROR();
             }
         }
 
+#if 0
+        // This is why GTK3+ sucks:  None of this will release the button
+        // press grab.  When you press a mouse button on a widget that
+        // widget with get the next release event, even when the mouse
+        // pointer is not on that widget at the time of the release
+        // event.
+        XUngrabPointer(gdk_x11_display_get_xdisplay(
+                    gdk_display_get_default()), CurrentTime);
+        gdk_x11_ungrab_server();
+        gtk_grab_remove(draw);
+        gtk_grab_remove(c->block->ebox);
+        gdk_x11_display_ungrab(gdk_display_get_default());
+#endif
+
+        // KLUDGE:
+        //
+        // Hiding the widget will release the "button press grab".
+        gtk_widget_hide(draw);
+        // We just used hide to release the "button press grab", so we
+        // need to show now.  It was not a big widget anyway, so it's not
+        // a big deal to hide and then show it.
+        gtk_widget_show(draw);
+
+
         StartDragingConnection(c->block->page);
 
         // Event goes to next parent widget so we can draw on the layout
         // as the mouse pointer moves.
 
-        return FALSE; // pass the event to the parent block widget.
+        return FALSE; // FALSE = pass the event to the parent block widget.
     }
 
 

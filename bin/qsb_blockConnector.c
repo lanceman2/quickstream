@@ -116,7 +116,7 @@ void MakeBlockConnector(GtkWidget *grid,
 
     GtkWidget *drawArea = gtk_drawing_area_new();
 
-    gtk_widget_set_can_focus(drawArea, TRUE);
+    //gtk_widget_set_can_focus(drawArea, FALSE);
     gtk_widget_add_events(drawArea,
             GDK_ENTER_NOTIFY_MASK|
             GDK_LEAVE_NOTIFY_MASK |

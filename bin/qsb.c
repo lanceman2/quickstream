@@ -370,6 +370,7 @@ static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
     // Because we only use one pointer/mouse we can't have a selection and
     // a connection being and move a block all at the same time.  TODO:
     // What happens if a user clicks two mouse buttons at the same time?
+    //
     // For now fuck it, I do not want to think about it; but at least see
     // it happen in DEBUG.
     DASSERT(!haveSelectBox || !fromPin || !movingBlock);
@@ -377,7 +378,7 @@ static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
 
     if(fromPin) {
         DrawConnectionDragLine(e, page);
-        return TRUE; // TRUE = eat the event
+        return FALSE; // TRUE = eat the event
     }
 
     if(haveSelectBox) {
@@ -441,8 +442,16 @@ void StopDragingConnection(struct Page *page) {
 static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
         GdkEventButton *e, struct Page *page) {
 
+    if(fromPin) {
+        XUngrabPointer(gdk_x11_display_get_xdisplay(
+                gdk_display_get_default()), CurrentTime);
+        return TRUE;
+    }
 
-    if(fromPin) return FALSE;
+    if(fromPin) {
+        gtk_grab_remove(GTK_WIDGET(layout));
+        return FALSE;
+    }
 
 
     if(e->type != GDK_BUTTON_PRESS) {
