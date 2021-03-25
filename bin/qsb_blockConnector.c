@@ -24,6 +24,7 @@
 
 
 
+
 struct SetPinParameterDesc_st {
 
     struct Connector *connector;

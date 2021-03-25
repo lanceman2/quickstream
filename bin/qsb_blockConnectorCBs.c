@@ -411,189 +411,74 @@ gboolean ConnectorDraw_CB(GtkWidget *widget,
 }
 
 
-#if 0
-// Here is the complete list of possible kinds of parameters connections:
+
+// x_root, y_root are the position of the mouse pointer in the root
+// window.   The only sure reference frame is the root window frame, all
+// other frames are not reliable, things move and event positions are
+// relative to the first widget that may be letting the event get passed
+// to a descendent widget.
 //
-//   1. Getter    to  Setter
-//   2. Constant  to  Setter
-//   3. Constant  to  Constant
+// TODO: Maybe most of this can be moved to the OrientConnectors functions.
 //
-static
-int CanConnectParametersCB(struct QsParameter *p,
-            enum QsParameterKind kind,
-            enum QsParameterType type,
-            size_t size,
-            const char *pName, struct QsParameter **connectTo) {
+static struct Pin *GetConnectorPinAndPosition(GtkWidget *draw, double x_root,
+        double y_root, struct Connector *c) {
 
-    DASSERT(p);
-    DASSERT(p->kind == kind);
-    DASSERT(p->type == type);
-    DASSERT(p->size == size);
-    DASSERT(*connectTo);
+    struct Pin *pin;
 
-    struct QsParameter *P = *connectTo;
+    // I can't believe this takes this many variables.
+    uint32_t pinNum;
+    double pos[2];
+    double layoutPos[2];
+    double p;
+    double delta;
+    double numPins = c->numPins;
+    GetWidgetRootXY(draw, pos, pos+1);
+    GetWidgetRootXY(c->block->page->layout, layoutPos, layoutPos+1);
+    double width = gtk_widget_get_allocated_width(draw);
+    double height = gtk_widget_get_allocated_height(draw);
 
-    DASSERT(P->type == type);
-    DASSERT(P->size == size);
-
-    if(kind == QsSetter && p->first)
-        // A setter cannot be connected more than once.
-        return 0;
-    if(P->kind == QsSetter && P->first)
-        // A setter cannot be connected more than once.
-        return 0;
-
-
-    if(
-        (P->kind == QsGetter   &&    kind == QsSetter) ||
-        (   kind == QsGetter   && P->kind == QsSetter) ||
-        (P->kind == QsConstant &&    kind == QsSetter) ||
-        (   kind == QsConstant && P->kind == QsSetter) ||
-        (P->kind == QsConstant &&    kind == QsConstant)) {
-        // We can connect these parameters?  We use *connectTo = 0
-        // as a flag that answers yes to that question.
-        *connectTo = 0;
-        return 1; // Stop calling the this function.
-    }
-
-    // else we cannot connect these parameters.
-    return 0;
-}
-
-
-// Return the Answer the Question: Is a Connection Possible?
-//
-// The from connector, "from", is already selected, but this is deciding
-// whither or not we can connect from "from" to connector "to".  If not
-// the user will not see it as an option.
-//
-static
-bool CheckConnectionPossible(struct Connector *from,
-        struct Connector *to) {
-
-    DASSERT(from);
-    DASSERT(to);
-
-    DASSERT(!from->block->block->isSuperBlock);
-    DASSERT(!to->block->block->isSuperBlock);
-
-
-    switch(from->kind) {
-        case Input:
-            if(to->kind != Output)
-                return false;
-            // Connecting from a Input to an Output.
-            //
-            // Since each output port may have any number of
-            // connections from input ports, we will show all output
-            // ports in the connector popup menu.
-            return true;
-        case Output:
-        {
-            if(to->kind != Input)
-                return false;
-            // Connecting from a Output to an Input.
-            //
-            // There must be an empty input port or we can't connect.
-            struct QsSimpleBlock *smB =
-                (struct QsSimpleBlock *) to->block->block;
-            if(smB->numInputs < smB->block.maxNumInputs)
-                // We are not using all possible input ports, so we go
-                // to the next step.
-                return true;
-            // But we could have unconnected port before the highest
-            // port, so we check for that now.
-            uint32_t i=smB->numInputs-1;
-            for(;i!=-1; --i)
-                if(!smB->inputs[i].block)
-                    // this input port i is not connected.
-                    return true;
-            if(i == -1)
-                // We searched all ports and all are in use.
-                return false;
-            // There is an input port not in use.
-            return true;
+    if(c->isHorizontal) {
+        // The connector is oriented horizontally; so the pin number
+        // depends on the x position of the pointer.
+        delta = x_root - pos[0];
+        p = numPins*delta/width;
+        if(p < 0.0) pinNum = 0;
+        else if(p >= numPins) pinNum = numPins - 1;
+        else pinNum = p;
+        pin = c->pins + pinNum;
+        pin->connector->x = pos[0] + (pinNum+0.5)*(width/numPins) -
+                layoutPos[0];
+        pin->connector->y = (pos[1] + height/2.0) - layoutPos[1];
+        if(pin->connector->isSouthWestOfBlock) {
+            pin->connector->dx = 0.0;
+            pin->connector->dy = 1.0;
+        } else {
+            pin->connector->dx = 0.0;
+            pin->connector->dy = -1.0;
         }
-        case Setter:
-        case Getter:
-        case Constant:
-        {
-            // Now we need to see if there are any parameters that
-            // this "from" blocks' parameter can connect to.
-            struct QsParameter *fromParameter = from->parameter;
-
-            qsParameterForEach(0, to->block->block,
-                QsAny/*kind*/,
-                from->parameter->type,
-                from->parameter->size,
-                0/*name 0=any*/,
-                (int (*)(struct QsParameter *p,
-                    enum QsParameterKind kind,
-                    enum QsParameterType type,
-                    size_t size,
-                    const char *pName, void *))
-                    CanConnectParametersCB/*callback*/,
-                    &fromParameter/*userData*/, 0/*flags*/);
-            return fromParameter?false:true;
+    } else {
+        // The connector is oriented vertically, so the pin number depends
+        // on the y position of the pointer.
+        delta = y_root - pos[1];
+        p = numPins*delta/height;
+        if(p < 0.0) pinNum = 0;
+        else if(p >= numPins) pinNum = numPins - 1;
+        else pinNum = p;
+        pin = c->pins + pinNum;
+        pin->connector->x = pos[0] + width/2.0 - layoutPos[0];
+        pin->connector->y = pos[1] + (pinNum + 0.5)*(height/numPins) -
+                layoutPos[1];
+        if(pin->connector->isSouthWestOfBlock) {
+            pin->connector->dx = 1.0;
+            pin->connector->dy = 0.0;
+        } else {
+            pin->connector->dx = -1.0;
+            pin->connector->dy = 0.0;
         }
     }
 
-    DASSERT(0, "We should not get here");
-    return true;
+    return pin;
 }
-
-
-// This just answers the question: Is a connection possible "from" this
-// connector?  We do not know the other, "to", connector yet.
-//
-// TODO: This does not bother looking at all the other blocks, to make
-// sure that there is a compatible "to" connector available.  Doing so
-// may make the user interface a little confusing.
-bool
-CheckConnectionFromPossible(struct Connector *c) {
-
-    struct QsBlock *b = c->block->block;
-    ASSERT(!b->isSuperBlock);
-    struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
-
-    switch(c->kind) {
-        case Input:
-        {
-            // Inputs can only be connected to once, so if there
-            // is an unused input port available, then we may be
-            // able to connect to it.
-            //
-            for(uint32_t i = b->maxNumInputs; i != -1; --i) {
-                if(i >= smB->numInputs)
-                    // There is an unused input port possible.
-                    return true;
-                if(smB->inputs[i].block == 0)
-                    // There is an unused input port possible.
-                    return true;
-                // This input port, i, is in use.
-            }
-        }
-        break;
-        case Output:
-        {
-            // MORE CODE HERE...
-            return false;
-        }
-        break;
-        case Getter:
-        case Setter:
-        case Constant:
-        {
-            // MORE CODE HERE...
-            return false;
-        }
-        break;
-    }
-
-    ASSERT(0, "We should not get here");
-    return false;
-}
-#endif
 
 
 // When fromPin is set we are dragging a connection line from that
@@ -626,9 +511,9 @@ static void ShowPinBalloon(GtkWidget *draw, GdkEventButton *e,
     }
 
     if(fromPin && fromPin->connector == c)
-        // We have a selected pin in this connector, so we leave the
-        // popover alone.  Changing the popover text now would be
-        // miss-leading.
+        // We have a selected pin in this connector and we are still
+        // there.  We leave the popover alone.  Changing the popover text
+        // now would be miss-leading.
         return;
 
 
@@ -729,7 +614,7 @@ WARN();
 
     ShowPinBalloon(draw, e, c);
 
-    return FALSE; // TRUE = eat event
+    return FALSE; // False = do not eat event the layout may need it next.
 }
 
 
@@ -756,6 +641,16 @@ WARN();
         gtk_widget_show(connectorsPopover->container);
         ShowPinBalloon(draw, e, c);
     }
+
+    if(fromPin)
+        // We are dragging a connection.
+        if(c->block != fromPin->connector->block) {
+
+
+
+
+        }
+
 
     return FALSE; // TRUE = eat event
 }
@@ -810,60 +705,8 @@ ERROR();
     ASSERT(c->block->block->isSuperBlock == 0, "Write this code");
 
     if(e->button == CONNECT_BUTTON) {
-
-        // If we clicked on a block and got to here, then the making of a
-        // connection was aborted by the user, as we define it.  I can't
-        // believe this takes this many variables.
-        uint32_t pinNum;
-        double pos[2];
-        double layoutPos[2];
-        double p;
-        double delta;
-        double numPins = c->numPins;
-        GetWidgetRootXY(draw, pos, pos+1);
-        GetWidgetRootXY(c->block->page->layout, layoutPos, layoutPos+1);
-        double width = gtk_widget_get_allocated_width(draw);
-        double height = gtk_widget_get_allocated_height(draw);
-
-        if(c->isHorizontal) {
-            // The connector is oriented horizontally; so the pin number
-            // depends on the x position of the pointer.
-            delta = e->x_root - pos[0];
-            p = numPins*delta/width;
-            if(p < 0.0) pinNum = 0;
-            else if(p >= numPins) pinNum = numPins - 1;
-            else pinNum = p;
-            fromPin = c->pins + pinNum;
-            fromPin->connector->x = pos[0] + (pinNum+0.5)*(width/numPins) -
-                    layoutPos[0];
-            fromPin->connector->y = (pos[1] + height/2.0) - layoutPos[1];
-            if(fromPin->connector->isSouthWestOfBlock) {
-                fromPin->connector->dx = 0.0;
-                fromPin->connector->dy = 1.0;
-            } else {
-                fromPin->connector->dx = 0.0;
-                fromPin->connector->dy = -1.0;
-            }
-        } else {
-            // The connector is oriented vertically, so the pin number depends
-            // on the y position of the pointer.
-            delta = e->y_root - pos[1];
-            p = numPins*delta/height;
-            if(p < 0.0) pinNum = 0;
-            else if(p >= numPins) pinNum = numPins - 1;
-            else pinNum = p;
-            fromPin = c->pins + pinNum;
-            fromPin->connector->x = pos[0] + width/2.0 - layoutPos[0];
-            fromPin->connector->y = pos[1] + (pinNum + 0.5)*(height/numPins) -
-                    layoutPos[1];
-            if(fromPin->connector->isSouthWestOfBlock) {
-                fromPin->connector->dx = 1.0;
-                fromPin->connector->dy = 0.0;
-            } else {
-                fromPin->connector->dx = -1.0;
-                fromPin->connector->dy = 0.0;
-            }
-        }
+        fromPin = GetConnectorPinAndPosition(draw,
+                e->x_root, e->y_root, c);
 
 #if 0
         // This is why GTK3+ sucks:  None of this will release the button
@@ -885,7 +728,8 @@ ERROR();
         gtk_widget_hide(draw);
         // We just used hide to release the "button press grab", so we
         // need to show now.  It was not a big widget anyway, so it's not
-        // a big deal to hide and then show it.
+        // a big deal to hide and then show it immediately after.  It's
+        // not likely that it will blink visibly.
         gtk_widget_show(draw);
 
 

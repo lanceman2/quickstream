@@ -442,16 +442,9 @@ void StopDragingConnection(struct Page *page) {
 static gboolean WorkArea_buttonPressCB(GtkLayout *layout,
         GdkEventButton *e, struct Page *page) {
 
-    if(fromPin) {
-        XUngrabPointer(gdk_x11_display_get_xdisplay(
-                gdk_display_get_default()), CurrentTime);
+    if(fromPin)
+        // TRUE eat it.
         return TRUE;
-    }
-
-    if(fromPin) {
-        gtk_grab_remove(GTK_WIDGET(layout));
-        return FALSE;
-    }
 
 
     if(e->type != GDK_BUTTON_PRESS) {

@@ -117,6 +117,9 @@ struct Connector {
 
     // When the fromPin is selected we have a mouse button pressed and the
     // user is dragging/drawing a line from it.
+    //
+    // x, y, dx, dy are for connection line drawing.
+    //
     //uint32_t selectedPin;
     //
     double x, y; // point to draw the line from for the connection.
@@ -147,6 +150,7 @@ struct Block {
     GtkWidget *nameLabel; // block name label widget.
     struct Page *page; // tab page that has this block in it.
     struct QsBlock *block;
+    // All blocks have 5 connectors, by they active or not.
     struct Connector constants, getters, setters, input, output;
     struct Block *next; // for singly linked list of blocks in page.
     double x, y; // current position in layout widget.
@@ -156,14 +160,17 @@ struct Block {
 };
 
 
-
+// We only have one stream graph.
 extern
 struct QsGraph *graph;
 
 
+// Current selected note book tab that is being acted on.
 extern GtkNotebook *noteBook;
 
 
+// More than one block can be moved at a time, so take care in using this
+// variable.
 extern
 struct Block *movingBlock;
 
@@ -172,9 +179,19 @@ struct Block *movingBlock;
 // For connections in the process of being made.
 extern
 struct Pin *fromPin;
+// As the user moves the pointer over possible "to" connection pins in
+// a connector that is in a different connector from the fromPin
+// connector.  This only gets set is the fromPin is compatible with the
+// toPin.  When the connection is made the fromPin and toPin are reset to
+// 0.  The graph keep the record of connections between blocks.
+extern
+struct Pin *toPin;
 
+
+// The block that the popup menu is changing now.
 extern
 struct Block *popupBlock;
+
 
 extern
 void InitCSS(void);
@@ -285,6 +302,11 @@ gboolean ConnectorRelease_CB(GtkWidget *draw,
 extern
 gboolean ConnectorPress_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c);
+
+
+
+extern
+bool CanConnectFromPin(struct Pin *pin);
 
 
 // This, CONNECTOR_THICKNESS, is used in gtk_widget_set_size_request() for
