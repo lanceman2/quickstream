@@ -477,7 +477,10 @@ static struct Pin *GetConnectorPinAndPosition(GtkWidget *draw, double x_root,
         }
     }
 
-    return pin;
+    if(CanConnectFromPin(pin))
+        return pin;
+
+    return 0;
 }
 
 
@@ -614,7 +617,7 @@ WARN();
 
     ShowPinBalloon(draw, e, c);
 
-    return FALSE; // False = do not eat event the layout may need it next.
+    return TRUE; // False = do not eat event the layout may need it next.
 }
 
 
@@ -707,6 +710,11 @@ ERROR();
     if(e->button == CONNECT_BUTTON) {
         fromPin = GetConnectorPinAndPosition(draw,
                 e->x_root, e->y_root, c);
+
+        if(!fromPin)
+            // Some pins made not be able to be connected from, like an
+            // input port that is already connected.
+            return TRUE;
 
 #if 0
         // This is why GTK3+ sucks:  None of this will release the button
