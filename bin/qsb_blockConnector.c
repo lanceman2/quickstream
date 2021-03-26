@@ -23,6 +23,116 @@
 #include "qsb.h"
 
 
+// Draw a connection line on the page->oldLines surface.
+//
+// Queuing the draw event can be done later, so we can loop over all
+// connections and call this.
+void DrawConnection(struct Page *page,
+        struct Pin *pin1, struct Pin *pin2) {
+
+/////// LEFT OFF HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+
+}
+
+
+void DrawAllConnections(struct Page *page) {
+
+
+    if(!graph) return;
+
+
+
+
+}
+
+
+// x_root, y_root are the position of the mouse pointer in the root
+// window.   The only sure reference frame is the root window frame, all
+// other frames are not reliable, things move and event positions are
+// relative to the first widget that may be letting the event get passed
+// to a descendent widget.
+//
+// This will be used to set either the "from" pin or the "to" pin.  The
+// "from" pin is just the first pin to be selected.  When the "to" pin is
+// being selected the "from" pin must be already set.
+//
+struct Pin *GetConnectorPinAndPosition(GtkWidget *draw, double x_root,
+        double y_root, struct Connector *c) {
+
+    struct Pin *pin;
+
+    // I can't believe this takes this many variables.
+    uint32_t pinNum;
+    double pos[2];
+    double layoutPos[2];
+    double p;
+    double delta;
+    double numPins = c->numPins;
+    GetWidgetRootXY(draw, pos, pos+1);
+    GetWidgetRootXY(c->block->page->layout, layoutPos, layoutPos+1);
+    double width = gtk_widget_get_allocated_width(draw);
+    double height = gtk_widget_get_allocated_height(draw);
+
+    if(c->isHorizontal) {
+        // The connector is oriented horizontally; so the pin number
+        // depends on the x position of the pointer.
+        delta = x_root - pos[0];
+        p = numPins*delta/width;
+        if(p < 0.0) pinNum = 0;
+        else if(p >= numPins) pinNum = numPins - 1;
+        else pinNum = p;
+        pin = c->pins + pinNum;
+        pin->connector->x = pos[0] + (pinNum+0.5)*(width/numPins) -
+                layoutPos[0];
+        pin->connector->y = (pos[1] + height/2.0) - layoutPos[1];
+        if(pin->connector->isSouthWestOfBlock) {
+            pin->connector->dx = 0.0;
+            pin->connector->dy = 1.0;
+        } else {
+            pin->connector->dx = 0.0;
+            pin->connector->dy = -1.0;
+        }
+    } else {
+        // The connector is oriented vertically, so the pin number depends
+        // on the y position of the pointer.
+        delta = y_root - pos[1];
+        p = numPins*delta/height;
+        if(p < 0.0) pinNum = 0;
+        else if(p >= numPins) pinNum = numPins - 1;
+        else pinNum = p;
+        pin = c->pins + pinNum;
+        pin->connector->x = pos[0] + width/2.0 - layoutPos[0];
+        pin->connector->y = pos[1] + (pinNum + 0.5)*(height/numPins) -
+                layoutPos[1];
+        if(pin->connector->isSouthWestOfBlock) {
+            pin->connector->dx = 1.0;
+            pin->connector->dy = 0.0;
+        } else {
+            pin->connector->dx = -1.0;
+            pin->connector->dy = 0.0;
+        }
+    }
+
+    if(!CanConnectFromPin(pin))
+        // It could be trying to get either the fromPin or the toPin, it
+        // does not matter, it's not a pin that we can connect to.
+        return 0;
+    if(!fromPin) {
+        DASSERT(!toPin);
+        // This is returning the fromPin
+        return pin;
+    }
+
+    DASSERT(fromPin);
+
+    // Okay.  This is returning the toPin; but we need to check that the
+    // fromPin and this (toPin) pin are compatible.
+
+    if(CanConnect2Pins(fromPin, pin))
+        return pin;
+
+    return 0; // not a valid pin to pin connection.
+}
 
 
 struct SetPinParameterDesc_st {

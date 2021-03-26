@@ -307,7 +307,22 @@ gboolean ConnectorPress_CB(GtkWidget *draw,
 
 extern
 bool CanConnectFromPin(struct Pin *pin);
+extern
+bool CanConnect2Pins(struct Pin *pin1, struct Pin *pin2);
+extern
+void Connect2Pins(struct Pin *pin1, struct Pin *pin2);
 
+
+extern
+void DrawAllConnections(struct Page *page);
+extern
+void DrawConnection(struct Page *page,
+        struct Pin *pin1, struct Pin *pin2);
+
+
+extern
+struct Pin *GetConnectorPinAndPosition(GtkWidget *draw, double x_root,
+        double y_root, struct Connector *c);
 
 // This, CONNECTOR_THICKNESS, is used in gtk_widget_set_size_request() for
 // some of the inner block widgets.  This is a toning parameter.  It is

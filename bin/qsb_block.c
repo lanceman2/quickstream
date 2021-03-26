@@ -39,6 +39,15 @@ struct Block *popupBlock = 0;
 // current "FROM" connector and pin that we started making a connection
 // at. 
 struct Pin *fromPin = 0;
+//
+// It turns out that finding the "to" pin is not the final step in
+// creating a connection between two pins.   The "to" pin can be changed
+// so long as the mouse button is pressed (or whatever mode we use).  If
+// we have a "to" pin set at the time of a mouse button release event at
+// that pin than we'll make the connection into the quickstream graph and
+// zero the tentative fromPin and toPin.
+struct Pin *toPin = 0;
+
 
 
 

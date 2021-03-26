@@ -135,6 +135,9 @@ GetLayoutSurfaces(struct Page *page, GtkWidget *widget) {
     page->oldLines =
         MakeNewLayoutSurface(widget, page->oldLines, w, h);
 
+    // Draw all the existing connections onto the page->oldLines.
+    DrawAllConnections(page);
+
     return true;
 }
 
@@ -301,24 +304,60 @@ DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
     GetLayoutSurfaces(page, layout);
     DASSERT(page->newDrawSurface);
 
+    // x0, y0, x1, y1, x2, y2, x3, x3 will be the drawing control points.
+
+    // starting point
+    double x0 = fromPin->connector->x;
+    double y0 = fromPin->connector->y;
+    // 2nd point
+    double x1, y1;
+    // 3rd point
+    double x2, y2;
     // Draw the current connection line that the user is currently
     // dragging.  Call this block of code: DrawDragLine.
     double x3, y3; // Will be the mouse pointer point in the layout.
-    GtkAllocation alloc;
-    gtk_widget_get_allocation(layout, &alloc);
-    GetWidgetRootXY(layout, &x3, &y3);
 
-    if(e) {
-        x3 = e->x_root - x3;
-        y3 = e->y_root - y3;
+    double dr = 0.0;
+
+    if(toPin) {
+
+        x3 = toPin->connector->x;   
+        y3 = toPin->connector->y;   
+
     } else {
-        double px, py;
-        GetPointer(&px, &py);
-        x3 = px - x3;
-        y3 = py - y3;
+        GetWidgetRootXY(layout, &x3, &y3);
+        if(e) {
+            x3 = e->x_root - x3;
+            y3 = e->y_root - y3;
+        } else {
+            double px, py;
+            GetPointer(&px, &py);
+            x3 = px - x3;
+            y3 = py - y3;
+        }
+        // We mash the end 2 control points of the cubic Bézier spline
+        // together.
+        x2 = x3;
+        y2 = y3;
+        // Now x3, y3 is the mouse pointer point in the layout.
     }
-    // Now x3, y3 is the mouse pointer point in the layout.
+    // Now x3, y3 is what will be the end point.
 
+    // TODO: this functional dependence (dr) is not quite right.
+    //
+    // distance to from the "from" pin to the other end (pointer or pin).
+    dr = sqrt((x0-x3)*(x0-x3) + (y0-y3)*(y0-y3));
+    if(dr > 3.0*CONNECTOR_THICKNESS)
+        dr = 3.0*CONNECTOR_THICKNESS;
+    x1 = x0 + dr*fromPin->connector->dx;
+    y1 = y0 + dr*fromPin->connector->dy;
+    if(toPin) {
+        // We do not mash the end 2 control points of the cubic Bézier
+        // spline together in this case, because we have a prospective pin
+        // to connect to, toPin.
+        x2 = x3 + dr*toPin->connector->dx;
+        y2 = y3 + dr*toPin->connector->dy;
+    }
 
     // draw onto page->newDrawSurface
     cairo_t *cr = cairo_create(page->newDrawSurface);
@@ -335,20 +374,8 @@ DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
 
     cairo_set_source_rgba(cr, r, g, b, a);
     cairo_set_line_width(cr, lineWidth);
-
-    // starting point
-    double x0 = fromPin->connector->x, y0 = fromPin->connector->y;
-    // 2nd point
-    double x1, y1;
-    // distance to from the pin to the mouse pointer.
-    double dr = CONNECTOR_THICKNESS + sqrt((x0-x3)*(x0-x3) + (y0-y3)*(y0-y3));
-    if(dr > 4.0*CONNECTOR_THICKNESS)
-        dr = 4.0*CONNECTOR_THICKNESS;
-    x1 = x0 + dr*fromPin->connector->dx;
-    y1 = y0 + dr*fromPin->connector->dy;
-
     cairo_move_to(cr, x0, y0);
-    cairo_curve_to(cr, x1, y1, x3, y3, x3, y3);
+    cairo_curve_to(cr, x1, y1, x2, y2, x3, y3);
     cairo_stroke(cr);
     cairo_destroy(cr);
 
@@ -436,6 +463,7 @@ void StopDragingConnection(struct Page *page) {
 
     // We no longer have a connection being made by the user.
     fromPin = 0;
+    toPin = 0;
 }
 
 

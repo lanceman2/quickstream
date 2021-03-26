@@ -24,9 +24,6 @@
 
 
 
-//XUngrabPointer
-
-
 
 static inline void GetConnectionColor(enum ConnectorKind ckind,
         double *r, double *g, double *b, double *a) {
@@ -411,79 +408,6 @@ gboolean ConnectorDraw_CB(GtkWidget *widget,
 }
 
 
-
-// x_root, y_root are the position of the mouse pointer in the root
-// window.   The only sure reference frame is the root window frame, all
-// other frames are not reliable, things move and event positions are
-// relative to the first widget that may be letting the event get passed
-// to a descendent widget.
-//
-// TODO: Maybe most of this can be moved to the OrientConnectors functions.
-//
-static struct Pin *GetConnectorPinAndPosition(GtkWidget *draw, double x_root,
-        double y_root, struct Connector *c) {
-
-    struct Pin *pin;
-
-    // I can't believe this takes this many variables.
-    uint32_t pinNum;
-    double pos[2];
-    double layoutPos[2];
-    double p;
-    double delta;
-    double numPins = c->numPins;
-    GetWidgetRootXY(draw, pos, pos+1);
-    GetWidgetRootXY(c->block->page->layout, layoutPos, layoutPos+1);
-    double width = gtk_widget_get_allocated_width(draw);
-    double height = gtk_widget_get_allocated_height(draw);
-
-    if(c->isHorizontal) {
-        // The connector is oriented horizontally; so the pin number
-        // depends on the x position of the pointer.
-        delta = x_root - pos[0];
-        p = numPins*delta/width;
-        if(p < 0.0) pinNum = 0;
-        else if(p >= numPins) pinNum = numPins - 1;
-        else pinNum = p;
-        pin = c->pins + pinNum;
-        pin->connector->x = pos[0] + (pinNum+0.5)*(width/numPins) -
-                layoutPos[0];
-        pin->connector->y = (pos[1] + height/2.0) - layoutPos[1];
-        if(pin->connector->isSouthWestOfBlock) {
-            pin->connector->dx = 0.0;
-            pin->connector->dy = 1.0;
-        } else {
-            pin->connector->dx = 0.0;
-            pin->connector->dy = -1.0;
-        }
-    } else {
-        // The connector is oriented vertically, so the pin number depends
-        // on the y position of the pointer.
-        delta = y_root - pos[1];
-        p = numPins*delta/height;
-        if(p < 0.0) pinNum = 0;
-        else if(p >= numPins) pinNum = numPins - 1;
-        else pinNum = p;
-        pin = c->pins + pinNum;
-        pin->connector->x = pos[0] + width/2.0 - layoutPos[0];
-        pin->connector->y = pos[1] + (pinNum + 0.5)*(height/numPins) -
-                layoutPos[1];
-        if(pin->connector->isSouthWestOfBlock) {
-            pin->connector->dx = 1.0;
-            pin->connector->dy = 0.0;
-        } else {
-            pin->connector->dx = -1.0;
-            pin->connector->dy = 0.0;
-        }
-    }
-
-    if(CanConnectFromPin(pin))
-        return pin;
-
-    return 0;
-}
-
-
 // When fromPin is set we are dragging a connection line from that
 // connector pin.
 
@@ -604,7 +528,6 @@ static void ShowPinBalloon(GtkWidget *draw, GdkEventButton *e,
 }
 
 
-
 gboolean ConnectorMotion_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
 WARN();
@@ -617,7 +540,14 @@ WARN();
 
     ShowPinBalloon(draw, e, c);
 
-    return TRUE; // False = do not eat event the layout may need it next.
+    if(fromPin)
+        // We are dragging a connection.
+        if(c->block != fromPin->connector->block) {
+            toPin = 0;
+            toPin = GetConnectorPinAndPosition(draw, e->x_root, e->y_root, c);
+        }
+
+    return FALSE; // False = do not eat event the layout may need it next.
 }
 
 
@@ -648,14 +578,13 @@ WARN();
     if(fromPin)
         // We are dragging a connection.
         if(c->block != fromPin->connector->block) {
-
-
-
-
+            toPin = 0;
+            toPin = GetConnectorPinAndPosition(draw, e->x_root, e->y_root, c);
         }
 
-
-    return FALSE; // TRUE = eat event
+    return FALSE; // FALSE = let event go to next widget.
+    // The layout widget needs to know where to draw a connection drag
+    // line.
 }
 
 
@@ -667,6 +596,8 @@ gboolean ConnectorLeave_CB(GtkWidget *draw,
     DASSERT(draw == c->widget);
     //DASSERT(connectorsPopover);
 WARN();
+
+    if(toPin) toPin = 0;
 
     if(connectorsPopover) {
 
@@ -686,9 +617,12 @@ gboolean ConnectorRelease_CB(GtkWidget *draw,
 
 WARN("                     %s", c->block->block->name);
 
-    if(fromPin) {
+
+    if(fromPin && toPin && CanConnect2Pins(fromPin, toPin))
+        Connect2Pins(fromPin, toPin);
+
+    if(fromPin)
         StopDragingConnection(c->block->page);
-    }
 
     DASSERT(draw == c->widget);
     return FALSE; // TRUE = eat event
@@ -708,11 +642,16 @@ ERROR();
     ASSERT(c->block->block->isSuperBlock == 0, "Write this code");
 
     if(e->button == CONNECT_BUTTON) {
+        DASSERT(toPin == 0);
+        // We use GetConnectorPinAndPosition() to get the fromPin and the
+        // toPin.  We need let it know that we are getting a new fromPin,
+        // so we initialize fromPin to 0.
+        fromPin = 0;
         fromPin = GetConnectorPinAndPosition(draw,
                 e->x_root, e->y_root, c);
 
         if(!fromPin)
-            // Some pins made not be able to be connected from, like an
+            // Some pins may not be able to be connected from, like an
             // input port that is already connected.
             return TRUE;
 
