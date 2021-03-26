@@ -40,18 +40,24 @@ bool CanConnectFromPin(struct Pin *pin) {
                 return false;
             // else it's in the inputs[] array with no connection yet.
             return true;
-
         case Output:
             // Outputs can have any amount of connections.
             return true;
-
-    // MORE CODE HERE
-        case Constant:
         case Setter:
+            DASSERT(pin->parameter);
+            DASSERT(pin->parameter->kind == QsSetter);
+            if(pin->parameter->first)
+                // This setter parameter already has a connection to it.
+                // Setters can only have one connection to them.
+                return false;
+            return true;
+        case Constant:
         case Getter:
+            // No connection restriction yet.
             return true;
     }
-    ASSERT(0, "We should not get here");
+
+    DASSERT(0, "We should not get here");
     return false;
 }
 
@@ -75,21 +81,40 @@ bool CanConnect2Pins(struct Pin *pin1, struct Pin *pin2) {
     switch(c1->kind) {
         case Input:
         case Output:
-            if((c1->kind == Input && c2->kind == Output &&
-                    CanConnectFromPin(pin1)) ||
-                    (c2->kind == Input && c1->kind == Output &&
-                     CanConnectFromPin(pin2))) {
+            if((c1->kind == Input && c2->kind == Output) ||
+                    (c2->kind == Input && c1->kind == Output))
                 return true;
-            } else {
-                return false;
-            }
-        case Constant:
+            return false;
         case Setter:
+            DASSERT(!pin1->parameter->first);
+            if(c2->kind != Getter && c2->kind != Constant)
+                return false;
+            return true;
+        case Constant:
+            if(c2->kind != Setter && c2->kind != Constant)
+                return false;
+            // c1 can connect to a setter or another constant so long as
+            // it is not connected to it already.
+            if(pin1->parameter->first && pin2->parameter->first &&
+                pin1->parameter->first == pin2->parameter->first)
+                // These parameters share the same connection list,
+                // therefore they are already connected.
+                return false;
+            return true;
         case Getter:
-
-            break;
+            // Getters only connect to setters.
+            if(c2->kind == Setter) {
+                if(pin1->parameter->first && pin2->parameter->first &&
+                        pin1->parameter->first == pin2->parameter->first)
+                    // These parameters share the same connection list,
+                    // therefore they are already connected.
+                    return false;
+                return true;
+            }
+            return false;
     }
 
+    DASSERT(0, "We should not get here");
     return false;
 }
 
@@ -101,10 +126,7 @@ bool CanConnect2Pins(struct Pin *pin1, struct Pin *pin2) {
 //
 void Connect2Pins(struct Pin *pin1, struct Pin *pin2) {
 
-    // It should have been verified that we can connect from the "from"
-    // pin, irregardless of what the "to" pin is.
-    DASSERT(CanConnectFromPin(pin1));
-    DASSERT(CanConnectFromPin(pin2));
+    // It should have been verified already.
     DASSERT(CanConnect2Pins(pin1, pin2));
 
     struct Connector *c1 = pin1->connector;
@@ -116,8 +138,10 @@ void Connect2Pins(struct Pin *pin1, struct Pin *pin2) {
         case Output:
             // We already checked that the input port is not occupied and
             // that the other port is an output.
-            qsBlockConnect(c1->block->block, c2->block->block,
-                    pin1->portNum, pin2->portNum);
+            ASSERT(qsBlockConnect(c1->block->block, c2->block->block,
+                    pin1->portNum, pin2->portNum) == 0);
+            // Now we keep a record in this non-libquickstream code, so
+            // we do not need to search for the output ports later.
             if(c1->kind == Input) {
                 DASSERT(c2->kind == Output);
                 DASSERT(!c1->block->inputConnections[pin1->portNum]);
@@ -131,6 +155,8 @@ void Connect2Pins(struct Pin *pin1, struct Pin *pin2) {
         case Constant:
         case Setter:
         case Getter:
+            ASSERT(qsParameterConnect(pin1->parameter, pin2->parameter)
+                    == 0);
             break;
     }
 

@@ -199,6 +199,7 @@ void DisconnectSetterParameter(struct QsParameter *p) {
         return;
     }
 
+
     // A Setter will never be first in the connection list, so we
     // just need to reinitialize it.
     //
@@ -546,6 +547,9 @@ AddParameterConnections(struct QsParameter *p1, struct QsParameter *p2) {
 
     // Merge list1 with list2.
 
+    DASSERT(p1 != p2);
+    DASSERT(!p1->first || !p2->first || p1->first != p2->first);
+
     if(!p1->first) {
         // list 1 empty.  First add itself.
         p1->first = p1;
@@ -561,40 +565,40 @@ AddParameterConnections(struct QsParameter *p1, struct QsParameter *p2) {
         p2->numConnections = 1;
     }
 
-    // Make sure that they are not connected already.  If they are, the 2
-    // lists should be the same; that's just how we define it to be.
-    if(p1->first == p2->first) {
-        DASSERT(p1->first->next);
-        DASSERT(p1->numConnections == p2->numConnections);
-        // They are already connected and that's it.
-        return;
-    }
-
     // They are not connected yet.  So none of the parameters should be in
     // common between the 2 groups, so we just need to connect the two
-    // lists.  And make all of list 2 first be list 1.
+    // lists.  And make all of list 2 be list 1, with list 2 appended.
     struct QsParameter *i;
     uint32_t numConnections = p1->numConnections + p2->numConnections;
     DASSERT(numConnections >= 2);
     DASSERT(p1->first == p1);
+
     for(i = p1->first; i->next; i = i->next) {
         DASSERT(i->first == p1);
         i->numConnections = numConnections;
+        DASSERT(p1->kind != QsConstant || i->value == i->next->value);
     }
     DASSERT(i->first == p1);
     i->numConnections = numConnections;
-    // i->next ==0 and now connection them
+    // i->next ==0 and now connect them
     i->next = p2->first;
-    for(i = i->next; i; i = i->next) {
+    i = i->next;
+
+    DASSERT(i->value);
+
+    if(p1->kind == QsConstant) {
+        // The old list 2 should have been sharing the value.
+        DASSERT(!i->next || i->value == i->next->value);
+#ifdef DEBUG
+        memset(i->value, 0, i->size);
+#endif
+        free(i->value);
+    }
+    for(; i; i = i->next) {
         i->first = p1;
         i->numConnections = numConnections;
         if(p1->kind == QsConstant) {
             // Make the value be shared with p1
-            DASSERT(i->value);
-#ifdef DEBUG
-            memset(i->value, 0, i->size);
-#endif
-            free(i->value);
             i->value = p1->value;
         }
     }
@@ -691,6 +695,16 @@ int qsParameterConnect(struct QsParameter *p0,
     DASSERT(p0->name);
     DASSERT(p1->name);
 
+
+    if(p0->kind == QsSetter) {
+        // We'll switch the two parameters keeping the to parameter, p1,
+        // as a setter.  If they are both setters than that is an error
+        // case that we'll find below.  It could confuse things, but it
+        // will reduce the number of checks needed below.
+        struct QsParameter *p = p0;
+        p0 = p1;
+        p1 = p;
+    }
 
     // We can connect certain kinds of parameters from and to each other.
     // Here is the complete list of possible kinds of connections:

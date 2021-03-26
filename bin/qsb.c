@@ -233,7 +233,8 @@ static void MoveSelectedBlocks(struct Page *page, double dx, double dy) {
 
     double dxy[2] = { dx, dy };
     g_tree_foreach(page->selectedBlocks, (GTraverseFunc) MoveBlockCB, dxy);
-    ClearAndDrawAllConnections(page);
+    page->redrawOldLines = true;
+    //ClearAndDrawAllConnections(page);
 }
 
 

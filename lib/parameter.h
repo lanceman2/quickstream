@@ -152,17 +152,6 @@ struct QsSetter {
     // Flag that says we have a value loaded and it has not been read yet
     // and the trigger is queued.
     bool haveValueQueued;
-
-    // Set if the parameter can be used (setCallback called) any time,
-    // otherwise the parameter setCallback is only called at flow-time.
-    //
-    // Note: In order for a setter to be connected to a constant parameter
-    // this flag must be set, and then setCallback will not be called at
-    // flow-time.
-    //
-    // This is a block writer user option.
-    //
-    //bool callbackWhilePaused;
 };
 
 

@@ -263,6 +263,7 @@ int SetPinParameterDesc(struct QsParameter *p,
     DASSERT(st->connector);
     DASSERT(st->pinIndex < st->connector->numPins);
     DASSERT(st->preName);
+    DASSERT(p);
 
     struct Pin *pin = st->connector->pins + st->pinIndex;
     // Next call gets the next index in the connector->pins array.

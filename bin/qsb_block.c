@@ -222,18 +222,6 @@ static void RemovePopupBlockCB(GtkWidget *widget, gpointer data) {
 }
 
 
-#if 0
-static
-gboolean Block_drawCB(GtkWidget *widget, cairo_t *cr,
-        struct Block *block) {
-
-
-ERROR();
-    return FALSE;
-}
-#endif
-
-
 // The top GTK widget of a block is a gtk_event_box.
 //
 // Return widget if the block is successfully added, else return 0.
@@ -376,8 +364,6 @@ struct Block *AddBlock(struct Page *page,
             G_CALLBACK(Block_buttonReleaseCB), b/*userData*/);
         g_signal_connect(GTK_WIDGET(ebox), "motion-notify-event",
             G_CALLBACK(Block_mouseMotionCB), b/*userData*/);
-        //g_signal_connect(GTK_WIDGET(ebox), "draw",
-        //    G_CALLBACK(Block_drawCB), b/*userData*/);
 
         // Attach the connectors to the grid with, geo, orientations
         // given by the default that we define here as:
