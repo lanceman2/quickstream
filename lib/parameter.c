@@ -571,14 +571,11 @@ AddParameterConnections(struct QsParameter *p1, struct QsParameter *p2) {
     struct QsParameter *i;
     uint32_t numConnections = p1->numConnections + p2->numConnections;
     DASSERT(numConnections >= 2);
-    DASSERT(p1->first == p1);
 
     for(i = p1->first; i->next; i = i->next) {
-        DASSERT(i->first == p1);
         i->numConnections = numConnections;
         DASSERT(p1->kind != QsConstant || i->value == i->next->value);
     }
-    DASSERT(i->first == p1);
     i->numConnections = numConnections;
     // i->next ==0 and now connect them
     i->next = p2->first;
