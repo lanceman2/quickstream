@@ -79,7 +79,7 @@ Block_buttonReleaseCB(GtkWidget *ebox,
 
 
 static gboolean
-Block_buttonMotionCB(GtkWidget *ebox,
+Block_mouseMotionCB(GtkWidget *ebox,
         GdkEventButton *e, struct Block *block) {
 
     // The moving of the block is done in the layout event catchers in
@@ -198,6 +198,16 @@ static void DestroyBlock(struct Block *b) {
     FreePins(&b->getters);
     FreePins(&b->setters);
 
+    if(b->block->maxNumInputs) {
+#ifdef DEBUG
+        memset(b->inputConnections, 0,
+                b->block->maxNumInputs*sizeof(*b->inputConnections));
+#endif
+        free(b->inputConnections);
+    }
+
+
+
 #ifdef DEBUG
     memset(b, 0, sizeof(*b));
 #endif
@@ -210,6 +220,18 @@ static void RemovePopupBlockCB(GtkWidget *widget, gpointer data) {
     DestroyBlock(popupBlock);
     popupBlock = 0;
 }
+
+
+#if 0
+static
+gboolean Block_drawCB(GtkWidget *widget, cairo_t *cr,
+        struct Block *block) {
+
+
+ERROR();
+    return FALSE;
+}
+#endif
 
 
 // The top GTK widget of a block is a gtk_event_box.
@@ -326,7 +348,6 @@ struct Block *AddBlock(struct Page *page,
         gtk_container_add(GTK_CONTAINER(ebox), grid);
 
 
-
         b->pathLabel = MakeBlockLabel(grid, blockFile, "path",
         //      x, y, w, h
                 1, 1, 4, 1);
@@ -339,12 +360,24 @@ struct Block *AddBlock(struct Page *page,
         MakeBlockConnector(grid, "input", Input, b);
         MakeBlockConnector(grid, "output", Output, b);
 
+
+        if(block->maxNumInputs) {
+            b->inputConnections = calloc(block->maxNumInputs,
+                    sizeof(*b->inputConnections));
+            ASSERT(b->inputConnections, "calloc(%" PRIu32
+                    ",%zu) failed", block->maxNumInputs,
+                    sizeof(*b->inputConnections));
+        }
+
+
         g_signal_connect(GTK_WIDGET(ebox), "button-press-event",
             G_CALLBACK(Block_buttonPressCB), b/*userData*/);
         g_signal_connect(GTK_WIDGET(ebox), "button-release-event",
             G_CALLBACK(Block_buttonReleaseCB), b/*userData*/);
         g_signal_connect(GTK_WIDGET(ebox), "motion-notify-event",
-            G_CALLBACK(Block_buttonMotionCB), b/*userData*/);
+            G_CALLBACK(Block_mouseMotionCB), b/*userData*/);
+        //g_signal_connect(GTK_WIDGET(ebox), "draw",
+        //    G_CALLBACK(Block_drawCB), b/*userData*/);
 
         // Attach the connectors to the grid with, geo, orientations
         // given by the default that we define here as:

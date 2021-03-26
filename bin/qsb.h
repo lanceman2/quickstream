@@ -37,6 +37,11 @@ struct Page {
     // width and height of layout drawing area and the above
     // surfaces.
     gint w, h;
+
+    // When we rotate a block we need to set this flag so that when the
+    // page layout (workArea) is redrawn we require that the oldLines
+    // surface get redrawn too.
+    bool redrawOldLines;
 };
 
 
@@ -77,12 +82,15 @@ struct Pin {
 
     struct Connector *connector;
 
+    uint32_t index; // This is also the port number for input and output.
+
     // The popover description, that we put in the popover label.
     char desc[DESC_LEN];
 
     union {
       // We are connecting to a parameter or a stream port number.
       struct QsParameter *parameter;
+      // This is redundant for input and output since we have index.
       uint32_t portNum; // input or output
     };
 };
@@ -154,6 +162,23 @@ struct Block {
     struct Connector constants, getters, setters, input, output;
     struct Block *next; // for singly linked list of blocks in page.
     double x, y; // current position in layout widget.
+
+    // Array of pointers to these block structs that this block
+    // has connections to inputs from their outputs.
+    //
+    // If the value is 0 then there is no connection to the input port
+    // with the index being the input port number.
+    //
+    // We use input connections to track both input and output connections
+    // since each input port can only have one output connected to it.
+    //
+    // There is no mapping from QsBlock to this block (other than this
+    // array), so without this array to track input and output connections
+    // we'd have to search all the (struct Block) blocks to find and draw
+    // each input/output connection.
+    //
+    // inputConnections array size is block->maxNumInputs.
+    struct Pin **inputConnections;
 
     enum ConnectorGeo geo;
     bool isSelected;
@@ -318,11 +343,23 @@ void DrawAllConnections(struct Page *page);
 extern
 void DrawConnection(struct Page *page,
         struct Pin *pin1, struct Pin *pin2);
-
+extern
+void ClearAndDrawAllConnections(struct Page *page);
 
 extern
 struct Pin *GetConnectorPinAndPosition(GtkWidget *draw, double x_root,
         double y_root, struct Connector *c);
+
+
+extern
+bool GetLayoutSurfaces(struct Page *page, GtkWidget *widget);
+
+
+// Connections line width.
+extern
+const double lineWidth;
+
+
 
 // This, CONNECTOR_THICKNESS, is used in gtk_widget_set_size_request() for
 // some of the inner block widgets.  This is a toning parameter.  It is

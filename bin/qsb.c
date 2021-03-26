@@ -77,6 +77,7 @@ MakeNewLayoutSurface(GtkWidget *widget, cairo_surface_t *old,
     GdkWindow *win = gtk_widget_get_window(widget);
     cairo_surface_t *new = gdk_window_create_similar_surface(win,
             CAIRO_CONTENT_COLOR_ALPHA, w, h);
+
     cairo_t *cr = cairo_create(new);
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
     cairo_set_source_rgba(cr, 0, 0, 0, 0);
@@ -116,7 +117,7 @@ static void GetPointer(double *x, double *y) {
 // forceMakeNew flag to cause this to reallocate the surface even when
 // the page
 //
-static inline bool
+bool
 GetLayoutSurfaces(struct Page *page, GtkWidget *widget) {
 
     gint w = gtk_widget_get_allocated_width(widget);
@@ -137,6 +138,7 @@ GetLayoutSurfaces(struct Page *page, GtkWidget *widget) {
 
     // Draw all the existing connections onto the page->oldLines.
     DrawAllConnections(page);
+    page->redrawOldLines = false;
 
     return true;
 }
@@ -188,6 +190,10 @@ WorkArea_drawCB(GtkWidget *layout, cairo_t *cr, struct Page *page) {
 
 
     // 3. draw the saved block connecting lines that we know so far.
+    if(page->redrawOldLines) {
+        ClearAndDrawAllConnections(page);
+        page->redrawOldLines = false;
+    }
     cairo_set_source_surface(cr, page->oldLines, 0, 0);
     cairo_paint(cr);
 
@@ -227,6 +233,7 @@ static void MoveSelectedBlocks(struct Page *page, double dx, double dy) {
 
     double dxy[2] = { dx, dy };
     g_tree_foreach(page->selectedBlocks, (GTraverseFunc) MoveBlockCB, dxy);
+    ClearAndDrawAllConnections(page);
 }
 
 
@@ -291,7 +298,7 @@ static gboolean WorkArea_buttonReleaseCB(GtkWidget *layout,
 }
 
 
-const static double lineWidth = 4.2;
+const double lineWidth = 4.2;
 
 
 static inline void
@@ -398,8 +405,6 @@ static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
     // a connection being and move a block all at the same time.  TODO:
     // What happens if a user clicks two mouse buttons at the same time?
     //
-    // For now fuck it, I do not want to think about it; but at least see
-    // it happen in DEBUG.
     DASSERT(!haveSelectBox || !fromPin || !movingBlock);
 
 

@@ -343,13 +343,17 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
     gtk_widget_set_size_request(b->pathLabel, w, h/2);
     gtk_widget_set_size_request(b->nameLabel, w, h/2);
 
+    b->geo = geo;
 
+    // Flag that when the layout is redrawn, we need to redraw
+    // connections.
+    b->page->redrawOldLines = true;
 
+#if 0 // This does not appear to be needed.
     w = gtk_widget_get_allocated_width(b->grid);
     h = gtk_widget_get_allocated_height(b->grid);
     gtk_widget_queue_draw_area(b->grid, 0, 0, w, h);
-    
-    b->geo = geo;
+#endif
 }
 
 

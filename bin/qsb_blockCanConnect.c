@@ -112,12 +112,22 @@ void Connect2Pins(struct Pin *pin1, struct Pin *pin2) {
 
     switch(c1->kind) {
         case Input:
+            DASSERT(c2->kind == Output);
         case Output:
             // We already checked that the input port is not occupied and
             // that the other port is an output.
             qsBlockConnect(c1->block->block, c2->block->block,
                     pin1->portNum, pin2->portNum);
-            return;
+            if(c1->kind == Input) {
+                DASSERT(c2->kind == Output);
+                DASSERT(!c1->block->inputConnections[pin1->portNum]);
+                c1->block->inputConnections[pin1->portNum] = pin2;
+            } else {
+                DASSERT(c2->kind == Input);
+                DASSERT(!c2->block->inputConnections[pin2->portNum]);
+                c2->block->inputConnections[pin2->portNum] = pin1;
+            }
+            break;
         case Constant:
         case Setter:
         case Getter:
@@ -132,4 +142,3 @@ void Connect2Pins(struct Pin *pin1, struct Pin *pin2) {
     // This gets done when we stop un-draw the connection drag line.
     //gtk_widget_queue_draw_area(page->layout, 0, 0, page->w, page->h);
 }
-
