@@ -23,8 +23,8 @@ libquickstream.so_SOURCES :=\
  blockFlowAPI.c\
  blockStartAPI.c\
  blockDeclareAPI.c\
- parameterForEach.c
-
+ parameterForEach.c\
+ parameterAPIUtil.c
 
 libquickstream.so_LDFLAGS :=\
  -Wl,--retain-symbols-file=retain-symbols.txt\

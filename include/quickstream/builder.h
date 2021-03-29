@@ -180,17 +180,6 @@ struct QsBlock *qsGraphGetBlockByName(const struct QsGraph *graph,
 
 
 
-/** Get the name of a parameter object
-
- \param p is a pointer to the parameter object.
-
- \return the value entry size of a parameter object.
-
- */
-EXPORT
-extern
-const char *qsParameterGetName(const struct QsParameter *p);
-
 
 // Called when graph is paused.  Parameter, p, must be a constant or a
 // getter.  Setter values can only get set by connecting them.

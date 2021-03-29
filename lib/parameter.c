@@ -72,6 +72,7 @@ void DisconnectConstantParameter(struct QsParameter *p) {
     struct QsParameter *i;
     // The new first.
     struct QsParameter *first = p->first;
+    DASSERT(first);
 
     // Remove p from the list
     if(p != p->first) {
@@ -111,35 +112,20 @@ void DisconnectConstantParameter(struct QsParameter *p) {
 
 
     // Now all parameters in the connection list is correct except we need
-    // to be sure there is a constant in the list and put it first;
-    // otherwise this connection list will be dissolved.
-
+    // to be sure if there is a constant in the list, then we put it
+    // first.
+    //
     struct QsParameter *c;
 
     for(c = first; c; c = c->next)
         if(c->kind == QsConstant)
             break;
 
-    if(!c) {
-        // We do not have a constant parameter in the list, and setters
-        // cannot just connect to setters; so we reset connections in this
-        // group.
-        for(i = first; i; i = i->next) {
-
-            i->numConnections = 0;
-            i->next = 0;
-            i->first = 0;
-            if(i != first) {
-                i->value = calloc(1, p->size);
-                ASSERT(i->value, "calloc(1,%zu) failed", p->size);
-                memcpy(i->value, p->value, p->size);
-            }
-        }
-        return;
-    }
-
-    if(c == first)
-        // The "first" is a constant parameter. 
+    if(!c || c == first)
+        // We have no constant in a group of setters.  They will
+        // act like a group of constants unless a getter is connected to
+        // them later.  OR We have a first in the list that is a
+        // constant.
         return;
 
     // Make c first
@@ -217,7 +203,7 @@ void DisconnectSetterParameter(struct QsParameter *p) {
         }
     }
 
-    if(p->first->kind == QsConstant) {
+    if(p->first->kind != QsGetter) {
         p->value = calloc(1, p->size);
         ASSERT(p->value, "calloc(1,%zu) failed", p->size);
         memcpy(p->value, p->first->value, p->size);
@@ -545,6 +531,16 @@ qsParameterGetValueByName(const char *pname, void *value, size_t size) {
 static inline void
 AddParameterConnections(struct QsParameter *p1, struct QsParameter *p2) {
 
+    // There is 2 kinds of groups of parameters:
+    //
+    //   1. constant group that can have any mix of constants and setters,
+    //      the first in the list will be a constant, if there is a
+    //      constant in the group
+    //
+    //   2. a getter group that has one getter first and any number of
+    //      setters.
+    //
+
     // Merge list1 with list2.
 
     DASSERT(p1 != p2);
@@ -574,7 +570,7 @@ AddParameterConnections(struct QsParameter *p1, struct QsParameter *p2) {
 
     for(i = p1->first; i->next; i = i->next) {
         i->numConnections = numConnections;
-        DASSERT(p1->kind != QsConstant || i->value == i->next->value);
+        DASSERT(p1->kind == QsGetter || i->value == i->next->value);
     }
     i->numConnections = numConnections;
     // i->next ==0 and now connect them
@@ -583,8 +579,9 @@ AddParameterConnections(struct QsParameter *p1, struct QsParameter *p2) {
 
     DASSERT(i->value);
 
-    if(p1->kind == QsConstant) {
-        // The old list 2 should have been sharing the value.
+    if(p1->kind != QsGetter) {
+        // The old list 2 should have been sharing the value memory, now
+        // we need to make it not share.
         DASSERT(!i->next || i->value == i->next->value);
 #ifdef DEBUG
         memset(i->value, 0, i->size);
@@ -594,7 +591,7 @@ AddParameterConnections(struct QsParameter *p1, struct QsParameter *p2) {
     for(; i; i = i->next) {
         i->first = p1;
         i->numConnections = numConnections;
-        if(p1->kind == QsConstant) {
+        if(p1->kind != QsGetter) {
             // Make the value be shared with p1
             i->value = p1->value;
         }
@@ -648,20 +645,6 @@ int SetterTriggerCB(struct QsSetter *s) {
 }
 
 
-#if 0 // NOT USED ??
-// This is called when the value is changed in a connected group of
-// parameters that has a constant parameter in the group.
-//static
-void PushContantValues(struct QsConstant *c, void *value) {
-
-    ASSERT(mainThread == pthread_self(), "Not graph main thread");
-
-    // MORE HEREEEEEEEEEEEEEEEEEEEEEEEEEEEE
-
-}
-#endif
-
-
 void qsParameterDisconnect(struct QsParameter *p, struct QsParameter *p1) {
 
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
@@ -672,7 +655,6 @@ void qsParameterDisconnect(struct QsParameter *p, struct QsParameter *p1) {
     // TODO: Oh, what fun it will be to write this.
 
 }
-
 
 
 // TODO: We should consider ways to engineer out all the wrong modes in
@@ -688,16 +670,13 @@ int qsParameterConnect(struct QsParameter *p0,
     DASSERT(p0);
     DASSERT(p1);
     DASSERT(p0 != p1);
-    DASSERT(p0->block != p1->block);
     DASSERT(p0->name);
     DASSERT(p1->name);
 
 
-    if(p0->kind == QsSetter) {
-        // We'll switch the two parameters keeping the to parameter, p1,
-        // as a setter.  If they are both setters than that is an error
-        // case that we'll find below.  It could confuse things, but it
-        // will reduce the number of checks needed below.
+    if(p1->kind == QsGetter) {
+        // We'll switch the two parameters keeping the to parameter, p0,
+        // as a getter. 
         struct QsParameter *p = p0;
         p0 = p1;
         p1 = p;
@@ -708,42 +687,32 @@ int qsParameterConnect(struct QsParameter *p0,
     //
     //   1. Getter    to  Setter
     //   2. Constant  to  Setter
-    //   3. Constant  to  Constant
+    //   3. Setter    to  Setter
+    //   4. Constant  to  Constant
     //
-    if( !(
-            (p0->kind == QsGetter   && p1->kind == QsSetter) ||
-            (p0->kind == QsConstant && p1->kind == QsSetter) ||
-            (p0->kind == QsConstant && p1->kind == QsConstant)
-         )
-    ) {
-        ERROR("Wrong mix of kinds of parameter to connect from and to");
-        DASSERT(0);
-        return -1;
-    }
+    if(p0->kind == QsGetter)
+        if(p1->kind == QsGetter || p1->kind == QsConstant || 
+                (p1->first && p1->first->kind != QsSetter)) {
+            ERROR("Wrong mix of kinds of parameter to "
+                    "connect from and to");
+            DASSERT(0);
+            return -1;
+        }
 
-#if 0
-    if(p0->kind == QsConstant && p1->kind == QsSetter &&
-            !((struct QsSetter *)p1)->callbackWhilePaused) {
-        ERROR("Setter parameter %s:%s cannot be connected to from a constant"
-                " parameter; setters QS_SETS_WHILE_PAUSED flag was not set",
-                p1->block->block.name, p1->name);
+    if(p0 == p1) {
+        ERROR("The parameter \"%s\" cannot connect to itself", p1->name);
         DASSERT(0);
         return -2;
     }
-#endif
 
-    if(p0 == p1) {
-        ERROR("No parameter \"%s\" can connect to itself", p1->name);
+#if 0
+    if(p0->block == p1->block && p0->kind == QsGetter) {
+        ERROR("Block \"%s\" cannot connect getter parameters in itself",
+                ((struct QsBlock *)p0->block)->name);
         DASSERT(0);
         return -3;
     }
-
-    if(p0->block == p1->block) {
-        ERROR("Block \"%s\" cannot connect parameters in itself",
-                ((struct QsBlock *)p0->block)->name);
-        DASSERT(0);
-        return -4;
-    }
+#endif
 
     // The parameters size and type must match.
     if(p0->type != p1->type || p0->size != p1->size) {
@@ -754,7 +723,7 @@ int qsParameterConnect(struct QsParameter *p0,
                 ((struct QsBlock *)p1->block)->name,
                 p1->name, p1->size, p1->type);
         DASSERT(0);
-        return -5;
+        return -4;
     }
 
     if(p0->first && p1->first && p0->first == p1->first) {
@@ -763,18 +732,26 @@ int qsParameterConnect(struct QsParameter *p0,
         return 0; // success
     }
 
-
     if(p1->kind == QsSetter) {
         // We are connecting to a setter.
-        // // A setter cannot be connected to twice.
-        if(p1->first) {
-            ERROR("Setter \"%s:%s\" already has a connection",
-                    ((struct QsBlock *)p1->block)->name, p1->name);
-            DASSERT(0);
-            return -7;
-        }
         struct QsSetter *setter = (struct QsSetter *)p1;
         if(p0->kind == QsGetter) {
+
+            // We need to make sure there are no constants in the
+            // connection list.  Getters cannot connect to constants.
+            if(p1->first)
+                for(struct QsParameter *p = p1->first; p; p = p->next)
+                    if(p->kind == QsConstant) {
+                        ERROR("Getter parameter \"%s:%s\" cannot be "
+                                "connected to setter parameter \"%s:%s\""
+                                " because it is connected with a constant"
+                                " \"%s:%s\"",
+                                p0->block->block.name, p0->name,
+                                p1->block->block.name, p1->name,
+                                p->block->block.name, p->name);
+                        return -5;
+                    }
+
             // We are connecting from getter to setter.
             AllocateTrigger(sizeof(*setter->trigger),
                     p1->block,
@@ -790,319 +767,9 @@ int qsParameterConnect(struct QsParameter *p0,
         }
     }
 
-    // Which we connect "to" matters.
-    if(p0->kind == QsConstant)
-        AddParameterConnections(p0, p1);
-    else if(p1->kind == QsConstant) {
-        DASSERT(p0->kind == QsSetter);
-        AddParameterConnections(p1, p0);
-    } else if(p0->kind == QsGetter) {
-        DASSERT(p1->kind == QsSetter);
-        AddParameterConnections(p0, p1);
-    }
+    // Note if there is a getter, it is p0.
+
+    AddParameterConnections(p0, p1);
 
     return 0;
-}
-
-
-void qsParameterGetValue(struct QsParameter *p, void *value) {
-
-    DASSERT(p);
-    DASSERT(value);
-
-    switch(p->kind) {
-
-        case QsSetter:
-        {
-            struct QsSetter *s = (struct QsSetter *) p;
-
-            if(p->block->block.graph->flowState == QsGraphFlowing) {
-                DASSERT(s->mutex);
-                CHECK(pthread_mutex_lock(s->mutex));
-                memcpy(value, p->value, p->size);
-                CHECK(pthread_mutex_unlock(s->mutex));
-                return;
-            }
-            ASSERT(mainThread == pthread_self(), "Not graph main thread");
-            memcpy(value, p->value, p->size);
-            return;
-        }
-        case QsConstant:
-            ASSERT(mainThread == pthread_self(), "Not graph main thread");
-            memcpy(value, p->value, p->size);
-            break;
-        case QsGetter:
-            memcpy(value, p->value, p->size);
-            break;
-        case QsAny:
-            ASSERT(0);
-            break;
-    };
-}
-
-
-// Called when graph is paused.  Parameter, p, must be a constant or a
-// getter.
-//
-int qsParameterSetValue(struct QsParameter *p, const void *value) {
-
-    DASSERT(p);
-    DASSERT(value);
-
-    // Catch API user coding errors.
-    ASSERT(mainThread == pthread_self(), "Not graph main thread");
-    ASSERT(p->block->block.graph->flowState == QsGraphPaused);
-
-
-    // Called when graph is paused.  Parameter, p, must be a constant or a
-    // getter, or a disconnected setter.
-    DASSERT(p->kind != QsSetter, "Setter parameters cannot be directly"
-            " set, they must be connected");
-
-    if(p->kind == QsSetter) {
-        ERROR("parameter %s:%s is setter", p->block->block.name, p->name);
-        return -1; // error
-    }
-
-    // Constant parameters keep an internal value.
-    // Getter parameter just push values to setters but can be initialized
-    // here.  Setters can be initialized if they are not connected yet.
-
-    memcpy(p->value, value, p->size);
-
-    if(p->kind == QsConstant)
-        for(struct QsParameter *i = p->first; i; i = i->next) {
-            int (*setCallback)(struct QsParameter *p,
-                const void *value, void *userData);
-            void *userData;
-            if(i->kind == QsConstant) {
-                setCallback = ((struct QsConstant *)i)->setCallback;
-                userData = ((struct QsConstant *)i)->userData;
-            } else {
-                DASSERT(i->kind == QsSetter);
-                setCallback = ((struct QsSetter *)i)->setCallback;
-                userData = ((struct QsSetter *)i)->userData;
-            }
-            DASSERT(i->value == p->value);
-            DASSERT(pthread_getspecific(_qsGraphKey) == 0);
-            if(!setCallback) continue;
-
-            CHECK(pthread_setspecific(_qsGraphKey, &i->block->block));
-            setCallback(i, i->value, userData);
-            CHECK(pthread_setspecific(_qsGraphKey, 0));
-        }
-
-    return 0;
-}
-
-
-#if 0
-static int
-InitGetters(const char *name, struct QsParameter *p, void *userData) {
-
-    
-
-
-    return 0; // keep looping
-}
-
-
-// This is called just after the graph flow starts, in the main thread,
-// just after the block start()'s are called.
-//
-// Do the initial push to the setters if there is a getter value.
-//
-void GettersStart(struct QsGraph *g) {
-
-    DASSERT(g);
-    ASSERT(g->flowState == QsGraphPaused);
-    DASSERT(mainThread == pthread_self(), "Not graph main thread");
-
-    for(struct QsBlock *b = g->firstBlock; b; b = b->next) {
-            if(b->isSuperBlock) continue;
-            struct QsSimpleBlock *smB = (struct QsSimpleBlock *) b;
-            qsDictionaryForEach(smB->getters, 
-
-    }
-
-    DASSERT(p->kind != QsSetter, "Parameter cannot be a setter");
-
-
-
-
-}
-#endif
-
-
-void QueueUpSetterFromGetter(struct QsSetter *s, struct QsParameter *p) {
-
-    DASSERT(s);
-    DASSERT(s->parameter.first == p);
-    DASSERT(s->parameter.first->kind == QsGetter);
-    DASSERT(s->parameter.type == p->type);
-    DASSERT(s->parameter.size == p->size);
-    DASSERT(s->mutex);
-
-    CHECK(pthread_mutex_lock(s->mutex));
-
-    struct QsTrigger *trigger = s->trigger;
-
-    if(!s->haveValueQueued) {
-        // queue up this event.
-        //
-        // We need an inner mutex lock.  Kind of scary.
-        CHECK(pthread_mutex_lock(&
-                ((struct QsBlock *)p->block)->graph->mutex));
-
-        if(!trigger || !trigger->isRunning) {
-            // The trigger is off for one of two reasons:
-            //   1. We let triggers be freed at flow time.
-            //   2. We also let triggers be stopped at flow time.
-            //
-            // We argue that this wasted mutexing is better than not
-            // having this feature.  Dummying this code here is more
-            // performant then letting the callback dummy it's self.
-            //
-            // Unlock mutexes and continue looping to the next setter.
-            CHECK(pthread_mutex_unlock(&
-                    ((struct QsBlock *)p->block)->graph->mutex));
-            CHECK(pthread_mutex_unlock(s->mutex));
-            return;
-        }
-
-        // Queue a job for this trigger.
-        CheckAndQueueTrigger(trigger, trigger->block->threadPool);
-        CHECK(pthread_mutex_unlock(&
-                    ((struct QsBlock *)p->block)->graph->mutex));
-        s->haveValueQueued = true;
-    }
-
-    memcpy(s->parameter.value, p->value, p->size);
-
-    CHECK(pthread_mutex_unlock(s->mutex)); 
-}
-
-
-// Called at flow-time.
-//
-uint32_t qsParameterGetterPush(struct QsParameter *p,
-        const void *value) {
-
-    DASSERT(p);
-    DASSERT(p->block);
-    DASSERT(p->kind == QsGetter);
-    DASSERT(value);
-    DASSERT(p->block->block.graph);
-    ASSERT(p->block->block.graph->flowState == QsGraphFlowing);
-
-    // We assume that the block that is calling this code is doing this in
-    // one thread at a time.
-    memcpy(p->value, value, p->size);
-
-    if(p->numConnections < 2) {
-        // We should never have 1 connection, because the list of
-        // connections included this parameter as the first one.
-        DASSERT(p->numConnections == 0);
-        DASSERT(p->first == 0);
-        return 0;
-    }
-
-    DASSERT(p->first == p);
-
-    // Getters only connect to 0 to N setters.
-
-    struct QsParameter *s = p->first->next;
-
-    for(; s; s = s->next)
-        QueueUpSetterFromGetter((struct QsSetter *) s, p);
-
-    return p->numConnections - 1;
-}
-
-
-
-static
-int PrintParameterCB(const char *pname, struct QsParameter *p,
-            FILE *file) {
-
-    switch(p->kind) {
-        case QsConstant:
-            fprintf(file, "Constant ");
-            break;
-        case QsGetter:
-            fprintf(file, "Getter   ");
-            break;
-        case QsSetter:
-            fprintf(file, "Setter   ");
-            break;
-        case QsAny:
-            ASSERT(0);
-            break;
-    }
-
-
-    switch(p->type) {
-        case QsNone:
-            fprintf(file, "QsNone   %4zu ", p->size);
-            break;
-        case QsDouble:
-            fprintf(file, "QsDouble %4zu ", p->size);
-            break;
-        case QsUint64:
-            fprintf(file, "QsUint64 %4zu ", p->size);
-            break;
-        case QsString:
-            fprintf(file, "QsString %4zu ", p->size);
-            break;
-    }
-
-    fprintf(file, "%s %s\n", ((struct QsBlock *)p->block)->name, pname);
-    return 0; // keep going.
-}
-
-
-void qsGraphParametersPrint(struct QsGraph *graph, FILE *file) {
-
-    DASSERT(graph);
-    DASSERT(file);
-
-    fprintf(file, " kind    type   size block  parameter_name\n"
-                  "------   ------ ---- ------ --------------\n");
-
-    for(struct QsBlock *b = graph->firstBlock; b; b = b->next) {
-        if(b->isSuperBlock) continue;
-        qsDictionaryForEach(((struct QsSimpleBlock *)b)->constants,
-                (int (*) (const char *key, void *value,
-                    void *userData)) PrintParameterCB, file);
-        qsDictionaryForEach(((struct QsSimpleBlock *)b)->getters,
-                (int (*) (const char *key, void *value,
-                    void *userData)) PrintParameterCB, file);
-        qsDictionaryForEach(((struct QsSimpleBlock *)b)->setters,
-                (int (*) (const char *key, void *value,
-                    void *userData)) PrintParameterCB, file);
-    }
-}
-
-
-const char *qsParameterGetName(const struct QsParameter *p) {
-    DASSERT(p);
-    return p->name;
-}
-
-
-size_t qsParameterGetSize(const struct QsParameter *p) {
-    DASSERT(p);
-    return p->size;
-}
-
-
-enum QsParameterType qsParameterGetType(const struct QsParameter *p) {
-    DASSERT(p);
-    return p->type;
-}
-
-
-enum QsParameterKind qsParameterGetKind(const struct QsParameter *p) {
-    DASSERT(p);
-    return p->kind;
 }

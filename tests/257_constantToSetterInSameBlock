@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -ex
+
+# the block tests/setter prints to stdout.
+
+#dataFile="data_$(basename $0)"
+#tmpFile="${dataFile}.tmp"
+
+
+
+../bin/quickstream\
+ -v 5\
+ --threads 0\
+ --block tests/constantAndSetter block\
+ --connect-parameters block constant0 block setter0\
+ --connect-parameters block constant0 block setter1\
+ --connect-parameters block constant0 block setter2\
+ --connect-parameters block constant0 block constant1\
+ --parameter-set block constant1 1.9\
+ --parameter-set block constant2 2.546\
+ --parameters-print\
+ --run

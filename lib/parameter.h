@@ -30,7 +30,7 @@ struct QsParameter {
     //   1. Getter --> N Setters
     //        In a group they all have the same list and the Getter is
     //        "first" and they all have the same "numConnections".  There
-    //        can be only one Getter in the group.
+    //        must be one Getter in the group.
     //        The "value" is not shared, and data must be copied to the
     //        setters from the getter and between thread blocks.
     //        Requires mutex locks to do the copies.
@@ -38,15 +38,13 @@ struct QsParameter {
     //   2. Constants and Setters in a group
     //        and that includes Constant  --> Setters
     //        and               Constant <--> Constant
+    //        and                 Setter <--> Setters
     //        in a fully connected topology.
     //        In a group they all have the same "first" and
     //        "numConnections".
     //        We require the convention that the "first" must be a
-    //        constant parameter.
-    //        There must be at least 1 constant in the group.
-    //        Therefore removing the last constant destroys the whole
-    //        connection group.
-    //        There can be 1,2,3,... constants in the group.
+    //        constant or setter parameter.
+    //        There can be 0,1,2,3,... constants in the group.
     //        There can be 0,1,2,3,... setters in the group.
     //
     //

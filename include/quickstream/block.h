@@ -786,6 +786,17 @@ extern
 void qsBlockSetNumInputsEqualsNumOutputs(bool inputsEqualsOutputs);
 
 
+/** Get the name of a parameter object
+
+ \param p is a pointer to the parameter object.
+
+ \return the value entry size of a parameter object.
+
+ */
+EXPORT
+extern
+const char *qsParameterGetName(const struct QsParameter *p);
+
 
 /** The block plugin declare module callback function
 
