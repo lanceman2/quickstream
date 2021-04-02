@@ -82,6 +82,18 @@ struct Pin {
 
     struct Connector *connector;
 
+    // We keep a singly-linked list of pins for all parameter connections.
+    // The "first" pin is the start of the list.  This list has a
+    // corresponding and independent list in the parameters (struct
+    // QsParameter).  This gives us a parameter connection list that
+    // without which we would need to search through all the pins to find
+    // connections each time we draw the connections.  There is a
+    // connection list in the struct OsParameter, but we do not mirror
+    // that, we just keep a list of all that are in the connection group.
+    // The pins in the group have the same value for "first", which is the
+    // first in the list.
+    struct Pin *first, *next;
+
     uint32_t index; // This is also the port number for input and output.
 
     // The popover description, that we put in the popover label.
@@ -360,6 +372,9 @@ extern
 const double lineWidth;
 
 
+extern
+void GetConnectionLineColor(struct Connector *c,
+        double *r, double *g, double *b, double *a);
 
 // This, CONNECTOR_THICKNESS, is used in gtk_widget_set_size_request() for
 // some of the inner block widgets.  This is a toning parameter.  It is

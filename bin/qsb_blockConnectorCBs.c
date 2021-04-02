@@ -530,7 +530,7 @@ static void ShowPinBalloon(GtkWidget *draw, GdkEventButton *e,
 
 gboolean ConnectorMotion_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
-WARN();
+
     if(!connectorsPopover && !(fromPin && fromPin->connector == c)) {
         // GTK+3 does not keep the order of events in a sensible way.
         // We sometimes get 2 enter events with no leave event.
@@ -544,7 +544,8 @@ WARN();
         // We are dragging a connection.
         if(c->block != fromPin->connector->block) {
             toPin = 0;
-            toPin = GetConnectorPinAndPosition(draw, e->x_root, e->y_root, c);
+            toPin = GetConnectorPinAndPosition(draw,
+                    e->x_root, e->y_root, c);
         }
 
     return FALSE; // False = do not eat event the layout may need it next.
@@ -557,7 +558,6 @@ gboolean ConnectorEnter_CB(GtkWidget *draw,
     DASSERT(c);
     DASSERT(c->numPins);
     DASSERT(draw == c->widget);
-WARN();
 
     if(movingBlock) {
         if(popoverShowing) {
@@ -577,9 +577,12 @@ WARN();
 
     if(fromPin)
         // We are dragging a connection.
-        if(c->block != fromPin->connector->block) {
+        if(c->block != fromPin->connector->block ||
+                (fromPin->connector->kind != Input &&
+                 fromPin->connector->kind != Output)) {
             toPin = 0;
-            toPin = GetConnectorPinAndPosition(draw, e->x_root, e->y_root, c);
+            toPin = GetConnectorPinAndPosition(draw,
+                    e->x_root, e->y_root, c);
         }
 
     return FALSE; // FALSE = let event go to next widget.
@@ -594,8 +597,6 @@ gboolean ConnectorLeave_CB(GtkWidget *draw,
     DASSERT(c);
     DASSERT(c->numPins);
     DASSERT(draw == c->widget);
-    //DASSERT(connectorsPopover);
-WARN();
 
     if(toPin) toPin = 0;
 
@@ -615,7 +616,7 @@ WARN();
 gboolean ConnectorRelease_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
 
-WARN("                     %s", c->block->block->name);
+//WARN("                     %s", c->block->block->name);
 
 
     if(fromPin && toPin && CanConnect2Pins(fromPin, toPin))
@@ -633,7 +634,7 @@ WARN("                     %s", c->block->block->name);
 gboolean ConnectorPress_CB(GtkWidget *draw,
         GdkEventButton *e, struct Connector *c) {
 
-ERROR();
+//ERROR();
     DASSERT(c);
     DASSERT(draw == c->widget);
     DASSERT(c->active);

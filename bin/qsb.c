@@ -167,13 +167,7 @@ gboolean
 WorkArea_drawCB(GtkWidget *layout, cairo_t *cr, struct Page *page) {
 
 
-    if(GetLayoutSurfaces(page, layout)) {
-        // We have newly allocated surfaces.  The page->oldLines
-        // surface needs to have all the current connects drawn on it.
-
-        DSPEW("draw all existing connection lines"); // TODO:
-        // TODO: draw all connection lines on page->oldLines.
-    }
+    GetLayoutSurfaces(page, layout);
 
 
     // 1. clear the current surface.
@@ -299,7 +293,7 @@ static gboolean WorkArea_buttonReleaseCB(GtkWidget *layout,
 }
 
 
-const double lineWidth = 4.2;
+const double lineWidth = 3.1;
 
 
 static inline void
@@ -375,10 +369,9 @@ DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
     cairo_paint(cr);
 
     // Set the line color
-    double r=1.0, g=0, b=0, a=0.4;
+    double r, g, b, a;
 
-// TODO: this:
-//GetConnectionLineColor(fromPin, &r, &g, &b, &a);
+    GetConnectionLineColor(fromPin->connector, &r, &g, &b, &a);
 
     cairo_set_source_rgba(cr, r, g, b, a);
     cairo_set_line_width(cr, lineWidth);

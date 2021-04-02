@@ -65,6 +65,32 @@ static inline void GetPinPosition(struct Page *page,
 }
 
 
+void
+GetConnectionLineColor(struct Connector *c,
+        double *r, double *g, double *b, double *a) {
+
+    switch(c->kind) {
+        case Input:
+        case Output:
+            *r=1.0;
+            *g=0;
+            *b=0;
+            *a=0.8;
+            return;
+        case Constant:
+        case Getter:
+        case Setter:
+            *r=0.1;
+            *g=0.4;
+            *b=0.92;
+            *a=0.8;
+            return;
+    }
+
+    ASSERT(0, "We should not get here.");
+}
+
+
 // Draw a connection line on the page->oldLines surface.
 //
 // Queuing the draw event can be done later, so we can loop over all
@@ -109,10 +135,9 @@ void DrawConnection(struct Page *page,
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 
     // Set the line color
-    double r=1.0, g=0, b=0, a=0.4;
+    double r, g, b, a;
 
-// TODO: this:
-//GetConnectionLineColor(pin1->connector, &r, &g, &b, &a);
+    GetConnectionLineColor(pin1->connector, &r, &g, &b, &a);
 
     cairo_set_source_rgba(cr, r, g, b, a);
     cairo_set_line_width(cr, lineWidth);
@@ -120,6 +145,28 @@ void DrawConnection(struct Page *page,
     cairo_curve_to(cr, x1, y1, x2, y2, x3, y3);
     cairo_stroke(cr);
     cairo_destroy(cr);
+}
+
+
+// Parameters come in fully connected topological groups that start at a
+// single linked list at parameter->first; so we just need to find the
+// start (first) of all these lists.
+void DrawParameterGroups(struct Page *page, struct Connector *c) {
+
+    for(uint32_t i = c->numPins - 1; i != -1; --i) {
+        struct Pin *pin = c->pins + i;
+        DASSERT(pin);
+        DASSERT(pin->parameter);
+        if(pin->first == pin) {
+            // This is the first pin in a different list of pins.
+            //
+            // If there is a list there must be at least two pins in
+            // the list, so at least one after the first one.
+            DASSERT(pin->next);
+            for(struct Pin *to = pin->next; to; to = to->next)
+                DrawConnection(page, pin, to);
+        }
+    }
 }
 
 
@@ -131,6 +178,10 @@ void DrawAllConnections(struct Page *page) {
 
         ASSERT(!block->block->isSuperBlock,
                 "WRITE THIS CODE for super blocks");
+
+        DrawParameterGroups(page, &block->constants);
+        DrawParameterGroups(page, &block->setters);
+        DrawParameterGroups(page, &block->getters);
 
         // inputs only connect to outputs.
         for(uint32_t i = block->block->maxNumInputs - 1; i != -1; --i)
@@ -230,8 +281,6 @@ struct Pin *GetConnectorPinAndPosition(GtkWidget *draw, double x_root,
         // This is returning the fromPin
         return pin;
     }
-
-    DASSERT(fromPin);
 
     // Okay.  This is returning the toPin; but we need to check that the
     // fromPin and this (toPin) pin are compatible.
