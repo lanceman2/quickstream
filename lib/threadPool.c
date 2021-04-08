@@ -16,7 +16,7 @@
 
 // The number of thread pools created.  Nothing to do with the number
 // destroyed.  Only increases.  We let the first thread pool ID be 0 (not
-// 1).  This ain't fuckn' FORTRAN.
+// 1).
 //
 static uint32_t createCount = 0;
 
@@ -44,6 +44,14 @@ void qsThreadPoolDestroy(struct QsThreadPool *tp) {
         else
             graph->threadPools = tp->next;
     }
+
+    qsDictionaryRemove(graph->threadPoolDict, tp->name);
+
+#ifdef DEBUG
+    memset(tp->name, 0, strlen(tp->name));
+#endif
+    free(tp->name);
+
 
 #ifdef DEBUG
     memset(tp, 0, sizeof(*tp));
@@ -80,11 +88,45 @@ void qsThreadPoolAddBlock(struct QsThreadPool *tp, struct QsBlock *b) {
 
 
 struct QsThreadPool *qsGraphThreadPoolCreate(struct QsGraph *graph,
-        uint32_t maxThreads) {
+        uint32_t maxThreads, const char *threadPoolName) {
 
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
     DASSERT(graph);
     ASSERT(graph->flowState == QsGraphPaused);
+
+    // Get unique thread pool name, for this graph.
+#define NAME_LEN   (128)
+    ASSERT(!threadPoolName || strlen(threadPoolName) < NAME_LEN);
+
+    char *name;
+
+    if(threadPoolName) {
+         if(qsDictionaryFind(graph->threadPoolDict, threadPoolName)) {
+                //
+                // Because they requested a particular name and the name
+                // is already taken, we can fail here.
+                //
+                ERROR("ThreadPool name \"%s\" is in use already",
+                        threadPoolName);
+                return 0;
+         }
+        name = strdup(threadPoolName);
+    } else {
+        char nam[NAME_LEN];
+        uint32_t count = createCount;
+        do {
+            if(count > createCount + 1000) {
+                // Can't imagine this will happen.
+                ERROR("Can't get thread pool name");
+                return 0;
+            }
+            snprintf(nam, NAME_LEN, "Thread Pool %" PRIu32, ++count);
+        } while(qsDictionaryFind(graph->threadPoolDict, nam));
+        name = strdup(nam);
+    }
+
+    ASSERT(name, "strdup() failed");
+
 
     struct QsThreadPool *tp = calloc(1, sizeof(*tp));
     ASSERT(tp, "calloc(1,%zu) failed", sizeof(*tp));
@@ -96,6 +138,7 @@ struct QsThreadPool *qsGraphThreadPoolCreate(struct QsGraph *graph,
     tp->maxThreads = maxThreads;
     tp->graph = graph;
     tp->id = createCount++;
+    tp->name = name;
 
     // This newly created thread pool will be the new default thread pool
     // for all newly created simple blocks, until we make another.  Also
@@ -103,10 +146,75 @@ struct QsThreadPool *qsGraphThreadPoolCreate(struct QsGraph *graph,
     // will be set to using this thread pool, for now.  The user can move
     // blocks to any thread pool that they like with
     // qsThreadPoolAddBlock().
-
+    //
     for(struct QsBlock *b = graph->firstBlock; b; b = b->next)
         if(!b->isSuperBlock && !((struct QsSimpleBlock *) b)->threadPool)
             qsThreadPoolAddBlock(tp, b);
 
+    // Add thread pool to the graph dictionary thread pool list.
+    ASSERT(0 == qsDictionaryInsert(graph->threadPoolDict,
+                tp->name, tp, 0));
+
     return tp;
+}
+
+
+struct QsThreadPool *qsGraphThreadPoolGetByName(struct QsGraph *graph,
+        const char *threadPoolName) {
+
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    DASSERT(graph);
+    ASSERT(graph->flowState == QsGraphPaused);
+    DASSERT(threadPoolName);
+
+    return qsDictionaryFind(graph->threadPoolDict, threadPoolName);
+}
+
+
+int qsThreadPoolSetName(struct QsThreadPool *tp,
+        const char *threadPoolName) {
+
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    DASSERT(tp);
+    struct QsGraph *g = tp->graph;
+    DASSERT(g);
+    ASSERT(g->flowState == QsGraphPaused);
+
+    DASSERT(tp->name);
+    DASSERT(qsDictionaryFind(g->threadPoolDict, tp->name));
+
+    if(qsDictionaryFind(g->threadPoolDict, threadPoolName)) {
+        ERROR("ThreadPool name \"%s\" is in use already",
+                threadPoolName);
+        return 1;
+    }
+
+    // Remove the thread pool from the graph dictionary thread pool list.
+    qsDictionaryRemove(g->threadPoolDict, tp->name);
+
+#ifdef DEBUG
+    memset(tp->name, 0, strlen(tp->name));
+#endif
+    free(tp->name);
+
+    tp->name = strdup(threadPoolName);
+    ASSERT(tp->name, "strdup() failed");
+
+    // Add thread pool back to the graph dictionary thread pool list.
+    ASSERT(0 == qsDictionaryInsert(g->threadPoolDict, tp->name, tp, 0));
+
+    return 0; // success.
+}
+
+
+void qsThreadPoolSetMaxThreads(struct QsThreadPool *tp,
+        uint32_t maxThreads) {
+
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    DASSERT(tp);
+    struct QsGraph *g = tp->graph;
+    DASSERT(g);
+    ASSERT(g->flowState == QsGraphPaused);
+
+    tp->maxThreads = maxThreads;
 }

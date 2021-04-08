@@ -8,6 +8,9 @@ struct QsThreadPool {
     // associated graph for this threadPool
     struct QsGraph *graph;
 
+    // Name of the thread pool.  Malloc allocated memory.
+    char *name;
+
     // Allocated pthread_t array that is of length maxThreads.
     struct QsThread {
         pthread_t thread;

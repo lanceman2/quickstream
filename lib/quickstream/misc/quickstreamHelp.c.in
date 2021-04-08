@@ -277,7 +277,7 @@ static struct QsOption
         " It works nicely with Shebang (#!) at the beginning of a script."
         " All commands are the same as command-line options without the"
         " -- or -.  For example:\n\n"
-        "    #!/usr/local/bin/quickstream\n"
+        "    #!/usr/local/bin/quickstream -i\n"
         "    block fileIn in\n"
         "    block tests/stdout out\n"
         "    parameter-set in file foo\n"
@@ -344,7 +344,7 @@ static struct QsOption
         " up and coming options."
     },
 /*----------------------------------------------------------------------*/
-    { "--threads", 't', "NUM",          false,
+    { "--threads", 't', "NUM [TP_NAME]",          false,
 
         "create a new thread pool to run the current stream graph.  "
         "The created thread pool will be used to run all blocks to "
@@ -352,6 +352,9 @@ static struct QsOption
         "If this option is not given before blocks are loaded the "
         "program will default to running " STRING(DEFAULT_MAXTHREADS)
         " for blocks loaded in a given stream graph.\n"
+        "\n"
+        "TP_NAME is the optional thread pool name.  If not given than "
+        "a thread pool name will be generated.\n"
         "\n"
         "On the Linux operating"
         " system the maximum number of threads a process may have can be"
@@ -362,8 +365,8 @@ static struct QsOption
         " flow graph that is constructed.  Threads will only be created"
         " if when there a block that is not starved or clogged and all"
         " the existing worker threads are busy on another block.  Think"
-        " of threads as flowing in the stream graph to where they are"
-        " needed.\n"
+        " of threads as flowing to anywhere in the stream graph"
+        " where they are needed.\n"
         "\n"
         "quickstream can run with one worker thread.  You can"
         " set the maximum number of worker threads to zero and then"

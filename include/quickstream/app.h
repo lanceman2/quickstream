@@ -116,24 +116,75 @@ void qsGraphDestroy(struct QsGraph *graph);
  allow there to be more than one thread pool so that thread core affinity may
  be set with threads that are in thread pools with just one thread.
 
- qsGraphThreadPool() may not be called while the stream is flowing.
+ qsGraphThreadPoolCreate() may not be called while the stream is flowing.
 
  \param graph is the quickstream graph object that this new thread pool will
  run blocks with.
 
  When the graph is destroyed the thread pool will be destroyed with it.
 
- \param maxThread is the maximum number of thread that will be allowed to run.
+ \param maxThread is the maximum number of threads that will be allowed to run.
  The number of threads that can run in the pool is determined by demand.
  The threads can be thought of as flowing between blocks in the flow graph.
  If \p maxThread is 0 the main thread to run the flow stream when qsGraphFlow()
  is called.
+
+ \param threadPoolName is the name of the thread pool.  If name is 0 and simple
+ name will be generated.
 
  \return a pointer to an opaque thread pool object.
  */
 EXPORT
 extern
 struct QsThreadPool *qsGraphThreadPoolCreate(struct QsGraph *graph,
+        uint32_t maxThreads, const char *threadPoolName);
+
+
+/** Get a thread pool object from its' name
+
+ \param graph is the quickstream graph object.
+
+ \param threadPoolName is a pointer to a string that is the name of the
+ thread pool that we are looking for.
+
+ \return an opaque thread pool object or 0 if one with that name was not found.
+*/
+EXPORT
+extern struct QsThreadPool *qsGraphThreadPoolGetByName(struct QsGraph *graph,
+        const char *threadPoolName);
+
+
+/** Set a thread pool objects' name
+
+ Set the name of a thread pool.
+
+ \param tp is a pointer to the thread pool object which we wish to set the
+ name of.
+
+ \param threadPoolName is a pointer to a string that is the name of the
+ thread pool that we want set the thread pool to.
+
+ \return 0 on success, or non-zero if the name is already used by another
+ thread pool.
+*/
+EXPORT
+extern int qsThreadPoolSetName(struct QsThreadPool *tp,
+        const char *threadPoolName);
+
+
+/** Set the maximum number of threads that a thread pool may run
+
+ \param tp is a pointer to the thread pool object which we wish to set the
+ name of.
+
+ \param maxThread is the maximum number of threads that will be allowed to run.
+ The number of threads that can run in the pool is determined by demand.
+ The threads can be thought of as flowing between blocks in the flow graph.
+ If \p maxThread is 0 the main thread to run the flow stream when qsGraphFlow()
+ is called.
+*/
+EXPORT
+extern void qsThreadPoolSetMaxThreads(struct QsThreadPool *tp,
         uint32_t maxThreads);
 
 
@@ -144,7 +195,7 @@ struct QsThreadPool *qsGraphThreadPoolCreate(struct QsGraph *graph,
  shared between all the blocks that are added.
 
  \param tp a pointer to a thread pool object that was returned from a call
- to qsGraphThreadPool().
+ to qsGraphThreadPoolCreate().
 
  \param block who's flow() function is called by a thread in this pool, as
  the stream flows.
@@ -161,7 +212,7 @@ void qsThreadPoolAddBlock(struct QsThreadPool *tp,
  The thread pool will be removed from the graph that is was created with it.
 
  \param tp a pointer to a thread pool object that was returned from a call
- to qsGraphThreadPool().
+ to qsGraphThreadPoolCreate().
 
 */
 EXPORT

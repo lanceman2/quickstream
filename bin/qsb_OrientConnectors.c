@@ -220,9 +220,9 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
             gtk_grid_attach(GTK_GRID(b->grid),
                     b->constants.widget, 1, 0, 4, 1);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->getters.widget, 3, 4, 2, 1);
+                    b->getters.widget, 3, 5, 2, 1);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->setters.widget, 1, 4, 2, 1);
+                    b->setters.widget, 1, 5, 2, 1);
             break;
         case ISGOC:
         case OSGIC:
@@ -236,7 +236,7 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
             SetHorizontal1ConnectorSize(&b->constants, &w);
             SetHorizontal2ConnectorSizes(&b->setters, &b->getters, &w);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->constants.widget, 1, 4, 4, 1);
+                    b->constants.widget, 1, 5, 4, 1);
             gtk_grid_attach(GTK_GRID(b->grid),
                     b->getters.widget, 3, 0, 2, 1);
             gtk_grid_attach(GTK_GRID(b->grid),
@@ -254,11 +254,11 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
             SetVertical1ConnectorSize(&b->constants, &h);
             SetVertical2ConnectorSizes(&b->setters, &b->getters, &h);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->constants.widget, 0, 0, 1, 5);
+                    b->constants.widget, 0, 0, 1, 6);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->getters.widget, 5, 2, 1, 3);
+                    b->getters.widget, 5, 3, 1, 3);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->setters.widget, 5, 0, 1, 2);
+                    b->setters.widget, 5, 0, 1, 3);
             break;
         case SGOCI:
         case SGICO:
@@ -272,11 +272,11 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
             SetVertical1ConnectorSize(&b->constants, &h);
             SetVertical2ConnectorSizes(&b->setters, &b->getters, &h);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->constants.widget, 5, 0, 1, 5);
+                    b->constants.widget, 5, 0, 1, 6);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->getters.widget, 0, 2, 1, 3);
+                    b->getters.widget, 0, 3, 1, 3);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->setters.widget, 0, 0, 1, 2);
+                    b->setters.widget, 0, 0, 1, 3);
             break;
     }
 
@@ -292,9 +292,9 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
             SetVertical1ConnectorSize(&b->input, &h);
             SetVertical1ConnectorSize(&b->output, &h);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->input.widget, 0, 0, 1, 5);
+                    b->input.widget, 0, 0, 1, 6);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->output.widget, 5, 0, 1, 5);
+                    b->output.widget, 5, 0, 1, 6);
             break;
         case OCISG:
         case OSGIC:
@@ -306,9 +306,9 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
             SetVertical1ConnectorSize(&b->input, &h);
             SetVertical1ConnectorSize(&b->output, &h);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->input.widget, 5, 0, 1, 5);
+                    b->input.widget, 5, 0, 1, 6);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->output.widget, 0, 0, 1, 5);
+                    b->output.widget, 0, 0, 1, 6);
             break;
         case COSGI:
         case SGOCI:
@@ -320,7 +320,7 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
             SetHorizontal1ConnectorSize(&b->input, &w);
             SetHorizontal1ConnectorSize(&b->output, &w);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->input.widget, 1, 4, 4, 1);
+                    b->input.widget, 1, 5, 4, 1);
             gtk_grid_attach(GTK_GRID(b->grid),
                     b->output.widget, 1, 0, 4, 1);
             break;
@@ -336,7 +336,7 @@ void OrientConnectors(struct Block *b, enum ConnectorGeo geo,
             gtk_grid_attach(GTK_GRID(b->grid),
                     b->input.widget, 1, 0, 4, 1);
             gtk_grid_attach(GTK_GRID(b->grid),
-                    b->output.widget, 1, 4, 4, 1);
+                    b->output.widget, 1, 5, 4, 1);
             break;
     }
 

@@ -16,8 +16,8 @@ struct Popover {
 
 struct Page {
     // This is a g tree list of the blocks that are selected, i.e.
-    // highlighted and shit.  We can move all of them together with the
-    // mouse pointer.
+    // highlighted.  We can move all of them together with the mouse
+    // pointer.
     GTree *selectedBlocks;
 
     // The widget that is in the page.  We also call it the work area.

@@ -491,13 +491,18 @@ int ProcessCommand(int comm, int numArgs, const char *command,
                 }
             return 0;
 
-        case 't': // --threads
-            if(numArgs != 1) {
-                fprintf(stderr, "--threads with bad MAX_THREADS\n");
+        case 't': // --threads MAX_THREADS [TP_NAME]
+            //
+            // We do not want the name to start with '-'
+            if(!numArgs || argv[0][0] == '-' || numArgs > 2) {
+                PrintInvalidCommand(numArgs, command, argv);
                 *exitStatus = 1;
                 return 1;
             }
             {
+                const char *name = 0;
+                if(numArgs > 1)
+                    name = argv[1];
                 errno = 0;
                 char *endptr = 0;
                 uint32_t maxThreads = strtol(argv[0], &endptr, 10);
@@ -508,13 +513,17 @@ int ProcessCommand(int comm, int numArgs, const char *command,
                 }
                 if(level >= 4) // 4 = INFO
                     fprintf(stderr,"Adding thread "
-                            "pool with at most %" PRIu32
-                            " threads\n", maxThreads);
+                            "pool \"%s\" with at most %" PRIu32
+                            " threads\n", name?"":name, maxThreads);
                 if(!graph)
                     CreateGraph();
-                ASSERT(qsGraphThreadPoolCreate(graph, maxThreads));
-                return 0;
+                if(!qsGraphThreadPoolCreate(graph, maxThreads, name)) {
+                    fprintf(stderr, "Creating thread pool FAILED\n");
+                    *exitStatus = 1;
+                    return 1; // error return code.
+                }
             }
+            return 0;
 
         case 'v': // --verbose
             if(numArgs != 1) {

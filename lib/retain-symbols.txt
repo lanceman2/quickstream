@@ -30,6 +30,7 @@ qsGraphPrintDot
 qsGraphPrintDotDisplay
 qsGraphRun
 qsGraphThreadPoolCreate
+qsGraphThreadPoolGetByName
 qsGraphWait
 qsOutput
 qsParameterConnect
@@ -57,4 +58,6 @@ qsSetSpewLevel
 qs_spew
 qsThreadPoolAddBlock
 qsThreadPoolDestroy
+qsThreadPoolSetMaxThreads
+qsThreadPoolSetName
 qsTriggerSignalCreate

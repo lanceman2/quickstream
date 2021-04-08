@@ -285,7 +285,6 @@ struct QsBlock *qsGraphBlockLoad(struct QsGraph *graph, const char *fileName,
     char *path;
     void *dlhandle = GetDLHandle(fileName, &path);
     if(!dlhandle) {
-        qsDictionaryRemove(graph->blocks, blockName);
         free(path);
         return 0;
     }

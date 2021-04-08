@@ -94,6 +94,10 @@ struct QsGraph {
     // last thread pool created.
     //
     struct QsThreadPool *threadPools;
+    //
+    // Another list of the thread pools.  The same as in threadPools,
+    // but in a QsDictionary.
+    struct QsDictionary *threadPoolDict;
 
     // A singly linked list of QsStreamSourceTrigger that are running.
     //

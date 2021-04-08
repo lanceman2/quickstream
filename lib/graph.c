@@ -49,6 +49,7 @@ struct QsGraph *qsGraphCreate(void) {
     struct QsGraph *graph = calloc(1, sizeof(*graph));
     ASSERT(graph, "calloc(1,%zu) failed", sizeof(*graph));
     graph->blocks = qsDictionaryCreate();
+    graph->threadPoolDict = qsDictionaryCreate();
     DASSERT(graph->blocks);
 
     if(mainThreadSet == false) {
@@ -186,6 +187,7 @@ void qsGraphDestroy(struct QsGraph *graph) {
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
     DASSERT(graph);
     DASSERT(graph->blocks);
+    DASSERT(graph->threadPoolDict);
     ASSERT(graph->flowState != QsGraphFlowing);
 
     {
@@ -212,6 +214,8 @@ void qsGraphDestroy(struct QsGraph *graph) {
     // This will destroy all the blocks too, via the
     // qsDictionarySetFreeValueOnDestroy() thingy.
     qsDictionaryDestroy(graph->blocks);
+
+    qsDictionaryDestroy(graph->threadPoolDict);
 
 #ifdef DEBUG
     memset(graph, 0, sizeof(*graph));
@@ -330,7 +334,7 @@ int qsGraphReady(struct QsGraph *graph) {
     // data.
     if(graph->threadPools == 0)
         // Make a default thread pool.
-        qsGraphThreadPoolCreate(graph, QS_DEFAULT_MAXTHREADS);
+        qsGraphThreadPoolCreate(graph, QS_DEFAULT_MAXTHREADS, 0);
     else {
         struct QsThreadPool *tp = graph->threadPools;
         // Check for an invalid graph thread pools case.

@@ -384,19 +384,24 @@ struct Block *AddBlock(struct Page *page,
             GDK_LEAVE_NOTIFY_MASK);
 
     {
-        /* The Grid of a block is 6x5
+        /* The Grid of a block is 6x6
 
-            0,0  1,0  2,0  3,0  4,0  5,0  6,0
+    -------> x
+    |
+    |
+    V         0,0  1,0  2,0  3,0  4,0  5,0  6,0
 
-            0,1  1,1  2,1  3,1  4,1  5,1  6,1
+    y         0,1  1,1  2,1  3,1  4,1  5,1  6,1
 
-            0,2  1,2  2,2  3,2  4,2  5,2  6,2
+              0,2  1,2  2,2  3,2  4,2  5,2  6,2
 
-            0,3  1,3  2,3  3,3  4,3  5,3  6,3
+              0,3  1,3  2,3  3,3  4,3  5,3  6,3
 
-            0,4  1,4  2,4  3,4  4,4  5,4  6,4
+              0,4  1,4  2,4  3,4  4,4  5,4  6,4
 
-            0,5  1,5  2,5  3,5  4,5  5,5  6,5
+              0,5  1,5  2,5  3,5  4,5  5,5  6,5
+
+              0,6  1,6  2,6  3,6  4,6  5,6  6,6
 
 
         */
@@ -415,7 +420,13 @@ struct Block *AddBlock(struct Page *page,
         //      x, y, w, h
                 1, 1, 4, 1);
         b->nameLabel = MakeBlockLabel(grid, block->name, "name",
-                1, 3, 4, 1);
+                1, 4, 4, 1);
+        // Making this label bigger in height does not necessarily make it
+        // be a thicker label.  Grid coordinates do not necessarily map to
+        // real pixel sizes.
+        MakeBlockLabel(grid, "threadpool", "name",
+                1, 2, 4, 2);
+
 
         MakeBlockConnector(grid, "const", Constant, b);
         MakeBlockConnector(grid, "get", Getter, b);
