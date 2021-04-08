@@ -96,9 +96,9 @@ static inline void GetConnectionColor(enum ConnectorKind ckind,
 //  -------> x
 //  |
 //  |
-//  |     |                    |     
-//  V     |<---- length ------>|
-//  y     |                    |
+//  |     |                      |     
+//  V     |<------ length ------>|
+//  y     |                      |
 //
 //                        *
 //            * *         * *
@@ -113,7 +113,7 @@ static inline void GetConnectionColor(enum ConnectorKind ckind,
 //
 //
 //
-//  The height a small faction of the length
+//  The height is a faction of the length
 //
 //  angle =  0  points right
 //  angle =  90 points down
@@ -421,7 +421,7 @@ static uint32_t currentPinNum = -1;
 static bool popoverShowing = false;
 
 
-static void ShowPinBalloon(GtkWidget *draw, GdkEventButton *e,
+static void ShowPinBalloon(GtkWidget *draw, double x_root, double y_root,
         struct Connector *c) {
 
     if(!connectorsPopover)
@@ -467,7 +467,7 @@ static void ShowPinBalloon(GtkWidget *draw, GdkEventButton *e,
     if(c->isHorizontal) {
         // The connector is oriented horizontally; so the pin number
         // depends on the x position of the pointer.
-        delta = e->x_root - pos[0];
+        delta = x_root - pos[0];
         p = numPins*delta/width;
         if(p < 0.0) pinNum = 0;
         else if(p >= numPins) pinNum = numPins - 1;
@@ -477,7 +477,7 @@ static void ShowPinBalloon(GtkWidget *draw, GdkEventButton *e,
     } else {
         // The connector is oriented vertically, so the pin number depends
         // on the y position of the pointer.
-        delta = e->y_root - pos[1];
+        delta = y_root - pos[1];
         p = numPins*delta/height;
         if(p < 0.0) pinNum = 0;
         else if(p >= numPins) pinNum = numPins - 1;
@@ -538,7 +538,7 @@ gboolean ConnectorMotion_CB(GtkWidget *draw,
         gtk_widget_show(connectorsPopover->container);
     }
 
-    ShowPinBalloon(draw, e, c);
+    ShowPinBalloon(draw, e->x_root, e->y_root, c);
 
     if(fromPin)
         // We are dragging a connection.
@@ -553,7 +553,7 @@ gboolean ConnectorMotion_CB(GtkWidget *draw,
 
 
 gboolean ConnectorEnter_CB(GtkWidget *draw,
-        GdkEventButton *e, struct Connector *c) {
+        GdkEvent *e, struct Connector *c) {
 
     DASSERT(c);
     DASSERT(c->numPins);
@@ -572,7 +572,9 @@ gboolean ConnectorEnter_CB(GtkWidget *draw,
         // We sometimes get 2 enter events with no leave event.
         connectorsPopover = &c->block->page->connectorsPopover;
         gtk_widget_show(connectorsPopover->container);
-        ShowPinBalloon(draw, e, c);
+        double x_root, y_root;
+        GetPointer(&x_root, &y_root);
+        ShowPinBalloon(draw, x_root, y_root, c);
     }
 
     if(fromPin)
@@ -581,8 +583,9 @@ gboolean ConnectorEnter_CB(GtkWidget *draw,
                 (fromPin->connector->kind != Input &&
                  fromPin->connector->kind != Output)) {
             toPin = 0;
-            toPin = GetConnectorPinAndPosition(draw,
-                    e->x_root, e->y_root, c);
+            double x_root, y_root;
+            GetPointer(&x_root, &y_root);
+            toPin = GetConnectorPinAndPosition(draw, x_root, y_root, c);
         }
 
     return FALSE; // FALSE = let event go to next widget.
@@ -592,7 +595,7 @@ gboolean ConnectorEnter_CB(GtkWidget *draw,
 
 
 gboolean ConnectorLeave_CB(GtkWidget *draw,
-        GdkEventButton *e, struct Connector *c) {
+        GdkEvent *e, struct Connector *c) {
 
     DASSERT(c);
     DASSERT(c->numPins);

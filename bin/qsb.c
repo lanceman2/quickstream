@@ -89,7 +89,7 @@ MakeNewLayoutSurface(GtkWidget *widget, cairo_surface_t *old,
 
 // This does work.  The position is relative to the root window.
 //
-static void GetPointer(double *x, double *y) {
+void GetPointer(double *x, double *y) {
 
     GdkDevice *mouse_device;
 
@@ -309,8 +309,8 @@ DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
     // x0, y0, x1, y1, x2, y2, x3, x3 will be the drawing control points.
 
     // starting point
-    double x0 = fromPin->connector->x;
-    double y0 = fromPin->connector->y;
+    double x0 = fromPin->x;
+    double y0 = fromPin->y;
     // 2nd point
     double x1, y1;
     // 3rd point
@@ -323,8 +323,8 @@ DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
 
     if(toPin) {
 
-        x3 = toPin->connector->x;   
-        y3 = toPin->connector->y;   
+        x3 = toPin->x;   
+        y3 = toPin->y;   
 
     } else {
         GetWidgetRootXY(layout, &x3, &y3);
@@ -383,6 +383,7 @@ DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
     // The 'draw' event callback, WorkArea_drawCB(), will paste
     // together all the needed surfaces into the layout widget.
     gtk_widget_queue_draw_area(layout, 0, 0, page->w, page->h);
+ERROR();
 }
 
 
@@ -403,6 +404,7 @@ static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
 
 
     if(fromPin) {
+ERROR();
         DrawConnectionDragLine(e, page);
         return FALSE; // TRUE = eat the event
     }
@@ -447,6 +449,8 @@ void StartDragingConnection(struct Page *page) {
 
 
 void StopDragingConnection(struct Page *page) {
+
+ERROR();
 
     DASSERT(fromPin);
     // the user gave up on making a connection by leaving the layout

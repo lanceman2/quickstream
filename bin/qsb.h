@@ -94,6 +94,9 @@ struct Pin {
     // first in the list.
     struct Pin *first, *next;
 
+    // The position of the connection point in the layout.
+    double x, y;
+
     uint32_t index; // This is also the port number for input and output.
 
     // The popover description, that we put in the popover label.
@@ -139,10 +142,6 @@ struct Connector {
     // user is dragging/drawing a line from it.
     //
     // x, y, dx, dy are for connection line drawing.
-    //
-    //uint32_t selectedPin;
-    //
-    double x, y; // point to draw the line from for the connection.
     //
     // dx,dy marks the direction of the line from the connection pin,
     // "fromPin.  A cubic Bézier spline is what we draw from the fromPin.
@@ -232,6 +231,10 @@ struct Block *popupBlock;
 
 extern
 void InitCSS(void);
+
+
+extern
+void GetPointer(double *x, double *y);
 
 
 // This adds a Gtk tree view to use as the block selecting thingy
@@ -326,11 +329,11 @@ gboolean ConnectorMotion_CB(GtkWidget *draw,
 //
 extern
 gboolean ConnectorEnter_CB(GtkWidget *draw,
-        GdkEventButton *e, struct Connector *c);
+        GdkEvent *e, struct Connector *c);
 //
 extern
 gboolean ConnectorLeave_CB(GtkWidget *draw,
-        GdkEventButton *e, struct Connector *c);
+        GdkEvent *e, struct Connector *c);
 //
 extern
 gboolean ConnectorRelease_CB(GtkWidget *draw,

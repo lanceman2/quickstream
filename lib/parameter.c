@@ -27,7 +27,7 @@ void Disconnect2Parameters(struct QsParameter *p) {
 
     // This just initializes the 2 parameter connection data elements in
     // the parameter structure: "first", "next", and "numConnections" in
-    // addition to un-sharing the "value" memory.
+    // addition to un-sharing the "value" memory, if need be.
 
     struct QsParameter *first = p->first;
     DASSERT(p->first);
@@ -154,19 +154,33 @@ void DisconnectGetterParameter(struct QsParameter *p) {
         return;
     }
 
-    // Getters are first in the connection list.
+    // Getters are always the first in the connection list.  There is
+    // only one getter in the group.
     DASSERT(p->first == p);
 
-    // Getters only connect to setters.  Setters need the getter to
-    // be connected.  So we reset them all.
+    // Getters only connect to setters.  With this getter the remaining
+    // setters will act like a group of constants with just setters in the
+    // group; until they get connected to another getter.
     //
-    // Note: we are editing the list as we go through the list.
-    for(struct QsParameter *i = p->first; i;) {
-        struct QsParameter *next = i->next;
-        i->numConnections = 0;
-        i->next = 0;
-        i->first = 0;
-        i = next;
+    struct QsParameter *first = p->first->next;
+    DASSERT(first);
+    DASSERT(first->kind == QsSetter);
+    uint32_t numConnections = first->numConnections - 1;
+    first->numConnections = numConnections;
+    DASSERT(first->next);
+
+    for(struct QsParameter *i = first->next; i; i = i->next) {
+        i->numConnections = numConnections;
+        i->first = first;
+        DASSERT(i->kind == QsSetter);
+        DASSERT(i->value);
+        DASSERT(i->value != first->value);
+        DASSERT(i->size == first->size);
+#ifdef DEBUG
+        memset(i->value, 0, i->size);
+#endif
+        free(i->value);
+        i->value = first->value;
     }
 }
 
@@ -185,29 +199,40 @@ void DisconnectSetterParameter(struct QsParameter *p) {
         return;
     }
 
-
-    // A Setter will never be first in the connection list, so we
-    // just need to reinitialize it.
-    //
-    // The first could be a getter or a constant, but not a setter.
-    //
-    DASSERT(p != p->first);
     DASSERT(p->first);
-    DASSERT(p->first == p->first->first);
+    struct QsParameter *first = p->first;
 
-    for(struct QsParameter *i = p->first; i; i = i->next) {
-        --i->numConnections;
-        if(i->next == p) {
-            // p is ripped out.
-            i->next = p->next;
-        }
+    if(p->first == p) {
+        // This is not a Getter group yet.
+        DASSERT(p->next);
+        DASSERT(p->next->kind == QsSetter);
+        // We have a new first.
+        first = p->next;
     }
 
     if(p->first->kind != QsGetter) {
+        // This parameter was in a constant like group so we need to
+        // reallocate the value memory that will no longer be shared in
+        // the group.
+        DASSERT(p->value == p->first->value);
+        // TODO: We may just be freeing this soon.
         p->value = calloc(1, p->size);
         ASSERT(p->value, "calloc(1,%zu) failed", p->size);
         memcpy(p->value, p->first->value, p->size);
     }
+
+    uint32_t numConnections = p->numConnections - 1;
+
+    for(struct QsParameter *i = first; i; i = i->next) {
+        DASSERT(i->numConnections == numConnections + 1);
+        i->numConnections = numConnections;
+        i->first = first;
+        if(i->next == p) {
+            // p is ripped out if it was not first.
+            i->next = p->next;
+        }
+    }
+
     p->first = 0;
     p->next = 0;
     p->numConnections = 0;

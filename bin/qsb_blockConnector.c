@@ -100,7 +100,6 @@ void DrawConnection(struct Page *page,
 
     DASSERT(pin1);
     DASSERT(pin2);
-    DASSERT(pin1->connector != pin2->connector);
 
     GtkWidget *layout = page->layout;
     DASSERT(layout);
@@ -241,9 +240,9 @@ struct Pin *GetConnectorPinAndPosition(GtkWidget *draw, double x_root,
         else if(p >= numPins) pinNum = numPins - 1;
         else pinNum = p;
         pin = c->pins + pinNum;
-        pin->connector->x = pos[0] + (pinNum+0.5)*(width/numPins) -
+        pin->x = pos[0] + (pinNum+0.5)*(width/numPins) -
                 layoutPos[0];
-        pin->connector->y = (pos[1] + height/2.0) - layoutPos[1];
+        pin->y = (pos[1] + height/2.0) - layoutPos[1];
         if(pin->connector->isSouthWestOfBlock) {
             pin->connector->dx = 0.0;
             pin->connector->dy = 1.0;
@@ -260,8 +259,8 @@ struct Pin *GetConnectorPinAndPosition(GtkWidget *draw, double x_root,
         else if(p >= numPins) pinNum = numPins - 1;
         else pinNum = p;
         pin = c->pins + pinNum;
-        pin->connector->x = pos[0] + width/2.0 - layoutPos[0];
-        pin->connector->y = pos[1] + (pinNum + 0.5)*(height/numPins) -
+        pin->x = pos[0] + width/2.0 - layoutPos[0];
+        pin->y = pos[1] + (pinNum + 0.5)*(height/numPins) -
                 layoutPos[1];
         if(pin->connector->isSouthWestOfBlock) {
             pin->connector->dx = 1.0;
@@ -276,6 +275,7 @@ struct Pin *GetConnectorPinAndPosition(GtkWidget *draw, double x_root,
         // It could be trying to get either the fromPin or the toPin, it
         // does not matter, it's not a pin that we can connect to.
         return 0;
+
     if(!fromPin) {
         DASSERT(!toPin);
         // This is returning the fromPin
