@@ -182,9 +182,9 @@ void DisconnectPins(struct Block *block, struct Connector *c) {
             first = first->next;
             prev->next = 0;
         }
-        struct Pin *next = 0;
+        struct Pin *next;
         // We will use prev to be the previous good pin.
-        prev = 0;
+        prev = first;
         // Set the new first and remove pin connections from this block.
         for(struct Pin *p = first; p; p = next) {
             next = p->next;
@@ -197,9 +197,8 @@ void DisconnectPins(struct Block *block, struct Connector *c) {
                 p->first = 0;
                 p->next = 0;
             } else {
-                if(prev)
-                    // The last good p needs this p are the next.
-                    prev->next = p;
+                // The last good p needs this p as the next.
+                prev->next = p;
                 // fix this new first in the list.
                 p->first = first;
                 // This is now the latest prev, good one.

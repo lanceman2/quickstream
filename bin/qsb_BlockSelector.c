@@ -243,7 +243,7 @@ rowActivated_CB(GtkTreeView       *tree,
         g_free(name);
     }
 
-    WARN("selectedBlockFile=%s", selectedBlockFile);
+    DSPEW("selectedBlockFile=%s", selectedBlockFile);
 
     gtk_entry_set_text(selectedBlockEntry, selectedBlockFile);
 

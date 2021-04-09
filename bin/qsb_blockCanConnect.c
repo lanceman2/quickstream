@@ -65,11 +65,8 @@ bool CanConnect2Pins(struct Pin *pin1, struct Pin *pin2) {
     DASSERT(CanConnectFromPin(pin1));
     DASSERT(CanConnectFromPin(pin2));
 
-WARN("pin=%" PRIu32 " and pin=%" PRIu32, pin1->index, pin2->index);
     if(pin1 == pin2)
         return false;
-WARN();
-
 
     struct Connector *c1 = pin1->connector;
     DASSERT(c1);

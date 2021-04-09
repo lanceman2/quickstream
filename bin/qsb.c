@@ -383,7 +383,6 @@ DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
     // The 'draw' event callback, WorkArea_drawCB(), will paste
     // together all the needed surfaces into the layout widget.
     gtk_widget_queue_draw_area(layout, 0, 0, page->w, page->h);
-ERROR();
 }
 
 
@@ -404,7 +403,6 @@ static gboolean WorkArea_mouseMotionCB(GtkLayout *layout,
 
 
     if(fromPin) {
-ERROR();
         DrawConnectionDragLine(e, page);
         return FALSE; // TRUE = eat the event
     }
@@ -449,8 +447,6 @@ void StartDragingConnection(struct Page *page) {
 
 
 void StopDragingConnection(struct Page *page) {
-
-ERROR();
 
     DASSERT(fromPin);
     // the user gave up on making a connection by leaving the layout
