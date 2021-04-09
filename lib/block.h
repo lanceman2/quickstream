@@ -97,8 +97,16 @@ struct QsBlock {
     //
     void *runFileDLHandle;
     char *runFilename;
-    // pointer to data passed into the other, 2nd, DSO "space"
+    // pointer to data passed into the other, 2nd, DSO (dynamic share
+    // object) "space"
     void *runFileUserData;
+
+    // More stupid data.  The user of this block API may need to have an
+    // associated user pointer.  Use qsBlockGetUserData() and
+    // qsBlockSetUserData() to get and set this pointer.  TODO: maybe a
+    // waste of memory in most cases.  This is not part of the block.h
+    // API, it's for the builder.h API.
+    void *userData;
 
 
     // Some callbacks like declare(), construct() and destroy() we

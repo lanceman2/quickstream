@@ -612,3 +612,31 @@ const char* qsBlockGetName(const struct QsBlock *block) {
     // This gets the block from pthread_setspecific(_qsGraphKey,block).
     return GetBlock()->name;
 }
+
+
+void *qsBlockGetUserData(struct QsBlock *b) {
+
+    DASSERT(b);
+    DASSERT(b->name);
+    DASSERT(b->graph);
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    ASSERT(b->graph->flowState == QsGraphPaused ||
+            b->graph->flowState == QsGraphFailed);
+    DASSERT(b->loadName);
+
+    return b->userData;
+}
+
+
+void qsBlockSetUserData(struct QsBlock *b, const void *userData) {
+
+    DASSERT(b);
+    DASSERT(b->name);
+    DASSERT(b->graph);
+    ASSERT(mainThread == pthread_self(), "Not graph main thread");
+    ASSERT(b->graph->flowState == QsGraphPaused ||
+            b->graph->flowState == QsGraphFailed);
+    DASSERT(b->loadName);
+
+    b->userData = (void *) userData;
+}

@@ -4,6 +4,8 @@ qs_assertAction
 qsBlockConnect
 qsBlockDisconnect
 qsBlockGetName
+qsBlockGetUserData
+qsBlockSetUserData
 qsBlockUnload
 qsDictionaryCreate
 qsDictionaryDestroy

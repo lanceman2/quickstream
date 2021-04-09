@@ -179,6 +179,29 @@ struct QsBlock *qsGraphGetBlockByName(const struct QsGraph *graph,
         const char *bname);
 
 
+/** get block user data
+
+ \param block pointer to an opaque block object.
+
+ \return a pointer that was set with qsBlockSetUserData().
+ */
+EXPORT
+extern
+void *qsBlockGetUserData(struct QsBlock *block);
+
+
+/** set block user data
+
+ \param block pointer to an opaque block object.
+
+ \param userData a is pointer that the user wishes to associate with this
+ block.  The user may retrieve this pointer later with
+ qsBlockGetUserData().
+ */
+EXPORT
+extern
+void qsBlockSetUserData(struct QsBlock *block,
+        const void *userData);
 
 
 // Called when graph is paused.  Parameter, p, must be a constant or a
