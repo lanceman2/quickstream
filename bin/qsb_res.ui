@@ -98,6 +98,14 @@
                 <property name="visible">True</property>
               </object>
             </child>
+            <!-- Manage Thread Pools Button -->
+            <child>
+              <object id="threadPoolsButton" class="GtkButton">
+                <property name="label">Manage Thread Pools</property>
+                <property name="can_focus">True</property>
+                <property name="visible">True</property>
+              </object>
+            </child>
             <!-- Quit Button -->
             <child>
               <object id="quitButton" class="GtkButton">

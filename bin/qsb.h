@@ -379,6 +379,11 @@ extern
 void GetConnectionLineColor(struct Connector *c,
         double *r, double *g, double *b, double *a);
 
+
+extern
+gboolean ManageThreadPools(GtkWidget *w, gpointer data);
+
+
 // This, CONNECTOR_THICKNESS, is used in gtk_widget_set_size_request() for
 // some of the inner block widgets.  This is a toning parameter.  It is
 // the thickness of a connector widget, as they are like border that wrap

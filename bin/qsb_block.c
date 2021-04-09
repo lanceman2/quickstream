@@ -457,5 +457,7 @@ struct Block *AddBlock(struct Page *page,
 
     gtk_layout_put(layout, ebox, b->x, b->y);
 
+    qsBlockSetUserData(block, b);
+
     return b;
 }

@@ -664,6 +664,8 @@ setup_widgets(void) {
     Connect(b, "quitMenu", "activate", gtk_main_quit, 0);
     Connect(b, "quitButton", "clicked", gtk_main_quit, 0);
     Connect(b, "newTabButton", "clicked", NewTab, 0);
+    Connect(b, "threadPoolsButton", "clicked", ManageThreadPools, 0);
+
 
     // We are done with this builder
     g_object_unref(G_OBJECT(b));
