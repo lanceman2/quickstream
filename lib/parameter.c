@@ -221,7 +221,6 @@ void DisconnectSetterParameter(struct QsParameter *p) {
         return;
     }
 
-#if 1
     struct QsSetter *s = (struct QsSetter *) p;
     if(s->trigger) {
         DASSERT(p->first);
@@ -229,7 +228,6 @@ void DisconnectSetterParameter(struct QsParameter *p) {
         FreeTrigger(s->trigger);
         s->trigger = 0;
     }
-#endif
 
     DASSERT(p->first);
     struct QsParameter *first = p->first;
@@ -646,10 +644,17 @@ AddParameterConnections(struct QsParameter *p1, struct QsParameter *p2) {
     for(; i; i = i->next) {
         i->first = p1->first;
         i->numConnections = numConnections;
-        if(p1->first->kind != QsGetter)
+        if(p1->first->kind != QsGetter) {
+            // Currently this parameter, i, have its' own allocated value.
+            DASSERT(i->value);
+            DASSERT(i->value != p1->value);
+#ifdef DEBUG
+            memset(i->value, 0, i->size);
+#endif
+            free(i->value);
             // Make the value be shared with p1
             i->value = p1->value;
-        else {
+        } else {
             // p1->first->kind == QsGetter
             // The value was shared or p2 was not in a group yet.
             DASSERT(i->value == p2->value);
