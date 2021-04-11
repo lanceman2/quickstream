@@ -149,8 +149,8 @@ void SigAction(int signum) {
     if(sig->aboutToPause) {
 
         if(sig->thread != pthread_self()) {
-            // This thread is not the thread that should act on this trigger
-            // event.  Send the signal to a particular thread.
+            // This thread is not the thread that should act on this
+            // trigger event.  Send the signal to a particular thread.
             // The thread sig->thread is waiting on a blocking call
             // to get this signal and jump it to acting on it.
             CHECK(pthread_kill(sig->thread, sig->signum));
@@ -260,7 +260,7 @@ void TriggerStart(struct QsTrigger *t) {
         {
             // There is a setter that is connected to a 
             struct QsSetter *s = (struct QsSetter *) t->userData;
-            s->trigger = t;
+            //s->trigger = t;
             DASSERT(s->parameter.first->kind == QsGetter);
             QueueUpSetterFromGetter(s, s->parameter.first);
         }
@@ -306,7 +306,7 @@ void TriggerStop(struct QsTrigger *t) {
         }
         break;
         case QsSetterTrigger:
-            ((struct QsSetter *)t->userData)->trigger = 0;
+            // ((struct QsSetter *)t->userData)->trigger = 0;
         break;
         case QsStreamSource:
         {

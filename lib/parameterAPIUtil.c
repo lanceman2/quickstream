@@ -124,6 +124,7 @@ void QueueUpSetterFromGetter(struct QsSetter *s, struct QsParameter *p) {
     CHECK(pthread_mutex_lock(s->mutex));
 
     struct QsTrigger *trigger = s->trigger;
+    DASSERT(trigger);
 
     if(!s->haveValueQueued) {
         // queue up this event.

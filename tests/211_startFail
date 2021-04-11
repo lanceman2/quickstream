@@ -9,7 +9,6 @@ if ! ../bin/quickstream\
  --block tests/dummy\
  --block tests/startFail\
  --block tests/dummy\
- --ready\
  --run ; then
     exit 0
 fi

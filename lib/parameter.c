@@ -29,17 +29,35 @@ void Disconnect2Parameters(struct QsParameter *p) {
     // the parameter structure: "first", "next", and "numConnections" in
     // addition to un-sharing the "value" memory, if need be.
 
-    struct QsParameter *first = p->first;
+    struct QsParameter *first = p->first; // 1 parameter
     DASSERT(p->first);
 
-    struct QsParameter *i = first->next;
+    struct QsParameter *i = first->next; // 2 parameters
     DASSERT(i);
     DASSERT(i->numConnections == 2);
-    i->numConnections = 0;
-    i->first = 0;
     DASSERT(i->next == 0);
 
-    if(i->kind != QsGetter && first->kind != QsGetter) {
+    // We require that getter parameters are first in the list of
+    // connections.
+    DASSERT(i->kind != QsGetter);
+
+
+    if(first->kind == QsGetter) {
+        // Getters can only connect to setters, so the parameter we are
+        // connected to, i,  must be a setter, and it must have had a
+        // trigger.
+        DASSERT(i->kind == QsSetter);
+        struct QsSetter *s = (struct QsSetter *) i;
+        DASSERT(s->trigger);
+        FreeTrigger(s->trigger);
+        s->trigger = 0;
+    }
+
+
+    i->numConnections = 0;
+    i->first = 0;
+
+    if(first->kind != QsGetter) {
         DASSERT(first->value);
         DASSERT(i->value == first->value);
         // It was sharing the memory for value, now it will not.
@@ -58,7 +76,7 @@ void Disconnect2Parameters(struct QsParameter *p) {
 static
 void DisconnectConstantParameter(struct QsParameter *p) {
 
-    if(!p->first) return; // no connection
+    if(!p->first) return; // there is no connection
 
     DASSERT(p->numConnections >= 2);
 
@@ -176,6 +194,10 @@ void DisconnectGetterParameter(struct QsParameter *p) {
         DASSERT(i->value);
         DASSERT(i->value != first->value);
         DASSERT(i->size == first->size);
+        struct QsSetter *s = (struct QsSetter *) i;
+        DASSERT(s->trigger);
+        FreeTrigger(s->trigger);
+        s->trigger = 0;
 #ifdef DEBUG
         memset(i->value, 0, i->size);
 #endif
@@ -199,6 +221,16 @@ void DisconnectSetterParameter(struct QsParameter *p) {
         return;
     }
 
+#if 1
+    struct QsSetter *s = (struct QsSetter *) p;
+    if(s->trigger) {
+        DASSERT(p->first);
+        DASSERT(p->first->kind == QsGetter);
+        FreeTrigger(s->trigger);
+        s->trigger = 0;
+    }
+#endif
+
     DASSERT(p->first);
     struct QsParameter *first = p->first;
 
@@ -210,7 +242,7 @@ void DisconnectSetterParameter(struct QsParameter *p) {
         first = p->next;
     }
 
-    if(p->first->kind != QsGetter) {
+    if(first->kind != QsGetter) {
         // This parameter was in a constant like group so we need to
         // reallocate the value memory that will no longer be shared in
         // the group.
@@ -227,10 +259,9 @@ void DisconnectSetterParameter(struct QsParameter *p) {
         DASSERT(i->numConnections == numConnections + 1);
         i->numConnections = numConnections;
         i->first = first;
-        if(i->next == p) {
+        if(i->next == p)
             // p is ripped out if it was not first.
             i->next = p->next;
-        }
     }
 
     p->first = 0;
@@ -480,10 +511,12 @@ uint32_t qsParameterNumConnections(struct QsParameter *p) {
     DASSERT(p->block);
     ASSERT(((struct QsBlock *)p->block)->inWhichCallback == _QS_IN_START ||
             ((struct QsBlock *)p->block)->inWhichCallback == _QS_IN_STOP); 
-    
-    uint32_t num = p->numConnections;
 
-    if(num == 2) num = 1;
+
+    uint32_t num = p->numConnections;
+    DASSERT(num != 1);
+
+    if(num > 1) --num;
     return num;
 }
 
@@ -533,25 +566,23 @@ qsParameterGetValueByName(const char *pname, void *value, size_t size) {
 
 
 //
-// p1 is a constant parameter or a getter
-//
-// p2 can be a constant parameter or a setter parameter
+// p2 is not a getter or in a getter group.
 //
 // Add to connections list and then make the values consistent.
 //
-// I'm pleasantly surprised how simple this worked out to be.  This
-// one simple function handles making all connections.  We don't need
-// any memory allocations to make connections.  The connections are in
-// a singly linked list we make with
+// I'm pleasantly surprised how simple this worked out to be.  This one
+// simple function handles making all connections.  The connections are in
+// a singly linked list starting at p->first.
+//
+// The data to set is:
 //
 //  QsParameter::first, QsParameter::next, and QsParameter::numConnections
+//
 //
 // All the parameters in a connection group have the same "first" and
 // "numConnections".   For a Getter connection group "first" always points
 // to the one getter in the group, and the rest are always setters.
 //
-// The only other type of connection group is a group of N constants and M
-// setters, where N = 1,2,3,... and M = 0,1,2,3,...
 //
 static inline void
 AddParameterConnections(struct QsParameter *p1, struct QsParameter *p2) {
@@ -560,7 +591,7 @@ AddParameterConnections(struct QsParameter *p1, struct QsParameter *p2) {
     //
     //   1. constant group that can have any mix of constants and setters,
     //      the first in the list will be a constant, if there is a
-    //      constant in the group
+    //      constant in the group, otherwise it's a setter.
     //
     //   2. a getter group that has one getter first and any number of
     //      setters.
@@ -582,43 +613,59 @@ AddParameterConnections(struct QsParameter *p1, struct QsParameter *p2) {
         // list 2 empty.  First add itself.
         p2->first = p2;
         DASSERT(p2->next == 0);
+        DASSERT(p2->kind != QsGetter);
         DASSERT(p2->numConnections == 0);
         p2->numConnections = 1;
     }
 
     // They are not connected yet.  So none of the parameters should be in
     // common between the 2 groups, so we just need to connect the two
-    // lists.  And make all of list 2 be list 1, with list 2 appended.
+    // lists.  We make all of list 2 be appended to list 1.
     struct QsParameter *i;
     uint32_t numConnections = p1->numConnections + p2->numConnections;
+    // numConnections is the number of parameters in the connection group.
+    // All in the list have the numConnections value.
+    //
+    // TODO: Yes, kind of a dumb data struct.
     DASSERT(numConnections >= 2);
 
     for(i = p1->first; i->next; i = i->next) {
         i->numConnections = numConnections;
-        DASSERT(p1->kind == QsGetter || i->value == i->next->value);
+        // The values are shared for all but the parameters in a getter
+        // group.
+        DASSERT(p1->first->kind == QsGetter || i->value == i->next->value);
     }
     i->numConnections = numConnections;
-    // i->next ==0 and now connect them
+    // i->next == 0 and now connect them
     i->next = p2->first;
     i = i->next;
+    // Now i is the first in the old list 2.
 
     DASSERT(i->value);
 
-    if(p1->kind != QsGetter) {
-        // The old list 2 should have been sharing the value memory, now
-        // we need to make it not share.
-        DASSERT(!i->next || i->value == i->next->value);
-#ifdef DEBUG
-        memset(i->value, 0, i->size);
-#endif
-        free(i->value);
-    }
     for(; i; i = i->next) {
-        i->first = p1;
+        i->first = p1->first;
         i->numConnections = numConnections;
-        if(p1->kind != QsGetter) {
+        if(p1->first->kind != QsGetter)
             // Make the value be shared with p1
             i->value = p1->value;
+        else {
+            // p1->first->kind == QsGetter
+            // The value was shared or p2 was not in a group yet.
+            DASSERT(i->value == p2->value);
+            // but now it's in a getter group and the value gets copied to
+            // other memory for this i-th parameter.
+            if(i != p2) {
+                // We allocate the value memory except for one of them.
+                // We choose to not allocate parameter p2.  p2 will be
+                // using the value memory that was shared between all the
+                // parameters where in the p2 group of parameters or it
+                // was just one parameter p2 (no group).
+                i->value = calloc(1, i->size);
+                ASSERT(i->value, "calloc(1,%zu) failed", i->size);
+            }
+            DASSERT(i->size == p1->size);
+            memcpy(i->value, p1->first->value, p1->size);
         }
     }
 }
@@ -688,8 +735,7 @@ void qsParameterDisconnect(struct QsParameter *p, struct QsParameter *p1) {
 //
 // Connect from p0 to p1
 //
-int qsParameterConnect(struct QsParameter *p0,
-        struct QsParameter *p1) {
+int qsParameterConnect(struct QsParameter *p0, struct QsParameter *p1) {
 
     ASSERT(mainThread == pthread_self(), "Not graph main thread");
     DASSERT(p0);
@@ -698,46 +744,53 @@ int qsParameterConnect(struct QsParameter *p0,
     DASSERT(p0->name);
     DASSERT(p1->name);
 
+    if(p0 == p1) {
+        ERROR("The parameter \"%s\" cannot connect to itself", p1->name);
+        DASSERT(0);
+        return -1;
+    }
 
-    if(p1->kind == QsGetter) {
-        // We'll switch the two parameters keeping the to parameter, p0,
-        // as a getter. 
+    if((p0->kind == QsGetter || (p0->first && p0->first->kind == QsGetter)) &&
+            (p1->kind == QsGetter || (p1->first && p1->first->kind == QsGetter))) {
+        ERROR("We cannot connect 2 getter parameters groups");
+        DASSERT(0);
+        return -2;
+    }
+
+
+    if(p0->kind == QsSetter && (!p0->first || p0->first->kind == QsSetter)) {
+        // p0 is a setter or in a setter group
+        // We'll switch the two parameters, so as to reduce the number of
+        // connection kind checks.
         struct QsParameter *p = p0;
         p0 = p1;
         p1 = p;
     }
 
     // We can connect certain kinds of parameters from and to each other.
-    // Here is the complete list of possible kinds of connections:
+    // Here is the complete list of possible kinds of connections with the
+    // above connection order imposed.
     //
     //   1. Getter    to  Setter
     //   2. Constant  to  Setter
     //   3. Setter    to  Setter
     //   4. Constant  to  Constant
     //
-    if(p0->kind == QsGetter)
-        if(p1->kind == QsGetter || p1->kind == QsConstant || 
-                (p1->first && p1->first->kind != QsSetter)) {
-            ERROR("Wrong mix of kinds of parameter to "
+    // So connection kinds not allowed are:
+    //
+    //   1. Getter    to  Getter    (checked above)
+    //   2. Getter    to  Constant
+    //
+    if(p0->kind == QsGetter && (
+                // A lone setter
+            p1->kind != QsSetter ||
+                // A setter group.
+                (p1->first && p1->first->kind != QsSetter))) {
+        ERROR("Wrong mix of kinds of parameter to "
                     "connect from and to");
-            DASSERT(0);
-            return -1;
-        }
-
-    if(p0 == p1) {
-        ERROR("The parameter \"%s\" cannot connect to itself", p1->name);
-        DASSERT(0);
-        return -2;
-    }
-
-#if 0
-    if(p0->block == p1->block && p0->kind == QsGetter) {
-        ERROR("Block \"%s\" cannot connect getter parameters in itself",
-                ((struct QsBlock *)p0->block)->name);
         DASSERT(0);
         return -3;
     }
-#endif
 
     // The parameters size and type must match.
     if(p0->type != p1->type || p0->size != p1->size) {
@@ -757,42 +810,38 @@ int qsParameterConnect(struct QsParameter *p0,
         return 0; // success
     }
 
-    if(p1->kind == QsSetter) {
-        // We are connecting to a setter.
-        struct QsSetter *setter = (struct QsSetter *)p1;
-        if(p0->kind == QsGetter) {
+    // Note if there is a getter (or getter group), it is p0.
 
-            // We need to make sure there are no constants in the
-            // connection list.  Getters cannot connect to constants.
-            if(p1->first)
-                for(struct QsParameter *p = p1->first; p; p = p->next)
-                    if(p->kind == QsConstant) {
-                        ERROR("Getter parameter \"%s:%s\" cannot be "
-                                "connected to setter parameter \"%s:%s\""
-                                " because it is connected with a constant"
-                                " \"%s:%s\"",
-                                p0->block->block.name, p0->name,
-                                p1->block->block.name, p1->name,
-                                p->block->block.name, p->name);
-                        return -5;
-                    }
+    if(p0->kind == QsGetter || (p0->first && p0->first->kind == QsGetter)) {
 
-            // We are connecting from getter to setter.
-            AllocateTrigger(sizeof(*setter->trigger),
-                    p1->block,
-                    QsSetterTrigger, (int (*)(void *)) SetterTriggerCB,
-                    setter/*userData*/, (bool (*)(void *)) 0,
-                    false/*isSource*/);
-            // Triggers are managed by the block so we do not need the
-            // pointer at this time.  The block will have it.
-            //
-            // setter->trigger gets set later at TriggerStart().
-            // We use setter->trigger as a flag to know that the
-            // setter is triggering or not.
+        // We must be connecting to a setter that may be in a setter
+        // group.
+        DASSERT(p1->kind == QsSetter &&
+                (!p1->first || p1->first->kind == QsSetter));
+
+        struct QsParameter *s;
+        if(p1->first)
+            // It's in a setter group.
+            s = p1->first;
+        else {
+            s = p1;
+            // It's not in a group now.
+            DASSERT(s->next == 0);
+        }
+
+        for(; s; s = s->next) {
+            // We are connecting from getter (or getter group) to setter
+            // (or setter group), so we need to make a quickstream
+            // trigger for all the setter parameters.
+            DASSERT(s->kind == QsSetter);
+            ((struct QsSetter *)s)->trigger =
+                    AllocateTrigger(sizeof(struct QsTrigger),
+                        p1->block,
+                        QsSetterTrigger, (int (*)(void *)) SetterTriggerCB,
+                        s/*userData*/, (bool (*)(void *)) 0,
+                        false/*isSource*/);
         }
     }
-
-    // Note if there is a getter, it is p0.
 
     AddParameterConnections(p0, p1);
 
