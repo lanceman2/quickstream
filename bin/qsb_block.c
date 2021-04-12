@@ -171,48 +171,18 @@ static
 void DisconnectPins(struct Block *block, struct Connector *c) {
 
     for(uint32_t i = c->numPins - 1; i != -1; --i) {
-        struct Pin *pin = c->pins + i;
-        struct Pin *prev = 0;
-        struct Pin *first = pin->first;
-        // Find the new first, if this block had that parameter in it.
-        while(first && first->connector->block == block) {
-            // Remove this first and go to the next.
-            first->first = 0;
-            prev = first;
-            first = first->next;
-            prev->next = 0;
-        }
-        struct Pin *next;
-        // We will use prev to be the previous good pin.
-        prev = first;
-        // Set the new first and remove pin connections from this block.
-        for(struct Pin *p = first; p; p = next) {
-            next = p->next;
 
-            if(p->connector->block == block) {
-                // Remove this pin from the parameter connection list.
-                // Mark this pin as not being in a list, so we no longer
-                // look at it in the top for loop.  Invalidate this p.
-                //printf("\n   Removed %s\n\n", p->desc);
-                p->first = 0;
-                p->next = 0;
-            } else {
-                // The last good p needs this p as the next.
-                prev->next = p;
-                // fix this new first in the list.
-                p->first = first;
-                // This is now the latest prev, good one.
-                prev = p;
-                // If we find a next one we'll set this.
-                p->next = 0;
-            }
+        struct Pin *p = c->pins + i;
+        if(p->to) {
+            // We have some connections from this pin.
+            DASSERT(p->numTo);
+#ifdef DEBUG
+            memset(p->to, 0, p->numTo*sizeof(*p->to));
+#endif
+            free(p->to);
+            p->to = 0;
+            p->numTo = 0;
         }
-        if(prev) prev->next = 0;
-
-        if(first && !first->next)
-            // There is one pin left in the list so we null the list,
-            // because a list of one is not a useful thing.
-            first->first = 0;
     }
 }
 

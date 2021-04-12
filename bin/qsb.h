@@ -82,25 +82,23 @@ struct Pin {
 
     struct Connector *connector;
 
-    // We keep a singly-linked list of pins for all parameter connections.
-    // The "first" pin is the start of the list.  This list has a
-    // corresponding and independent list in the parameters (struct
-    // QsParameter).  This gives us a parameter connection list that
-    // without which we would need to search through all the pins to find
-    // connections each time we draw the connections.  There is a
-    // connection list in the struct OsParameter, but we do not mirror
-    // that, we just keep a list of all that are in the connection group.
-    // The pins in the group have the same value for "first", which is the
-    // first in the list.
-    struct Pin *first, *next;
-
     // The position of the connection point in the layout.
     double x, y;
 
+    // Index starting at 0 for the first pin in the connector.
     uint32_t index; // This is also the port number for input and output.
 
     // The popover description, that we put in the popover label.
     char desc[DESC_LEN];
+
+    // For parameters we keep a list of parameter this this parameter was
+    // connected to, in to[].  Not used for stream data connection
+    // ports.
+    //
+    // We tried using a singly linked list for this list and the code was
+    // much larger then with using an array like this:
+    struct Pin **to;
+    uint32_t numTo; // length of to[] array.
 
     union {
       // We are connecting to a parameter or a stream port number.

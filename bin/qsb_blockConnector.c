@@ -147,24 +147,16 @@ void DrawConnection(struct Page *page,
 }
 
 
-// Parameters come in fully connected topological groups that start at a
-// single linked list at parameter->first; so we just need to find the
-// start (first) of all these lists.
+// Each Parameter has a connection pin with a list of parameter pins that
+// is connects to.
 void DrawParameterGroups(struct Page *page, struct Connector *c) {
 
     for(uint32_t i = c->numPins - 1; i != -1; --i) {
         struct Pin *pin = c->pins + i;
         DASSERT(pin);
         DASSERT(pin->parameter);
-        if(pin->first == pin) {
-            // This is the first pin in a different list of pins.
-            //
-            // If there is a list there must be at least two pins in
-            // the list, so at least one after the first one.
-            DASSERT(pin->next);
-            for(struct Pin *to = pin->next; to; to = to->next)
-                DrawConnection(page, pin, to);
-        }
+        for(uint32_t j = pin->numTo - 1; j != -1; --j)
+            DrawConnection(page, pin, pin->to[j]);
     }
 }
 

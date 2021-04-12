@@ -640,38 +640,48 @@ AddParameterConnections(struct QsParameter *p1, struct QsParameter *p2) {
     // Now i is the first in the old list 2.
 
     DASSERT(i->value);
+    DASSERT(i->size == p1->size);
 
-    for(; i; i = i->next) {
-        i->first = p1->first;
-        i->numConnections = numConnections;
-        if(p1->first->kind != QsGetter) {
-            // Currently this parameter, i, have its' own allocated value.
-            DASSERT(i->value);
-            DASSERT(i->value != p1->value);
+
+    if(p1->first->kind != QsGetter) {
+        // Going from having different value memory to using the same
+        // value memory.
 #ifdef DEBUG
-            memset(i->value, 0, i->size);
+        memset(i->value, 0, i->size);
 #endif
-            free(i->value);
-            // Make the value be shared with p1
-            i->value = p1->value;
-        } else {
-            // p1->first->kind == QsGetter
-            // The value was shared or p2 was not in a group yet.
-            DASSERT(i->value == p2->value);
+        free(i->value);
+        DASSERT(p1->first->value == p1->value);
+        i->value = p1->value;
+    } else {
+        // The p2 parameter value was shared but now we use this value
+        // just for the first parameter in the old p2 list.
+        //
+        // We initialize the value memory.
+        memcpy(i->value, p1->value, p1->size);
+    }
+
+    i->first = p1->first;
+    i->numConnections = numConnections;
+
+    for(i = i->next; i; i = i->next) {
+
+        DASSERT(i->size == p1->size);
+
+        if(p1->first->kind == QsGetter) {
+            // The value was shared, but now it's not and it was used
+            // for the first parameter in the p2 list.
             // but now it's in a getter group and the value gets copied to
             // other memory for this i-th parameter.
-            if(i != p2) {
-                // We allocate the value memory except for one of them.
-                // We choose to not allocate parameter p2.  p2 will be
-                // using the value memory that was shared between all the
-                // parameters where in the p2 group of parameters or it
-                // was just one parameter p2 (no group).
-                i->value = calloc(1, i->size);
-                ASSERT(i->value, "calloc(1,%zu) failed", i->size);
-            }
-            DASSERT(i->size == p1->size);
+            i->value = calloc(1, i->size);
+            ASSERT(i->value, "calloc(1,%zu) failed", i->size);
             memcpy(i->value, p1->first->value, p1->size);
+        } else {
+            // Sharing a different value now:
+            i->value = p1->first->value;
         }
+
+        i->first = p1->first;
+        i->numConnections = numConnections;
     }
 }
 

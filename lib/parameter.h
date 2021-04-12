@@ -120,8 +120,8 @@ struct QsSetter {
     struct QsParameter parameter;
 
     // This trigger will be owned by the block that owns this parameter.
-    // This trigger is not created unless this setter is connected to from
-    // a getter parameter.
+    // This trigger is not created unless this setter is connected to
+    // a group of parameters with a getter parameter in it.
     struct QsTrigger *trigger;
 
     // Setters can be read while the stream is flowing and the value is

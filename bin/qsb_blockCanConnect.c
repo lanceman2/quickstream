@@ -205,25 +205,14 @@ void Connect2Pins(struct Pin *pin1, struct Pin *pin2) {
         case Constant:
         case Setter:
         case Getter:
-           ASSERT(qsParameterConnect(pin1->parameter, pin2->parameter)
+            ASSERT(qsParameterConnect(pin1->parameter, pin2->parameter)
                     == 0);
-            // Now add the connections in pin2 list to pin1 list.
-            struct Pin *pin = pin1->first;
-            if(!pin) {
-                pin1->first = pin1;
-                pin = pin1;
-                DASSERT(pin->next == 0);
-            }
-            for(; pin->next; pin = pin->next)
-                DASSERT(pin->first == pin1->first);
-            pin->next = pin2;
-            pin = pin->next;
-            pin->first = pin1->first;
-            for(; pin->next; pin = pin->next)
-                pin->first = pin1->first;
-            // TODO: We need to deal with keeping these lists consistent
-            // when we delete a block, or remove a parameter connection.
-
+            // Now add the connection to pin2 in the pin1 list.
+            ++pin1->numTo;
+            pin1->to = realloc(pin1->to, pin1->numTo*sizeof(*pin1->to));
+            ASSERT(pin1->to, "reallloc(,%zu) failed",
+                    pin1->numTo*sizeof(*pin1->to));
+            pin1->to[pin1->numTo-1] = pin2;
             break;
     }
 
