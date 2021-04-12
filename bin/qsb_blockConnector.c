@@ -66,8 +66,9 @@ static inline void GetPinPosition(struct Page *page,
 
 
 void
-GetConnectionLineColor(struct Connector *c,
+GetConnectionLineColor(struct Connector *c, struct Pin *pin,
         double *r, double *g, double *b, double *a) {
+
 
     switch(c->kind) {
         case Input:
@@ -80,11 +81,37 @@ GetConnectionLineColor(struct Connector *c,
         case Constant:
         case Getter:
         case Setter:
-            *r=0.1;
-            *g=0.4;
-            *b=0.92;
-            *a=0.8;
+        {
+            DASSERT(pin);
+            DASSERT(pin->parameter);
+            enum QsParameterKind kind;
+            if(pin->parameter->first)
+                // This is connected to a parameter group.
+                kind = pin->parameter->first->kind;
+            else
+                // This is not connected to a parameter group.
+                kind = pin->parameter->kind;
+
+            switch(kind) {
+                case QsConstant:
+                case QsSetter:
+                    *r=0.1;
+                    *g=0.92;
+                    *b=0.2;
+                    *a=0.8;
+                    return;
+                case QsGetter:
+                    *r=0.1;
+                    *g=0.4;
+                    *b=0.92;
+                    *a=0.8;
+                    return;
+                case QsAny:
+                    ASSERT(0);
+                    return;
+            }
             return;
+        }
     }
 
     ASSERT(0, "We should not get here.");
@@ -136,7 +163,7 @@ void DrawConnection(struct Page *page,
     // Set the line color
     double r, g, b, a;
 
-    GetConnectionLineColor(pin1->connector, &r, &g, &b, &a);
+    GetConnectionLineColor(pin1->connector, pin1, &r, &g, &b, &a);
 
     cairo_set_source_rgba(cr, r, g, b, a);
     cairo_set_line_width(cr, lineWidth);

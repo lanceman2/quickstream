@@ -36,8 +36,10 @@ bool CanConnectFromPin(struct Pin *pin) {
             DASSERT(c->numPins == c->block->block->maxNumInputs);
             if(pin->portNum >= b->numInputs)
                 return true;
-            // So now pin->portNum < b->numInputs
+            // So now pin->portNum < b->numInputs, so there is an array
+            // element that has index pin->portNum.
             if(b->inputs[pin->portNum].block)
+                // It is connected to another block output already.
                 return false;
             // else it's in the inputs[] array with no connection yet.
             return true;
@@ -100,26 +102,44 @@ bool CanConnect2Pins(struct Pin *pin1, struct Pin *pin2) {
             if(pin1->parameter->type != pin2->parameter->type ||
                     pin1->parameter->size != pin2->parameter->size)
                 return false;
-            if(!pin1->parameter->first || !pin2->parameter->first)
+            if(!pin1->parameter->first)
                 // Setter that are not in a group yet can connect to any
                 // parameter, assuming they are not connected yet.
                 return true;
-            if(pin1->parameter->first->kind == QsSetter ||
-                    pin2->parameter->first->kind == QsSetter)
-                // A setter or a setter group can connect to any type of
-                // parameter group.
+
+            // Now pin1 is in a group
+            if(!pin2->parameter->first) {
+                // pin2 not in a group yet.
+                if(pin1->parameter->first->kind == QsGetter) {
+                    if(c2->kind == Setter)
+                        return true;
+                    return false;
+                }
+                if(pin1->parameter->first->kind == QsConstant) {
+                    if(c2->kind != Getter)
+                        return true;
+                    return false;
+                }
+                // pin1, a setter, is not in a getter or constant group so
+                // it can connect to any kind.
                 return true;
-            // At this point both pins are in a group that is either a
-            // getter group or a constant group.  Two getter groups cannot
-            // be connected.  A getter group cannot connect to a constant
-            // group.  So:
-            if(pin1->parameter->first->kind == QsGetter ||
+            }
+
+            // Now both pins are in a group.
+
+            if(pin1->parameter->first->kind == QsGetter
+                    && pin2->parameter->first->kind == QsGetter)
+                // 2 Getters groups cannot connect.
+                return false;
+            if(pin1->parameter->first->kind == QsGetter &&
+                    pin2->parameter->first->kind == QsConstant)
+                return false;
+            if(pin1->parameter->first->kind == QsConstant &&
                     pin2->parameter->first->kind == QsGetter)
-                // We cannot connect a getter or constant group to another
-                // getter group.
                 return false;
             // All remaining cases a setter, pin1, can connect to.
             return true;
+
         case Constant:
             if(c2->kind == Input || c2->kind == Output)
                 return false;
@@ -148,7 +168,9 @@ bool CanConnect2Pins(struct Pin *pin1, struct Pin *pin2) {
                     pin1->parameter->size != pin2->parameter->size)
                 return false;
             // Getters only connect to setters.
-            if(c2->kind == Setter) {
+            if(c2->kind == Setter &&
+                    (!pin2->parameter->first ||
+                        pin2->parameter->first->kind == QsSetter)) {
                 if(pin1->parameter->first && pin2->parameter->first &&
                         pin1->parameter->first == pin2->parameter->first)
                     // These parameters share the same connection list,

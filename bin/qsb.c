@@ -371,7 +371,7 @@ DrawConnectionDragLine(GdkEventButton *e, struct Page *page) {
     // Set the line color
     double r, g, b, a;
 
-    GetConnectionLineColor(fromPin->connector, &r, &g, &b, &a);
+    GetConnectionLineColor(fromPin->connector, fromPin, &r, &g, &b, &a);
 
     cairo_set_source_rgba(cr, r, g, b, a);
     cairo_set_line_width(cr, lineWidth);

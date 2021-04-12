@@ -375,6 +375,7 @@ const double lineWidth;
 
 extern
 void GetConnectionLineColor(struct Connector *c,
+        struct Pin *pin,
         double *r, double *g, double *b, double *a);
 
 
