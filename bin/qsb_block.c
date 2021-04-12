@@ -168,7 +168,7 @@ static inline void FreePins(struct Connector *c) {
 
 
 static
-void DisconnectPins(struct Block *block, struct Connector *c) {
+void DisconnectFromPins(struct Block *block, struct Connector *c) {
 
     for(uint32_t i = c->numPins - 1; i != -1; --i) {
 
@@ -182,6 +182,42 @@ void DisconnectPins(struct Block *block, struct Connector *c) {
             free(p->to);
             p->to = 0;
             p->numTo = 0;
+        }
+    }
+}
+
+
+// This will change the "from" connector pins.  Removing all connections
+// to the "to#" connectors.
+static
+void DisconnectToPins(struct Connector *from,
+        struct Connector *to1,
+        struct Connector *to2,
+        struct Connector *to3) {
+
+    for(uint32_t i = from->numPins - 1; i != -1; --i) {
+        struct Pin *p = from->pins + i;
+        uint32_t numTo = 0;
+        // Loop over pins in "from" connector.
+        for(uint32_t j = 0; j < p->numTo; ++j) {
+            struct Connector *to = p->to[j]->connector;
+            if(to != to1 && to != to2 && to != to3 )
+                // keep this connection in the pin, p, to list.
+                p->to[numTo++] = p->to[j];
+        }
+        if(numTo != p->numTo) {
+            if(numTo) {
+                p->to = realloc(p->to, numTo*sizeof(*p->to));
+                ASSERT(p->to, "realloc(,%zu) failed",
+                        numTo*sizeof(*p->to));
+            } else {
+#ifdef DEBUG
+                memset(p->to, 0, p->numTo*sizeof(*p->to));
+#endif
+                free(p->to);
+                p->to = 0;
+            }
+            p->numTo = numTo;
         }
     }
 }
@@ -209,9 +245,23 @@ static void DestroyBlock(struct Block *b) {
         b->page->blocks = b->next;
 
 
-    DisconnectPins(b, &b->constants);
-    DisconnectPins(b, &b->getters);
-    DisconnectPins(b, &b->setters);
+    DisconnectFromPins(b, &b->constants);
+    DisconnectFromPins(b, &b->getters);
+    DisconnectFromPins(b, &b->setters);
+
+    // We have no list of connection from pins, so we search all blocks
+    // and their connector pins, and remove all that connect to any of
+    // this blocks', b, parameters.
+    //
+    for(struct Block *bl = b->page->blocks; bl; bl = bl->next) {
+        DisconnectToPins(&bl->constants,
+                &b->constants, &b->getters, &b->setters);
+        DisconnectToPins(&bl->getters,
+                &b->constants, &b->getters, &b->setters);
+        DisconnectToPins(&bl->setters,
+                &b->constants, &b->getters, &b->setters);
+    }
+
 
     // We must save a copy of these pointers before we free memory at b.
     struct Page *page = b->page;

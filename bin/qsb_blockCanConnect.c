@@ -34,8 +34,9 @@ bool CanConnectFromPin(struct Pin *pin) {
 
         case Input:
             DASSERT(c->numPins == c->block->block->maxNumInputs);
-            if(pin->portNum + 1 > b->numInputs)
+            if(pin->portNum >= b->numInputs)
                 return true;
+            // So now pin->portNum < b->numInputs
             if(b->inputs[pin->portNum].block)
                 return false;
             // else it's in the inputs[] array with no connection yet.
@@ -75,9 +76,11 @@ bool CanConnect2Pins(struct Pin *pin1, struct Pin *pin2) {
 
     switch(c1->kind) {
         case Input:
+            if(c2->kind == Output)
+                return true;
+            return false;
         case Output:
-            if((c1->kind == Input && c2->kind == Output) ||
-                    (c2->kind == Input && c1->kind == Output))
+            if(c2->kind == Input)
                 return true;
             return false;
 
