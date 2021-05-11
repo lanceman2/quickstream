@@ -3,12 +3,31 @@
 data quickly flows between modules in a directed graph
 
 
+
 ## Development Status
 
 This is currently vapor-ware.
 
 Current development is on Debian 9 and Ubuntu 20.04 systems.  It's in a
-pre-alpha state.  It's design is starting to stabilize.
+pre-alpha state.
+
+quickstream development is under going another total redesign, the second
+such redesign.  We have decided that quickstream must be able to simulate
+complex stream-like protocols, like for example TCP (Transmission Control
+Protocol) and the rest of the Internet protocol suite.  To do this the
+lowest level quickstream "stream channels" must support loops in the
+graph.  Also, a hierarchical level of the stream channels is needed to
+refer to groups of stream channels.  For example to have a TCP channel one
+need at least two underlying stream channels, one from reading and one for
+writing on each end connection port.  This also requires that quickstream
+supports loops in the stream graph topology, so that we can form a loop
+with to blocks that are connected in the two channel directions.
+
+**multicast** When looking at stream graphs that have channels to more
+than one block, we have stream output ports connecting to multiple blocks
+at their input ports; so ya, we can already setup stream graphs that have
+protocols that connect more than two blocks.  The higher level channel
+abstractions can be built from many connections.
 
 Currently there is no tutorial, so this software package is pretty useless
 for anything but for the research and development of this package.
@@ -27,7 +46,7 @@ and hence uses shared memory to pass stream data between work modules in
 the same OS process.
 
 quickstream technically does not implement a [Kahn process
-network](https://en.wikipedia.org/wiki/Kahn_process_networkshttps://en.wikipedia.org/wiki/Kahn_process_networks)
+network](https://en.wikipedia.org/wiki/Kahn_process_networks)
 (and nether does GNU radio) since its behavior is not deterministic
 because of asynchronous parameter changes, in addition to running on
 non-deterministic operating systems.
@@ -59,7 +78,7 @@ quickstream comes with two application builder programs:
   - **quickstream** a program which lets to build flow stream programs
     using the command-line.
 
-  - *quickstreamBuilder* a GUI (graphical user interface) program that
+  - **quickstreamBuilder** a GUI (graphical user interface) program that
     lets you build and run flow stream programs.  It may resemble the GNU
     Radio Companion to some extent.
 
@@ -71,7 +90,8 @@ the three classes of quickstream use:
   - **quickstream/builder.h** for connecting blocks together to make flow
     graphs
 
-  - **quickstream/block.h** for building plugin module blocks
+  - **quickstream/block.h** for building plugin module blocks that process
+    flowing stream data
 
 The block module writer with not likely use *app.h*, and the app writer will
 likely not use *block.h*.
@@ -965,7 +985,7 @@ These questions are helpful in understanding how quickstream works:
   be changed in order to be robust.  The basic design of GNUradio is not
   robust: it allows modules to share variables between different threads,
   and does not restrict interfaces between modules.  In effect, it has
-  very little imposed inter-module  structure.  It just has inter-module
+  very little imposed inter-module structure.  It just has inter-module
   stream flow control with all other inter-module interactions as an
   ad-hoc after-thought.
 
@@ -989,23 +1009,25 @@ These questions are helpful in understanding how quickstream works:
   The basic argument is that the choise of stream data type will in most
   cases be hard coded into the block C/C++ compiled code; so when the user
   chooses a different stream data type (in most cases) they are
-  effectively choosing a different compiled block.  Though the user is
-  blinded to that in the GNUradio companion (and maybe in the python
+  effectively choosing a different compiled block code.  Though the user
+  is blinded to that in the GNUradio companion (and maybe in the python
   wrappers); at the block writers level they are different blocks.  This
   happens because basic functions like sin(3), sinf(3), and sinl(3) are
   different functions in the standard math library, and there are many
   more examples.  It does not matter that a block writter uses a C++
-  wrapper that make them look like the same functions, they are not in the
-  compiled code.  Template and/or MACRO coding does not exist in
-  compiled code.  So GNUradio is in this way adding a feature the highest
-  level interface to the block where you are selecting the type of stream
-  data for a block, but under the covers it really selecting between
-  completely different blocks.  Because of this their are some things that
-  the user can't do.  Any feature is always a constraint.  In the case of
-  GNUradio it is tending to be constrainted to be used for software
-  defined radio, because of this stream typing feature.  Actually it's
-  worst than that, GNUradio is constraining software defined radio to only
-  be arrays of simple types transfered between modules.
+  wrapper that make them look like the same functions, they are not in
+  the compiled code.  Template and/or MACRO coding does not exist in
+  compiled code.  So GNUradio is in this way adding a feature to the
+  highest level interface to the block where you are selecting the type of
+  stream data for a block, but under the covers it really selecting
+  between completely different block codes.  Because of this, their are
+  some things that the user can't do.  Any feature is always a constraint.
+  In the case of GNUradio it is tending to be constrainted to be used for
+  software defined radio, because of this stream typing feature.
+  Actually it's worst than that, GNUradio is constraining software defined
+  radio to only be arrays of simple types transfered between modules; yes
+  it has the generic byte array type, that can be used for non-array like
+  data, but it's use is rare.
 
   quickstream does not add this stream data typing feature.  The blocks
   with different stream data types are different blocks.  This is also
@@ -1067,5 +1089,21 @@ These questions are helpful in understanding how quickstream works:
   otherwise block forever, like in cases when the determination of when to
   stop is not gotten from a file descriptor that the trigger is for.
 
+- *Stream Loop*: Loops must be allowed in streams in order to simulate
+  duplex protocols like IP, TCP, and etc.
 
+- *Grouped Super Connections*: For example a client block to server block
+  connection will encapsulate two stream connections, one for flow from
+  the server to the client and one for flow from the client to the server.
+  Zooming into the connection all the way will always show single data
+  stream connections that go from "output" to "input" ports.  Zooming out
+  will show single lines that represent many data stream connections.  The
+  graphical representation will change at the different super block and
+  super connection levels.  Super connection groups may include groups of
+  parameter connections with the data stream connections, all shown as
+  single connection lines between super blocks.
+
+- *Super to Infinity*: the level of super block and super connections needs
+  to be able to extend to groups of super blocks and super connections at
+  any level.  Super block may be groups of other super blocks and so on.
 
