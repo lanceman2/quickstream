@@ -39,7 +39,7 @@ How to add a test
 
        ./194_DictionaryDict_test && echo $?
 
-    You can run particular numbered (or not) tests without valgrind like
+    You can run particular numbered (or not) tests with valgrind like
     so:
 
        ./valgrind_run_tests 194_DictionaryDict_test
