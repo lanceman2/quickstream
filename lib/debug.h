@@ -30,16 +30,11 @@
    If a macro function is not live it becomes a empty macro with no code.
 
 
-   The ERROR() function will also set a string accessible through qsError()
-   the string has a fixed size so as to not compound bug hunting.
-   qsError() is thread-safe in some respects.  It's simple, just look at
-   the code.  It's shorter than these comments.
-
 
 ///////////////////////////////////////////////////////////////////////////
 
    Setting SPEW_LEVEL_NONE with still have ASSERT() spewing and ERROR()
-   will not spew but will still set the qsError string
+   will not spew.
 
 
 /endverbatim
@@ -95,10 +90,10 @@ extern "C" {
 EXPORT
 extern void qs_spew(int level, FILE *stream, int errn, const char *pre,
         const char *file, int line, const char *func,
-        bool bufferIt, const char *fmt, ...)
+        const char *fmt, ...)
 #ifdef __GNUC__
         // check printf format errors at compile time:
-        __attribute__ ( ( format (printf, 9, 10 ) ) )
+        __attribute__ ( ( format (printf, 8, 9 ) ) )
 #endif
         ;
 
@@ -113,9 +108,6 @@ extern
 void (*qsAssertAction)(FILE *stream, const char *file,
         int lineNum, const char *func);
 
-
-EXPORT
-extern void qsErrorFree(void);
 
 
 // This CPP macro function CHECK() is just so we can call most pthread_*()
@@ -147,14 +139,14 @@ extern void qsErrorFree(void);
 
 
 
-#  define _SPEW(level, stream, errn, bufferIt, pre, fmt, ... )\
+#  define _SPEW(level, stream, errn, pre, fmt, ... )\
      qs_spew(level, stream, errn, pre, __BASE_FILE__, __LINE__,\
-        __func__, bufferIt, fmt, ##__VA_ARGS__)
+        __func__, fmt, ##__VA_ARGS__)
 
 #  define ASSERT(val, ...) \
     do {\
         if(!((bool) (val))) {\
-            _SPEW(1, SPEW_FILE, errno, true, "ASSERT("#val") failed: ", "" __VA_ARGS__);\
+            _SPEW(1, SPEW_FILE, errno, "ASSERT("#val") failed: ", "" __VA_ARGS__);\
             qs_assertAction(SPEW_FILE, __BASE_FILE__, __LINE__, __func__);\
         }\
     }\
@@ -208,31 +200,31 @@ extern void qsErrorFree(void);
 #endif
 
 #ifdef SPEW_LEVEL_NONE
-#define ERROR(...) _SPEW(0, 0/*no spew stream*/, errno, true, "ERROR: ", "" __VA_ARGS__)
+#define ERROR(...) _SPEW(0, 0/*no spew stream*/, errno, "ERROR: ", "" __VA_ARGS__)
 #else
-#define ERROR(...) _SPEW(1, SPEW_FILE, errno, true, "ERROR: ", "" __VA_ARGS__)
+#define ERROR(...) _SPEW(1, SPEW_FILE, errno, "ERROR: ", "" __VA_ARGS__)
 #endif
 
 #ifdef SPEW_LEVEL_WARN
-#  define WARN(...) _SPEW(2, SPEW_FILE, errno, false, "WARN: ", "" __VA_ARGS__)
+#  define WARN(...) _SPEW(2, SPEW_FILE, errno, "WARN: ", "" __VA_ARGS__)
 #else
 #  define WARN(...) /*empty macro*/
 #endif 
 
 #ifdef SPEW_LEVEL_NOTICE
-#  define NOTICE(...) _SPEW(3, SPEW_FILE, errno, false, "NOTICE: ", "" __VA_ARGS__)
+#  define NOTICE(...) _SPEW(3, SPEW_FILE, errno, "NOTICE: ", "" __VA_ARGS__)
 #else
 #  define NOTICE(...) /*empty macro*/
 #endif
 
 #ifdef SPEW_LEVEL_INFO
-#  define INFO(...)   _SPEW(4, SPEW_FILE, 0, false, "INFO: ", "" __VA_ARGS__)
+#  define INFO(...)   _SPEW(4, SPEW_FILE, 0, "INFO: ", "" __VA_ARGS__)
 #else
 #  define INFO(...) /*empty macro*/
 #endif
 
 #ifdef SPEW_LEVEL_DEBUG
-#  define DSPEW(...)  _SPEW(5, SPEW_FILE, 0, false, "DEBUG: ", "" __VA_ARGS__)
+#  define DSPEW(...)  _SPEW(5, SPEW_FILE, 0, "DEBUG: ", "" __VA_ARGS__)
 #else
 #  define DSPEW(...) /*empty macro*/
 #endif

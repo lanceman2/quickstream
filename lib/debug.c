@@ -77,64 +77,12 @@ void qsSetSpewLevel(int level) {
 }
 
 
-// We make the access to qsErrorBuffer thread safe:
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static char *qsErrorBuffer = 0;
 
 #define BUFLEN  1024
 
 
-// So programs using this stuff can free memory before exiting,
-// and so not have allocated memory that is not free()ed.
-//
-// So programs that call ERROR() can pass valgrind run tests.
-//
-void qsErrorFree(void) {
-
-    pthread_mutex_lock(&mutex);
-    if(qsErrorBuffer) {
-        free(qsErrorBuffer);
-        qsErrorBuffer = 0;
-    }
-    pthread_mutex_unlock(&mutex);
-}
-
-//
-// The non-zero return value must be free()ed by the API user.
-//
-// API interface.  Thread safe.  Kind-of expensive, but should only be
-// used in exceptional cases.
-//
-const char *qsError(void) {
-
-    // Adds a pointer for every thread created; is better than adding the
-    // whole string of memory.  No, it's really really thread safe.
-    static __thread char *buffer = 0;
-
-    if(buffer) {
-        // cleanup from the last call from this thread.
-        free(buffer);
-        buffer = 0;
-    }
-
-    // If this pthread_mutex_lock() fails we can't do much about it
-    // because we are in the code that is our error handling code.
-    pthread_mutex_lock(&mutex);
-    if(qsErrorBuffer) {
-        // copy the error string
-        buffer = strdup(qsErrorBuffer);
-        // clear the error string
-        qsErrorBuffer = 0;
-    }
-    pthread_mutex_unlock(&mutex);
-    // return the copy if there was one.
-    return (const char *) buffer;
-}
-
-
 static void _vspew(FILE *stream, int errn, const char *pre, const char *file,
-        int line, const char *func, bool bufferIt,
-        const char *fmt, va_list ap)
+        int line, const char *func, const char *fmt, va_list ap)
 {
     // We try to buffer this so that prints do not get intermixed with
     // other prints in multi-threaded programs.
@@ -203,27 +151,13 @@ static void _vspew(FILE *stream, int errn, const char *pre, const char *file,
 
     if(stream)
         fputs(buffer, stream);
-
-    if(bufferIt) {
-        //
-        // Put the error string into a globally accessible qsError()
-        // buffer.
-        //
-
-        // If this pthread_mutex_lock() fails we can't do much about it
-        // because we are in the code that is our error handling code.
-        pthread_mutex_lock(&mutex);
-        qsErrorBuffer = realloc(qsErrorBuffer, strlen(buffer) + 1);
-        strcpy(qsErrorBuffer, buffer);
-        pthread_mutex_unlock(&mutex);
-    }
 }
 
 
 void qs_spew(int levelIn, FILE *stream, int errn,
         const char *pre, const char *file,
         int line, const char *func,
-        bool bufferIt, const char *fmt, ...)
+        const char *fmt, ...)
 {
     if(levelIn > spewLevel)
         // The spew level in is larger (more verbose) than one we let
@@ -232,7 +166,7 @@ void qs_spew(int levelIn, FILE *stream, int errn,
 
     va_list ap;
     va_start(ap, fmt);
-    _vspew(stream, errn, pre, file, line, func, bufferIt, fmt, ap);
+    _vspew(stream, errn, pre, file, line, func, fmt, ap);
     va_end(ap);
 }
 

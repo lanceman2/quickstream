@@ -153,12 +153,6 @@ Cleanup(void) {
         free(graphs);
         graphs = 0;
     }
-
-    // To free memory that was allocated by the spew and error CPP macro
-    // functions: ASSERT(), DASSERT(), ERROR(), WARN(), NOTICE(), INFO(),
-    // DSPEW() and SPEW() from debug.c and debug.h.
-    //
-    qsErrorFree();
 }
 
 

@@ -701,7 +701,6 @@ int main(int argc, char *argv[]) {
     gtk_main(); 
 
     CleanupBlockSelector();
-    qsErrorFree();
 
     DSPEW("exiting");
     return 0;
