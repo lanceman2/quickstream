@@ -1,0 +1,59 @@
+#!/bin/bash
+
+
+set -ex
+
+if [ -n "${VaLGRIND_RuN}" ] ; then
+    # Skip running with ValGrind.
+    exit 123
+fi
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+# Write this test file
+F="data_$(basename $0).tmp"
+
+rm -f $F $F.c $F.so
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block sequenceGen b0\
+ --block passThrough b1\
+ --threads 3 tp3\
+ --block passThroughCount b2\
+ --block sequenceCheck b3\
+ --block setterPrintUint64 p\
+ --connect b0 output 0 b1 input 0\
+ --connect b1 output 0 b2 input 0\
+ --connect b2 output 0 b3 input 0\
+ --connect p  setter value b2 getter trigger\
+ --configure-mk MK b0 TotalOutputBytes 0 MK\
+ --configure-mk MK b2 triggerCount 1000 MK\
+ --configure-mk MK b2 quitCount 80000 MK\
+ --configure-mk MK b3 TotalOutputBytes 0 MK\
+ --save ${F}
+
+export PATH="${PATH}:../bin"
+
+./$F
+
+
+rm $F $F.c $F.so
+
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g 2 tp superBlock2\
+ --save ${F}\
+ --start\
+ --wait-for-stream
+
+
+rm $F $F.c $F.so
+

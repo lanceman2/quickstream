@@ -1,0 +1,70 @@
+#!/bin/bash
+
+set -ex
+
+
+
+inFile="data_$(basename $0)_in.tmp"
+outFile="data_$(basename $0)_out.tmp"
+compFile="data_$(basename $0)_comp.tmp"
+
+
+dd if=/dev/urandom count=21 of=$inFile
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block file/PipeIn in0\
+ --block file/FileOut out\
+ --configure-mk MK in0 Program cat $inFile MK\
+ --connect in0 output 0 out input 0\
+ --start\
+ --wait-for-stream > $outFile
+
+
+diff -q $inFile $outFile
+
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 2\
+ --block file/PipeIn in0\
+ --block file/FileOut out\
+ --configure-mk MK in0 Program cat $inFile MK\
+ --connect in0 output 0 out input 0\
+ --start\
+ --wait-for-stream > $outFile
+
+
+diff -q $inFile $outFile
+
+
+
+# Run it twice with the same input.
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 2\
+ --block file/PipeIn in0\
+ --block file/FileOut out\
+ --configure-mk MK in0 Program cat $inFile MK\
+ --configure-mk MK in0 AtStart True MK\
+ --connect in0 output 0 out input 0\
+ --start\
+ --wait-for-stream\
+ --start\
+ --wait-for-stream > $outFile
+
+
+# The input is doubled.
+cat $inFile $inFile > $compFile
+diff -q $compFile $outFile
+
+
+# cleanup
+rm $inFile $outFile $compFile
+

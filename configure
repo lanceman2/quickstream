@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# This will get replaced by a GNU autotools autoconf input file named
+# configure.ac.  For now quickBuild is 10 times faster so the lost in
+# development time is not worth the gain in standardization and user
+# acceptance which comes from using GNU autotools.  Oh yes, CMake is a
+# bloat monster.  quickstream will not use CMake.
+
+set -ex
+
+# Go to the directory there this script is.
+cd $(dirname ${BASH_SOURCE[0]})
+
+# File config.make is not checked in and it may have user
+# configuration information in it, so we do not want to
+# check it in.
+if [ ! -e config.make ] ; then
+    echo -e "# This is a generated file\n" > config.make
+    cat config.make.example >> config.make
+fi
+
+
+if [ ! -e quickbuild.make ] ; then
+    ./bootstrap
+fi
+
+
+set +x
+echo -e "\n$0 Success"

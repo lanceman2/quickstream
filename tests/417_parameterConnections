@@ -1,0 +1,68 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block lotsOfPorts b0\
+ --block lotsOfPorts b1\
+ --block lotsOfPorts b2\
+ --connect b0 s freq1 b1 s freq1\
+ --connect b1 s freq1 b2 s freq1
+
+
+# Control Parameters b2:freq1 and b0:freq1 are already connected:
+if ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block lotsOfPorts b0\
+ --block lotsOfPorts b1\
+ --block lotsOfPorts b2\
+ --connect b0 s freq1 b1 s freq1\
+ --connect b1 s freq1 b2 s freq1\
+ --connect b2 s freq1 b0 s freq1 ; then
+    exit 1
+fi
+
+
+# connecting different control parameter types:
+if ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block lotsOfPorts b0\
+ --block lotsOfPorts b1\
+ --connect b0 s gain1 b1 s freq1 ; then
+    exit 1
+fi
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block lotsOfPorts b0\
+ --block lotsOfPorts b1\
+ --block lotsOfPorts b2\
+ --connect b0 s freq1 b1 s freq1\
+ --connect b1 s freq1 b2 s freq1\
+ --connect b0 g gain b1 s gain\
+ --connect b0 G gain b2 S gain
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block lotsOfPorts b0\
+ --block lotsOfPorts b1\
+ --block lotsOfPorts b2\
+ --connect b0 s freq1 b1 s freq1\
+ --connect b1 s freq1 b2 s freq1\
+ --connect b0 g gain b1 s gain\
+ --disconnect b0 G gain\
+ --disconnect b0 s freq1\
+ --disconnect b1 s freq1
+

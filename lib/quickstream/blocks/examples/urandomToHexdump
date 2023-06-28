@@ -1,0 +1,18 @@
+#!/usr/bin/env quickstream_interpreter
+#
+# This is a generated file
+
+set-block-path lib/quickstream/misc/test_blocks
+graph g1 2 tp0 /home/lance/git/quickstream/lib/quickstream/blocks/examples/urandomToHexdump
+############################################
+# Create More Thread Pools
+############################################
+############################################
+# Assign Blocks to Thread Pools
+############################################
+threads-add tp0 URandom
+threads-add tp0 Hexdump
+############################################
+start
+wait-for-stream
+

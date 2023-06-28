@@ -1,0 +1,33 @@
+#!/bin/bash
+
+set -ex
+
+
+if [ ! -x ../lib/quickstream/blocks/gtk3/base.so ] ; then
+    # We skip this test if a module is not built.
+    set +x
+    echo "skipping ${BASH_SOURCE[0]}: missing build requirement"
+    exit 123
+fi
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block gtk3/base gtk\
+ --block gtk3/slider slider\
+ --block test_blocks/setterPrintDouble pd\
+ --configure-mk MK slider label "${USER}-ness" MK\
+ --configure-mk MK slider attributes -2.0 -1.9 1.9 2.0 1000000.0 41 11 "%1.1lf MHz" MK\
+ --configure-mk MK gtk title "The Big $USER Slider" MK\
+ --parameter-set-mk MK slider value 0.5 MK\
+ --connect pd setter value slider getter value\
+ --display\
+ --sleep 0.5\
+ --parameter-set-mk MK slider show True MK\
+ --wait-for-destroy
+

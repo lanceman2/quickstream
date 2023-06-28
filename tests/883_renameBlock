@@ -1,0 +1,36 @@
+#!/bin/bash
+
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g0 1\
+ --save-config\
+ --block superSuperBlock b0\
+ --rename-block b0 b123\
+ --start\
+ --wait-for-stream
+
+exit
+
+# This is the version of this test that shows more,
+# but is not a quick and non-interactive test.
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g0 1\
+ --save-config\
+ --block superSuperBlock b0\
+ --display\
+ --rename-block b0 b123\
+ --display\
+ --start\
+ --wait-for-stream
+

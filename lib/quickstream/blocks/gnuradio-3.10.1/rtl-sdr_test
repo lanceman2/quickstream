@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -eo pipefail
+set -x
+
+dir="$(dirname ${BASH_SOURCE[0]})"
+
+cd "$dir"
+
+if ! which rtl_sdr ; then
+    echo "The program rtl_sdr was not found in your PATH"
+    exit 1
+fi
+
+
+
+rtl_sdr - -S -g 100 -f 105300000 -s 2000000 |\
+./u8tofloat |\
+./QT_GUI_Sink --samp_rate 2000000
+

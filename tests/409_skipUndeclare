@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+if ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block skipUndeclare b0\
+ --block-unload b0 ; then
+    exit 1
+fi
+
+if ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block skipUndeclare b0 ; then
+    exit 1
+fi
+

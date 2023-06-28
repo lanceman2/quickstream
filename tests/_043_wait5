@@ -1,0 +1,26 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+function Wait() {
+
+    set +x
+    echo -e "\nWait $1\n"
+    set -x
+
+    ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph\
+ --wait $1
+}
+
+
+Wait 0.01
+Wait 0.01
+Wait 0.999
+Wait 5

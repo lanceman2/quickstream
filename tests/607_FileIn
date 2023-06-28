@@ -1,0 +1,139 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc
+
+
+# Mostly doing the same thing many different ways,
+# making sure the different configurations work.
+
+
+
+inFile="data_$(basename $0)_in.tmp"
+inFile2="data_$(basename $0)_in2.tmp"
+outFile="data_$(basename $0)_out.tmp"
+outFile2="data_$(basename $0)_out2.tmp"
+
+
+dd if=/dev/urandom count=19 of=$inFile
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block file/FileIn in0\
+ --block file/FileOut out\
+ --connect in0 output 0 out input 0\
+ --start\
+ --wait < $inFile > $outFile
+
+diff -q $inFile $outFile
+
+
+rm $outFile
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 2\
+ --block file/FileIn in0\
+ --block file/FileOut out\
+ --configure-mk MK in0 Filename $inFile MK\
+ --connect in0 output 0 out input 0\
+ --start\
+ --wait > $outFile
+
+diff -q $inFile $outFile
+
+
+rm $outFile
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block file/FileIn in0\
+ --block file/FileOut out\
+ --configure-mk MK in0 Filename $outFile MK\
+ --configure-mk MK in0 FileDescriptor 0 MK\
+ --connect in0 output 0 out input 0\
+ --start\
+ --wait < $inFile > $outFile
+
+
+diff -q $inFile $outFile
+
+
+rm $outFile
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 2\
+ --block file/FileIn in0\
+ --block file/FileOut out\
+ --configure-mk MK in0 FileDescriptor 0 MK\
+ --connect in0 output 0 out input 0\
+ --start\
+ --wait < $inFile > $outFile
+
+
+diff -q $inFile $outFile
+
+
+rm $outFile
+rm -f $outFile2
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block file/FileIn in1\
+ --block file/FileIn in2\
+ --block file/FileOut out1\
+ --block file/FileOut out2\
+ --connect in1 output 0 out1 input 0\
+ --connect in2 output 0 out2 input 0\
+ --configure-mk MK out1 Filename $outFile MK\
+ --configure-mk MK out2 Filename $outFile2 MK\
+ --configure-mk MK in1 Filename $inFile MK\
+ --configure-mk MK in2 Filename $inFile MK\
+ --start\
+ --wait
+
+
+diff -q $inFile $outFile
+diff -q $inFile $outFile2
+
+
+rm $outFile $outFile2
+
+
+
+../bin/quickstream\
+ --exit-on-error\
+ --block file/FileIn in1\
+ --block file/FileIn in2\
+ --block file/FileOut out1\
+ --block file/FileOut out2\
+ --connect in1 output 0 out1 input 0\
+ --connect in2 output 0 out2 input 0\
+ --configure-mk MK out1 Filename $outFile MK\
+ --configure-mk MK out2 Filename $outFile2 MK\
+ --configure-mk MK in1 Filename $inFile MK\
+ --configure-mk MK in2 Filename $inFile MK\
+ --start\
+ --wait
+
+
+diff -q $inFile $outFile
+diff -q $inFile $outFile2
+
+
+rm $inFile $outFile $outFile2
+

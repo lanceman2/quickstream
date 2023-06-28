@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block stdin In\
+ --block stdout out\
+ --connect In output 0 out input 0\
+ --start\
+ --catch-sig 2\
+ --sleep < /dev/urandom | hexdump -v
+

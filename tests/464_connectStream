@@ -1,0 +1,103 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block lotsOfPorts b0\
+ --connect b0 output 0 b0 input 0
+
+
+
+# connecting at input twice.
+#
+# block "b0" input port 0 already connected
+if ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block lotsOfPorts b0\
+ --connect b0 output 0 b0 input 0\
+ --connect b0 output 1 b0 input 0 ; then
+    exit 1
+fi
+
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block lotsOfPorts b0\
+ --block lotsOfPorts b1\
+ --connect b0 output 0 b1 input 0\
+ --connect b1 output 0 b0 input 0\
+ --connect b0 output 1 b1 input 1\
+ --connect b1 output 1 b0 input 1\
+ --disconnect b1 output 0\
+ --disconnect b0 output 0\
+ --connect b1 output 0 b0 input 0
+
+
+# Block "b0" stream input port 1 gap not connected
+if ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block lotsOfPorts b0\
+ --block lotsOfPorts b1\
+ --connect b0 output 0 b1 input 0\
+ --connect b1 output 2 b0 input 2\
+ --start ; then
+  exit 1
+fi
+
+
+# No such port: "b0:input:2"
+if ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block sequenceGen b0\
+ --block sequenceCheck b1\
+ --connect b1 output 2 b0 input 2\
+ --start ; then
+  exit 1
+fi
+
+
+# Block "b0" stream output port 0 not connected
+if ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block sequenceGen b0\
+ --start ; then
+  exit 1
+fi
+
+
+# Graph has no stream ports connected,
+# but we let it try to run the stream
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block sequenceCheck b0\
+ --block sequenceCheck b1\
+ --start\
+ --wait
+
+
+# unsetting exit-on-error
+#
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block lotsOfPorts b0\
+ --block lotsOfPorts b1\
+ --connect b1 output 1 b0 input 1\
+ --disconnect b1 output 0\
+ --disconnect b0 output 0\
+ --connect b1 output 0 b0 input 0\
+ --exit-on-error False\
+ --connect b1 output 1 b0 input 1

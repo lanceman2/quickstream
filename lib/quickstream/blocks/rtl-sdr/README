@@ -1,0 +1,155 @@
+Note: not much happens with the files in this directory if
+the software package librtlsdr is not found via pkg-config.
+
+Notes: on operating system (OS) Ubuntu 22.04.2 LTS  is a Debain
+based GNU/Linux software distribution.
+
+Bash shell commands:
+
+$ apt-cache search rtl | grep sdr
+
+out of many:
+
+===> librtlsdr-dev - Software defined radio receiver for Realtek RTL2832U (development)
+
+$ sudo apt install librtlsdr-dev rtl-sdr
+
+$ pkg-config librtlsdr --exists
+$ echo $?
+0
+
+So ya, success.  It's there.  With a pkg-config development interface.
+The librtlsdr-dev software package is a "middle-ware" driver (not
+a kernel driver).  Finding files:
+
+  $ locate librtlsdr.so
+
+ out of many:
+
+ ===> /usr/lib/x86_64-linux-gnu/librtlsdr.so
+
+ $ ldd /usr/lib/x86_64-linux-gnu/librtlsdr.so
+
+	linux-vdso.so.1 (0x00007ffdce1f1000)
+	libusb-1.0.so.0 => /lib/x86_64-linux-gnu/libusb-1.0.so.0 (0x00007f1e4c4cf000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f1e4c2a7000)
+	libudev.so.1 => /lib/x86_64-linux-gnu/libudev.so.1 (0x00007f1e4c27d000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007f1e4c523000)
+
+
+So I see it uses libusb which I think uses and depends on libudev.
+libusb is also ported to Windoz.
+
+
+
+Ubuntu 22.04 has a package named "librtlsdr-dev", but it did not
+install the /etc/udev/rules file.
+
+To run programs with the module here you'll need to do something like:
+
+     git clone git://git.osmocom.org/rtl-sdr.git
+     cd rtl-sdr
+     sudo cp rtl-sdr.rules /etc/udev/rules.d/
+
+
+See: https://www.rtl-sdr.com/rtl-sdr-quick-start-guide/
+
+
+Plugged in the RTL-SDR device into a USB port on my computer.
+
+running % sudo dmesg
+
+Yup, lots of spew from Realtek RTL2832U ...
+
+
+I think that libudev helps libusb find the kernel device driver files
+that we need to read and write when we read and write to the RTL-SDR
+hardware device.  In steady state running a rtlsdr program will just at
+regular intervals call system call a few ioctl(2) and poll(2), I saw
+that with the "strace" program.  I see it's using a non-blocking read
+with a poll() call to trigger it on the same one file (fd=7).  I guess
+there are other files to control it and set hardware "device
+settings".  So ya, just the one file (fd=7) at steady state:
+
+  running $ strace rtl_test
+
+poll([{fd=3, events=POLLIN}, {fd=4, events=POLLIN}, {fd=7, events=POLLOUT}], 3, 1000) = 1 ([{fd=7, revents=POLLOUT}])
+ioctl(7, USBDEVFS_REAPURBNDELAY, 0x7ffd23be5650) = 0
+ioctl(7, USBDEVFS_SUBMITURB, 0x55d286bd81a0) = 0
+ioctl(7, USBDEVFS_REAPURBNDELAY, 0x7ffd23be5650) = -1 EAGAIN (Resource temporarily unavailable)
+poll([{fd=3, events=POLLIN}, {fd=4, events=POLLIN}, {fd=7, events=POLLOUT}], 3, 1000) = 1 ([{fd=7, revents=POLLOUT}])
+ioctl(7, USBDEVFS_REAPURBNDELAY, 0x7ffd23be5650) = 0
+ioctl(7, USBDEVFS_SUBMITURB, 0x55d286bdbdf0) = 0
+ioctl(7, USBDEVFS_REAPURBNDELAY, 0x7ffd23be5650) = -1 EAGAIN (Resource temporarily unavailable)
+poll([{fd=3, events=POLLIN}, {fd=4, events=POLLIN}, {fd=7, events=POLLOUT}], 3, 1000) = 1 ([{fd=7, revents=POLLOUT}])
+ioctl(7, USBDEVFS_REAPURBNDELAY, 0x7ffd23be5650) = 0
+ioctl(7, USBDEVFS_SUBMITURB, 0x55d286bbbbb0) = 0
+ioctl(7, USBDEVFS_REAPURBNDELAY, 0x7ffd23be5650) = -1 EAGAIN (Resource temporarily unavailable)
+ .... repeat forever.
+
+
+  running $ strace rtl_sdr - > /dev/null
+
+poll([{fd=3, events=POLLIN}, {fd=4, events=POLLIN}, {fd=7, events=POLLOUT}], 3, 60000) = 1 ([{fd=7, revents=POLLOUT}])
+ioctl(7, USBDEVFS_REAPURBNDELAY, 0x7ffea3ce6990) = 0
+ioctl(7, USBDEVFS_REAPURBNDELAY, 0x7ffea3ce6990) = -1 EAGAIN (Resource temporarily unavailable)
+write(1, "/d\371\313\0252\277\246u\2006\277\270\0007\272\360w\0\202\336\2377(\240\327\223\26\0^\313\0"..., 4096) = 4096
+write(1, "\35\27G\207\3053 \334\357 \23\237\254\347\25\33\235\323\256\1\221\371\376T<\321\351r\6{\361r"..., 258048) = 258048
+ioctl(7, USBDEVFS_SUBMITURB, 0x557d48d6cd10) = 0
+ .... kind-of repeat forever, it varies a little in the order of ioctl()
+ and write().
+ 
+It looks like it about the same as rtl_test except that it's also
+writing to stdout (fd=1) as apposed to just doing nothing with the data
+that is reads in the ioctl() calls.
+
+It's using 2 threads and very little CPU, less than 0.1% of a core.
+Not bad.
+Sampling at 2048000 S/s
+
+ --> tried  2400000  and still less than 0.1% of a core
+ 
+ running $ rtl_sdr -s 2400000   - > /dev/null
+
+Tried many other sample rates, and never got more than 0.1% of a core
+load with 2 threads each time; at steady state
+(running % htop -F rtl_sdr).
+
+I do have a kick-ass up-to-date computer, so results may vary.
+
+
+I don't think I'll bother trying to change that.
+BUT ... It'd be nice to be able to have a file descriptor to poll the
+device driver with.  For now I'll just let the interfaces in
+librtlsdr.so drive this development.  Going with the flow.
+
+
+
+The rtlsdr Block will have at least two DSO (dynamic shared object)
+files.  One for Block declaration (declare()) and one to load/run when
+the stream is flowing.  We use the function qsAddRunFile("_run.so") to
+tie the two DSO files together at run-time.  The _run.so file is not
+loaded unless the stream flows, so when rtlsdr.so is loaded into the
+quickstream editor program, it does not use _run.so (and the libraries
+it links with) unless we run the stream.
+
+
+RTL-SDR Product web site: https://www.rtl-sdr.com/
+
+
+
+# local radio station near me at 105.3 MHz:
+
+$ rtl_sdr -f 105300000 -s 2400000  -n 10000  - > xxx
+
+with 10000 samples and the file size of 20000 bytes
+
+$ stat xxx
+
+
+Wrote the program RawToASCII.c to read that xxx file or:
+
+rtl_sdr -f 105300000 -s 74000  -n 10000  - | ./RawToASCII > xxx.txt
+
+
+

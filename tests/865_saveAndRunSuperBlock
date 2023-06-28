@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# Save super blocks and than load them.
+#
+# This test takes a longer time to run than most.
+
+
+set -ex
+
+if [  -n "${VaLGRIND_RuN}" ] ; then
+    # skip testing with valgrind
+    exit 123
+fi
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+# Write this test file
+superBlockName="data_$(basename $0).tmp"
+
+rm -f\
+ ${superBlockName}.c\
+ ${superBlockName}.so\
+ ${superBlockName}2.c\
+ ${superBlockName}2.so
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g0 1\
+ --save-config\
+ --block sequenceGen b0\
+ --block passThroughCount b1\
+ --block sequenceCheck b2\
+ --block setterPrintUint64 p\
+ --make-port-alias b2 output 0 out\
+ --make-port-alias b2 input 0 in0\
+ --connect b0 output 0 b1 input 0\
+ --connect b1 output 0 g0 input in0\
+ --connect p setter value b1 getter trigger\
+ --configure-mk MK b0 TotalOutputBytes 0 MK\
+ --configure-mk MK b1 triggerCount 100 MK\
+ --configure-mk MK b1 quitCount 8100 MK\
+ --configure-mk MK b2 TotalOutputBytes 0 MK\
+ --save-block ${superBlockName}
+
+
+../bin/quickstream\
+ --exit-on-error\
+ --block ${superBlockName}\
+ --save-block ${superBlockName}2
+
+
+../bin/quickstream\
+ --exit-on-error\
+ --block ${superBlockName}2\
+ --start\
+ --wait-for-stream
+
+
+rm ${superBlockName}.c\
+ ${superBlockName}.so\
+ ${superBlockName}2.c\
+ ${superBlockName}2.so
+

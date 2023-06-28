@@ -1,0 +1,68 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block empty
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block empty dum
+
+
+# Repeating the same block name should fail.
+if ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block empty dum\
+ --block empty dum ; then
+  exit 1
+fi
+
+
+# Repeating the same block name
+# without --exit-on-error will not return error status.
+../bin/quickstream\
+ -v 5\
+ --block empty dum\
+ --block empty dum
+
+
+# Without --exit-on-error but with last command succeeding
+../bin/quickstream\
+ -v 5\
+ --block empty dum\
+ --block empty dum\
+ --block empty
+
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block empty dum\
+ --block empty dum2\
+ --block empty\
+ --block empty\
+ --block empty\
+ --block empty
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block empty empty_2\
+ --block empty empty\
+ --block empty empty_4\
+ --block empty\
+ --block empty\
+ --block empty
+

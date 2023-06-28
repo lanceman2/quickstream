@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -eo pipefail
+set -x
+
+dir="$(dirname ${BASH_SOURCE[0]})"
+
+cd "$dir"
+
+
+./u8tofloat < /dev/urandom | ./QT_GUI_Sink --samp_rate 2000000
+

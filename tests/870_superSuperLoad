@@ -1,0 +1,34 @@
+#!/bin/bash
+
+
+set -ex
+
+
+# NOTE:  with --graph g0 1   changed to   --graph g0 3
+#  this test fails when running with valgrind.
+#
+#  like;
+#
+#    ./valgrind_run_tests 870_superSuperLoad 
+#
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g0 1\
+ --save-config\
+ --block superSuperBlock b0\
+ --start\
+ --wait-for-stream
+
+
+../bin/quickstream\
+ --exit-on-error\
+ --graph g0 1 tp0 superSuperBlock\
+ --start\
+ --wait-for-stream
+

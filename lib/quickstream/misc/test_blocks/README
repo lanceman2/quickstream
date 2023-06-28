@@ -1,0 +1,39 @@
+
+
+CAUTION:
+
+It would not be a good idea to use blocks in this directory without
+reading and understanding the source code to them.  Some of these blocks
+crash libquickstream.so on purpose in order to test failure modes in
+libquickstream.so.  These bad blocks help keep quickstream from
+digressing as it is developed.  Function and variable naming conventions
+in this C source files totally suck.  These are not good examples.
+
+
+
+Most of the files in this directory make test block modules that are
+loaded as DSOs (dynamic shared objects).
+
+The quickstream software test programs in ../../../../tests/ are very
+dependent on these block DSOs; so if you make any changes to files in this
+directory you must run the test programs in ../../../../tests/ and test
+the changes.  If you make changes to files in this directory, and the
+tests pass with those changes, there is still no guarantee that you did
+not just add a false positive to the tests and you just wrecked the
+code.
+
+Any changes to this code require that you understand previously existing
+tests that will continue to use this code.  If you're not sure, it's
+better to just add a new test block module, then to edit an old test block
+module.
+
+
+
+REPEAT CAUTION:
+
+It would not be a good idea to use blocks in this directory without
+reading and understanding the source code to them.  Some of these blocks
+crash libquickstream.so on purpose in order to test failure modes in
+libquickstream.so.  These bad blocks help keep quickstream from
+digressing as it is developed.
+

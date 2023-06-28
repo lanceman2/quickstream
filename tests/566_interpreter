@@ -1,0 +1,19 @@
+#!../bin/quickstream_interpreter
+
+
+v 5
+
+exit-on-error
+
+graph
+# this is a comment
+
+# Set the environment variable QS_BLOCK_PATH
+set-block-path ../lib/quickstream/misc/test_blocks:../lib/quickstream
+block sequenceGen b0
+# testing using a weird path with the weird QS_BLOCK_PATH
+block misc/test_blocks/sequenceCheck b1
+connect b0 output 0 b1 input 0
+start
+wait-for-stream
+

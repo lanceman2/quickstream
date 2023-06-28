@@ -1,0 +1,136 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc
+
+
+
+# Mostly doing the same thing many different ways,
+# making sure the different configurations work.
+
+
+# Very preliminary test.
+#
+# By default it writes to STDOUT_FILENO
+
+expect=97345
+count=$(../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block test_blocks/sequenceGen in0\
+ --block file/FileOut out\
+ --connect in0 output 0 out input 0\
+ --configure-mk MK in0 TotalOutputBytes $expect MK\
+ --start\
+ --wait | wc -c)
+
+if [ "$count" != "$expect" ] ; then
+    echo "BAD COUNT OUT: $count != $expect"
+    exit 1
+fi
+
+
+
+inFile="data_$(basename $0)_in.tmp"
+outFile="data_$(basename $0)_out.tmp"
+outFile2="data_$(basename $0)_out2.tmp"
+
+
+dd if=/dev/urandom count=31 of=$inFile
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block test_blocks/stdin in0\
+ --block file/FileOut out\
+ --connect in0 output 0 out input 0\
+ --start\
+ --wait < $inFile > $outFile
+
+diff -q $inFile $outFile
+
+
+rm $outFile
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 2\
+ --block test_blocks/stdin in0\
+ --block file/FileOut out\
+ --configure-mk MK out Filename $outFile MK\
+ --connect in0 output 0 out input 0\
+ --start\
+ --wait < $inFile
+
+diff -q $inFile $outFile
+
+
+rm $outFile
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block test_blocks/stdin in0\
+ --block file/FileOut out\
+ --configure-mk MK out Filename $outFile MK\
+ --configure-mk MK out FileDescriptor 1 MK\
+ --connect in0 output 0 out input 0\
+ --start\
+ --wait < $inFile > $outFile
+
+
+diff -q $inFile $outFile
+
+
+rm $outFile
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 2\
+ --block test_blocks/stdin in0\
+ --block file/FileOut out\
+ --configure-mk MK out FileDescriptor 1 MK\
+ --connect in0 output 0 out input 0\
+ --start\
+ --wait < $inFile > $outFile
+
+
+diff -q $inFile $outFile
+
+
+rm $outFile
+rm -f $outFile2
+rm $inFile
+
+
+# 2 files out
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block test_blocks/sequenceGen in0\
+ --block file/FileOut out\
+ --block file/FileOut out2\
+ --connect in0 output 0 out input 0\
+ --connect in0 output 0 out2 input 0\
+ --configure-mk M in0 TotalOutputBytes 40000 M\
+ --configure-mk M out Filename $outFile M\
+ --configure-mk M out2 Filename $outFile2 M\
+ --start\
+ --wait
+
+diff -q $outFile $outFile2
+
+rm $outFile $outFile2
+

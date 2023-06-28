@@ -1,0 +1,44 @@
+#!/bin/bash
+
+set -ex
+
+
+if [ ! -x ../lib/quickstream/blocks/gtk3/base.so ] ; then
+    # We skip this test if a module is not built.
+    set +x
+    echo "skipping: ${BASH_SOURCE[0]}"
+    exit 123
+fi
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+# This builds a window and then removes and than recreates it.
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block gtk3/base gtk\
+ --block gtk3/button button\
+ --block sequenceGen gen\
+ --block stdout out\
+ --block runner/run run\
+ --block destroyGraph destroy\
+ --configure-mk MK gen TotalOutputBytes 0 MK\
+ --configure-mk MK button label "Run" MK\
+ --configure-mk MK gtk title "Start and Stop" MK\
+ --connect gen output 0 out input 0\
+ --connect button g value run s run\
+ --parameter-set-mk MK gtk show True MK\
+ --wait-for-destroy 5\
+ --block-unload button\
+ --block-unload gtk\
+ --sleep 4\
+ --block gtk3/base gtk\
+ --block gtk3/button button\
+ --connect button g value run s run\
+ --connect gtk getter destroy destroy setter destroy\
+ --parameter-set-mk MK gtk show True MK\
+ --wait-for-destroy
+

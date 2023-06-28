@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# howto discusses valgrind suppression files and how to create
+# your own.
+#
+# https://wiki.wxwidgets.org/Valgrind_Suppression_File_Howto
+
+
+set -e
+
+if ! which valgrind > /dev/null ; then
+    echo "valgrind was not found in your PATH"
+    exit 1
+fi
+
+cd "$(dirname ${BASH_SOURCE[0]})"
+
+pre="$PWD"
+
+export VaLGRIND_RuN="valgrind\
+ --quiet\
+ --tool=memcheck\
+ --leak-check=full\
+ --trace-children=yes\
+ --show-leak-kinds=all\
+ --trace-children-skip='*'\
+ --suppressions="${pre}/valgrind_suppressions"\
+ --errors-for-leak-kinds=all\
+ --error-exitcode=211"
+
+
+exec ./run_tests $*
+
+# --gen-suppressions=all\

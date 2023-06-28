@@ -1,0 +1,37 @@
+We had to do some weird-ass shit to get the GTK main event loop to run in
+a separate thread (pthread and not GDK thread).   We gave ourselves the
+requirement that the thread that is running the GTK main event loop not
+use any CPU when there are no events being processed.  The same goes for
+all other threads.
+
+This is just a general trend, frameworks that have a main loop do a poor
+job of integrating with other frameworks that have a main loop.  Both
+frameworks, GTK and quickstream, want to be the center-of-the-universe.
+In the case of this code quickstream is the center-of-the-universe and
+we force GTK to be a well behaved runtime optional module.  We hog tired
+GTK.
+
+Adding GSource object to the GContext, to control the running of the
+thread, turned out to not work at all, totally soaked the CPU while doing
+nothing.  There was no way to get the system poll(2) call in GTK to be a
+blocking call, once you added the GSource to the GContext.  Yes, the GTK
+and GLib documentation says otherwise.  It would appear that some of the
+"internal" GTK file descriptors when grouped with own "control" file
+descriptor caused the GTK main poll(2) call, with a total of 3 file
+descriptors, to be non-blocking.  In my case I think that at least one of
+the file descriptors was the connection to the X11 server.  I don't know
+what the 3rd file descriptor was.  Use the strace utility.
+
+That's like 500 lines of C code that burned one month of my life.  See
+_baseRun.c.  A new slow coding record.  I'd fire me, but I'm the only one
+working on this.
+
+The result that seemed to work was use pthread_kill() to signal from a
+requesting thread to the GTK main loop thread, and then use a mutex and
+condition variable to make the GTK main loop thread wait while the
+signaling thread finishes running GTK code.  The signal would cause the
+g_main_context_iteration() to return and then we made it wait on a
+pthread_cond_wait().  Note: it's a mix of system signals and pthead
+condition signal.   See _baseRun.c.
+
+

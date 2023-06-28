@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block FileIn b0\
+ --block-unload b0
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block FileIn
+

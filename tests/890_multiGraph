@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+# Note: superBlock2 destroys its graph after it runs the stream.
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g0 1 tp0\
+ --block superBlock b0\
+ --graph g1 1 tp1 superBlock2\
+ --graph g0\
+ --start\
+ --graph g1\
+ --start\
+ --wait-for-stream\
+ --graph g0\
+ --wait-for-stream
+

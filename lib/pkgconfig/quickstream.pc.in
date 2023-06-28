@@ -1,0 +1,13 @@
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+
+Name: quickstream
+Description: quickstream, stream graph library
+Version: @QUICKSTREAM_VERSION@
+Requires: 
+Requires.private:
+Libs: -L${libdir} -lquickstream
+Cflags: -I${includedir}

@@ -1,0 +1,4 @@
+qsGetGTKContext
+qsGtk_cleanup
+qsGtk_init
+qsReleaseGTKContext

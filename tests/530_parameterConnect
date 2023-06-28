@@ -1,0 +1,33 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+# This hit a bug I came upon.  The last command
+# --connect b2 setter freq1 b2 setter freq2 FAILED
+#
+# DO NOT CHANGE THIS NEXT COMMAND.
+#
+../bin/quickstream\
+ --exit-on-error\
+ --block lotsOfPorts b1\
+ --block lotsOfPorts b2\
+ --connect b1 setter freq1 b2 setter freq1\
+ --connect b1 setter freq2 b2 setter freq2\
+ --connect b2 setter freq1 b2 setter freq2
+
+
+
+../bin/quickstream\
+ --exit-on-error\
+ --block lotsOfPorts b1\
+ --block lotsOfPorts b2\
+ --connect b1 setter freq1 b2 setter freq1\
+ --connect b2 setter freq2 b1 setter freq2\
+ --connect b2 setter freq1 b2 setter freq2\
+ --disconnect b2 setter freq2\
+ --connect b1 setter freq1 b2 setter freq2
+
+

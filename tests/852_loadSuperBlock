@@ -1,0 +1,17 @@
+#!/bin/bash
+
+
+set -ex
+
+# Holy shit, this actually works with valgrind.
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+../bin/quickstream\
+ --exit-on-error\
+ --graph g0 1 tp0 superBlock2\
+ --start\
+ --wait-for-stream
+

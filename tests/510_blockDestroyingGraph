@@ -1,0 +1,65 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block destroyGraph
+
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph\
+ --wait 0.001
+
+
+# This will never get the requested qsDestroy() command to run because the
+# qsGraph_wait() is never called to run it.  But it does not matter.
+# The queued command is destroyed with the graph.  That is the next
+# thing after setter setting the command is to destroy the graph.
+#
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block destroyGraph b\
+ --parameter-set-mk MK b destroy True MK
+
+
+# This gets to destroy the graph using the block's setter callback.
+# This will try to wait forever but the destroy command requested
+# by the blocks setter callback will interrupt the wait.
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block destroyGraph b\
+ --parameter-set-mk MK b destroy True MK\
+ --wait
+
+
+
+# This gets to destroy the graph using the block's setter callback.
+# The wait 100 will be interrupted by the destroy command requested
+# by the blocks setter callback.
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block destroyGraph b\
+ --parameter-set-mk MK b destroy True MK\
+ --wait 100
+
+
+# This gets to destroy the graph using the block's setter callback.
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block destroyGraph b\
+ --parameter-set-mk MK b destroy 1 MK\
+ --wait 0.01
+

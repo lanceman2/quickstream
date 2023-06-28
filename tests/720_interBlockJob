@@ -1,0 +1,48 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+# Good to check with ValGrind and make sure memory of the
+# interBlock callback thingy is cleaned up when the graph
+# is automatically cleaned up; without doing anything but
+# creating it.
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block interBlockJob
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block interBlockJob b0\
+ --block interBlockJob b1\
+ --wait 0.001
+
+
+# halt the worker threads until all the blocks are loaded.
+# That way all the blocks can participate in the game
+# of pass in a circle from b0 to b5 to b4 to b3 to b2 to b1 and
+# back to b0 to b5 to ... on until a counter gets above some
+# value.
+#
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 3\
+ --halt\
+ --block interBlockJob b0\
+ --block interBlockJob b1\
+ --block interBlockJob b2\
+ --block interBlockJob b3\
+ --block interBlockJob b4\
+ --block interBlockJob b5\
+ --unhalt\
+ --wait 0.001
+

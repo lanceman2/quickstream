@@ -1,0 +1,170 @@
+# quickstream(1) completion
+@GEN_FILE@
+
+# REFERENCES:
+#
+# https://unix.stackexchange.com/questions/151118/understand-compgen-builtin-command
+# https://debian-administration.org/article/317/An_introduction_to_bash_completion_part_2
+
+_quickstream()
+{
+    local cur prev opts map
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    opts="@OPTS@"
+
+    # COMPREPLY is the global array of possible completions
+
+    if [[ ${cur} == -* ]] ; then
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    if [[ ${prev} != -* ]] ; then
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    if [[ ${prev} == -* ]] ; then
+        # See is prev is an option that has no argument.
+        declare -A map=(@OPTS_NOARG@)
+        if [[ ${map["${prev}"]} ]] ; then
+            # prev is an option with no ARG so we can only
+            # have, -*, an option flag next.
+            COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+            return 0
+        fi
+    fi
+
+    local modtype;
+
+    case "${prev}" in
+
+        -c|--connect)
+            COMPREPLY=( ""
+                "BLOCK_A TYPE_A PORT_A BLOCK_B TYPE_B PORT_B"
+            )
+            return 0
+            ;;
+
+        -b|--block|--block-help|-B)
+            # We'll get a list of blocks below
+            modtype=blocks
+            ;;
+
+        -t|--threads)
+            # This is a nice hack:  Print a hint for the user in a
+            # otherwise broken COMPREPLY array.
+            COMPREPLY=( "NUM [TP_NAME]" "" )
+            return 0
+            ;;
+
+        -S|--sleep)
+            COMPREPLY=( "number of seconds like 0.3" "" )
+            return 0
+            ;;
+
+        *)
+            # Here we are done with all the non-block list ARGS:
+            return 0
+            ;;
+    esac
+
+    # All that is left is to get a list of block modules by looking for
+    # them in the file system.  The files paths are relative to this file
+    # or from an environment variable QS_BLOCK_PATH.
+
+    #COMPREPLY=( "-- This is a list of blocks --" "" )
+
+
+    local mod_dir="$(dirname ${BASH_SOURCE[0]})" || return 0 # bash failed
+
+
+    # For now we require that this bash file be in a special path
+    # directory which is requires that block plugins be in
+    # ../../../lib/quickstream/blocks/ relative to the directory this
+    # file is in.
+    #
+    # This will even work when the software is not installed yet and is
+    # built in the source directory; a major major plus for developers.
+
+    local mod_dirs=($mod_dir/../../../lib/quickstream/$modtype/)
+    local dirs
+    local d
+
+    # Now add block modules from the environment variable QS_BLOCK_PATH
+    if [ -n "$QS_BLOCK_PATH" ] ; then
+        IFS=':' read -r -a dirs <<< "$QS_BLOCK_PATH"
+        for d in $dirs ; do
+            #echo "d=$d/$modtype"
+            mod_dirs+=($d/$modtype/)
+        done
+        #echo -e "\n\n   mod_dirs=${mod_dirs[@]}\n\n"
+    fi
+
+    mod_dirs+=($PWD/$modtype)
+    #echo "mod_dirs[]= ${mod_dirs[@]}"
+
+    local i
+    local mod
+    local mods=(@builtInBlocks@)
+
+    #echo "mods=${mods[@]}"
+
+    for mod_dir in ${mod_dirs[@]} ; do
+        #for suf in .py .so ; do
+        for suf in .so ; do
+            for i in $mod_dir/*${suf} ; do
+                if [ ! -f "$i" ] ; then
+                    continue
+                fi
+                # Since we have different module file types,
+                # it may be good to show the file type via the
+                # suffix, instead of removing the suffix.
+                # We could also have modules with the same name
+                # but with a different suffix (.so or .py).
+                #mod="$(basename ${i%%${suf}})" || return 0
+                mod="$(basename ${i})" || return 0
+                mods+=($mod)
+                #echo "mod=${mod}"
+            done
+            # Here we go with one more directory
+            for i in $mod_dir/*/*${suf} ; do
+                if [ ! -f "$i" ] ; then
+                    continue
+                fi
+                mod="$(basename $(dirname $i))/$(basename ${i})" || return 0
+                mods+=($mod)
+                #echo "mod=${mod}"
+            done
+            # Here we go again with yet one more directory
+            for i in $mod_dir/*/*/*${suf} ; do
+                if [ ! -f "$i" ] ; then
+                    continue
+                fi
+                mod="$(basename $(dirname $(dirname $i)))/$(basename $(dirname $i))/$(basename ${i})" || return 0
+                mods+=($mod)
+                #echo "mod=${mod}"
+            done
+        done
+    done
+
+    opts=
+    #echo "mods=${mods[@]}"
+
+    for i in "${mods[@]}" ; do
+        if [[ "$i" = "${cur_word}"* ]] ; then
+            opts="${opts} $i"
+        fi
+    done
+
+    #echo "opts=${opts}"
+
+    COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+
+    return 0
+}
+
+complete -F _quickstream quickstream
+
+# ex: filetype=sh

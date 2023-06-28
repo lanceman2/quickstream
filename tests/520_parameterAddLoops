@@ -1,0 +1,81 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+# --connect BLOCK_A TYPE_A PORT_A BLOCK_B TYPE_B PORT_B
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block add1 add
+ 
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block add1 a1\
+ --wait 0.0001
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block add1 a1\
+ --connect a1 g add a1 s add\
+ --wait
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block add1 a1\
+ --block add1 a2\
+ --connect a1 g add a2 s add\
+ --connect a2 g add a1 s add\
+ --wait
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block add1 a1\
+ --block add1 a2\
+ --block add1 a3\
+ --connect a1 g add a2 s add\
+ --connect a2 g add a3 s add\
+ --connect a3 g add a1 s add\
+ --wait
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph\
+ --halt\
+ --block add1 a1\
+ --block add1 a2\
+ --block add1 a3\
+ --connect a1 g add a2 s add\
+ --connect a2 g add a3 s add\
+ --connect a3 g add a1 s add\
+ --unhalt\
+ --wait
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block add1 a1\
+ --block add1 a2\
+ --block add1 a3\
+ --block add1 a4\
+ --connect a1 g add a2 s add\
+ --connect a2 g add a3 s add\
+ --connect a3 g add a4 s add\
+ --connect a4 g add a1 s add\
+ --wait
+

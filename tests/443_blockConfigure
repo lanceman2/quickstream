@@ -1,0 +1,46 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block lotsOfPorts b0\
+ --block lotsOfPorts b1\
+ --configure-mk MK b0 config1 MK\
+ --configure-mk MK b0 config1 foo bar baz MK
+
+
+# Configure a non-existent attribute named myAss
+if ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block lotsOfPorts b1\
+ --configure-mk M b1 myAss foo bar M ; then
+    exit 1
+fi
+
+
+# This has a race to see the printing to stderr from
+# the block, but that does not make it fail.  We
+# do not want this program to wait a time longer than
+# one thousandth of a second.  Quick tests must be quick.
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block lotsOfPorts b0\
+ --block lotsOfPorts b1\
+ --configure-mk MK b0 config1 MK\
+ --configure-mk MK b0 config1 foo bar baz MK\
+ --parameter-set-mk MK b0 freq1 1000 MK\
+ --parameter-set-mk MK b1 gain -3000.5 10 24.789 MK\
+ --parameter-set-mk MK b1 gain 2.789 MK\
+ --parameter-set-mk MK b1 gain MK\
+ --parameter-set-mk MK b1 on True MK\
+ --configure-mk MK b0 config1 1 2 3 4.8 5.123 MK\
+ --configure-mk MK b0 config1 1 2 3 MK\
+ --wait 0.0001

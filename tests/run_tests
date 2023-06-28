@@ -1,0 +1,163 @@
+#!/bin/bash
+
+# Runs all files that glob pattern match NNN*
+# for example: 452_helloWorld
+#          or: 456
+
+
+
+set -euo pipefail
+shopt -s nullglob
+
+
+
+program="./run_tests"
+
+VaLGRIND_RuN=${VaLGRIND_RuN:=""}
+
+[ -n "${VaLGRIND_RuN}" ] && program="./valgrind_run_tests"
+
+
+for i in "$@" ; do
+    case "$i" in
+
+        -*)
+            cat << EOF
+
+    Usage: $program [TEST_NAME ...]
+
+  With no arguments runs all numbered test files.
+
+  -------------------------------------------------
+                OPTIONS
+  -------------------------------------------------
+
+   TESTS_NAME   For example:
+
+                $program 194_DictionaryDict_test
+
+
+EOF
+            exit 1
+            ;;
+    esac
+done
+
+
+
+cd "$(dirname ${BASH_SOURCE[0]})"
+
+
+if [ -d ../bin ] && [ ! -x ../bin/quickstream ] ; then
+    echo "Looks like the quickstream source is not built yet."
+    exit 1
+fi
+
+
+make -j $(nproc)
+
+
+files=([0-9][0-9][0-9]*)
+num=0
+if [ -z "$*" ] ; then
+    for run in "${files[@]}" ; do
+        if [ -x $run ] ; then
+            tests[$num]=$run
+            let num=$num+1
+        fi
+    done
+else
+    # There was a list of arguments that are programs to run:
+    for run in ${*} ; do
+        tests[$num]=$run
+        let num=$num+1
+    done
+fi
+
+i=1
+pass=0
+fail=0
+skipped=0
+
+# programs that return 0
+passPrograms=
+
+# programs that return not 0 or 3
+failPrograms=
+
+# programs that return 3
+skippedPrograms=
+
+echo "  ================================================"
+echo "                RUNNING $num TEST(S)"
+echo "  ================================================"
+set +e
+for run in "${tests[@]}" ; do
+    echo "   [ $i / $num ] === running: ${VaLGRIND_RuN} ./$run"
+    ${VaLGRIND_RuN} ./$run
+    ret="$?"
+
+    if [ "$ret" = "0" ] ; then
+        let pass=$pass+1
+        echo "$run === PASSED"
+        passPrograms="$passPrograms $run"
+    elif [ "$ret" = "123" ] ; then
+        let skipped=$skipped+1
+        echo "$run === SKIPPED"
+        skippedPrograms="$skippedPrograms $run"
+    else
+        let fail=$fail+1
+        echo "$run === FAILED"
+        failPrograms="$failPrograms $run"
+    fi
+
+    let i=$i+1
+done
+
+withValgrind="WITHOUT VALGRIND"
+if [ -n "$VaLGRIND_RuN" ] ; then
+    withValgrind="WITH VALGRIND"
+fi
+
+
+result=GOOD
+[ "$fail" = "0" ] ||\
+  result="BAD   and we don't mean Michael Jackson's bad"
+
+cat << EOF
+
+  ===============================================================
+             HOW EACH TEST PROGRAM DID ($withValgrind)
+  ===============================================================
+
+    [ $pass / $num ] PASSED: $passPrograms
+    [ $fail / $num ] FAILED: $failPrograms
+    [ $skipped / $num ] SKIPPED: $skippedPrograms
+
+
+  ===============================================================
+              NET TEST RESULTS ($withValgrind)
+  ===============================================================
+
+             [ $pass / $num ] PASSED
+             [ $fail / $num ] FAILED
+             [ $skipped / $num ] SKIPPED
+
+
+  THIS RESULT IS $result
+
+
+  Tests may be skipped because a dependency was not found, or
+  we are not able to run it with valgrind because valgrind will
+  not do what we need it to do; or it's testing test skipping.
+
+
+  Run:
+
+    cd $PWD && make clean
+
+  to remove generated files from this tests directory
+
+EOF
+
+[ $fail = 0 ] || exit 1

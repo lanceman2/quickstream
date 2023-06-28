@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block sequenceGen b0\
+ --block sequenceCheck b1\
+ --block stdout out\
+ --connect b0 output 0 b1 input 0\
+ --connect b1 output 0 out input 0\
+ --configure-mk MK b0 TotalOutputBytes 0 MK\
+ --configure-mk MK b1 TotalOutputBytes 0 MK\
+ --start\
+ --catch-sig 2\
+ --sleep
+

@@ -1,0 +1,77 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+if [  -n "${VaLGRIND_RuN}" ] ; then
+    # skip testing with valgrind
+    exit 123
+fi
+
+
+# this fails with ASSERT
+#
+# TODO: We need to add more failure modes to the quickstream API
+# so that this fails at the "--configure-mk MK p1 PassThrough t MK\"
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block sequenceGen b0\
+ --block sequenceCheck p1\
+ --block sequenceCheck b2\
+ --configure-mk MK b0 Seeds 4 MK\
+ --configure-mk MK p1 Seeds 4 MK\
+ --configure-mk MK b2 Seeds 4 MK\
+ --connect b0 output 0 p1 input 0\
+ --connect b0 output 0 p1 input 1\
+ --connect p1 output 0 b2 input 0\
+ --connect p1 output 1 b2 input 1\
+ --configure-mk MK p1 PassThrough t MK\
+ --start\
+ --wait\
+ --start\
+ --wait
+
+
+
+# this fails with ASSERT
+#
+# TODO: We need to add more failure modes to the quickstream API
+# so that this fails at the "--connect in0 output 0 p1 input 1"
+# or "--connect p1 output 1 b2 input 1"
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block sequenceGen in0\
+ --block passThrough p1\
+ --block sequenceCheck b2\
+ --connect in0 output 0 p1 input 0\
+ --connect in0 output 0 p1 input 1\
+ --connect p1 output 0 b2 input 0\
+ --connect p1 output 1 b2 input 1\
+ --start\
+ --wait\
+ --start\
+ --wait
+
+
+
+# this passes
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block sequenceGen in0\
+ --block passThrough p1\
+ --block sequenceCheck b2\
+ --connect in0 output 0 p1 input 0\
+ --connect in0 output 1 p1 input 1\
+ --connect p1 output 0 b2 input 0\
+ --connect p1 output 1 b2 input 1\
+ --start\
+ --wait\
+ --start\
+ --wait
+

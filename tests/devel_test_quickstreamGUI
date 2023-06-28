@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -ex
+
+cd "$(dirname ${BASH_SOURCE[0]})"
+
+echo "PWD=${PWD}"
+
+cd ../lib/quickstream/blocks/examples/
+
+
+export QS_BLOCK_PATH="../../misc/test_blocks"
+
+exec ../../../../bin/quickstreamGUI

@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# This test is vary particularly paired with the test block
+# ../lib/quickstream/misc/test_blocks/startFail.so
+#
+# It tests a block that fails to start() and how it gets
+# stop() called, depending on what value start() returns.
+
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block startFail b0\
+ --block stdout b1\
+ --connect b0 output 0 b1 input 0\
+ --exit-on-error False\
+ --start\
+ --exit-on-error\
+ --wait-for-stream\
+ --exit-on-error False\
+ --start\
+ --exit-on-error\
+ --wait-for-stream\
+ --exit-on-error False\
+ --start\
+ --exit-on-error\
+ --wait-for-stream
+

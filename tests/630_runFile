@@ -1,0 +1,45 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+# block runFile has a qsAddRunFile("_run.so") in it.
+# and _run.so is in the same directory as runFile.so.
+
+# This tests a lot more than you would think, at first glance.
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 2\
+ --block runFile B0\
+ --block runFile B1\
+ --block runFile B2\
+ --block misc/NullSink out\
+ --connect B0 output 0 out input 0\
+ --connect B1 output 0 out input 1\
+ --connect B2 output 0 out input 2\
+ --start\
+ --wait-for-stream\
+ --start\
+ --wait-for-stream
+
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 2\
+ --block runFileNoCopy b0\
+ --block runFileNoCopy b1\
+ --block runFileNoCopy b2\
+ --block misc/NullSink out\
+ --connect b0 output 0 out input 0\
+ --connect b1 output 0 out input 1\
+ --connect b2 output 0 out input 2\
+ --start\
+ --wait-for-stream\
+ --start\
+ --wait-for-stream

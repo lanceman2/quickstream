@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+echo -e "\nThis test should hang forever\n\n"
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph\
+ --wait

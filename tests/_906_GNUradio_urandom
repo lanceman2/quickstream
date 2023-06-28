@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -ex
+
+if [ -n "${VaLGRIND_RuN}" ] ; then
+    # skip testing with valgrind
+    exit 123
+fi
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block gnuradio-3.10.1/QT_GNUradio_test b0\
+ --start\
+ --wait-for-stream\
+ --start\
+ --wait-for-stream
+

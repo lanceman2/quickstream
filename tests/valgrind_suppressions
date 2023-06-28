@@ -1,0 +1,29 @@
+{
+    name1
+    Memcheck:Leak
+    ...
+    obj:/usr/bin/*
+    ...
+}
+{
+    name2
+    Memcheck:Leak
+    ...
+    obj:/bin/*
+    ...
+}
+{
+    name3
+    Memcheck:Leak
+    ...
+    obj:/lib/x86_64-linux-gnu/*
+    ...
+}
+{
+   Ignore dlopen bug.
+   Memcheck:Leak
+   ...
+   fun:_dl_open
+   ...
+}
+

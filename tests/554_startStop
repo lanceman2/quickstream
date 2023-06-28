@@ -1,0 +1,123 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block empty\
+ --start\
+ --wait\
+ --start\
+ --wait\
+ --start\
+ --stop
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block empty\
+ --block empty\
+ --start\
+ --stop\
+ --start\
+ --wait\
+ --start\
+ --stop
+
+
+if [  -n "${VaLGRIND_RuN}" ] ; then
+    # skip the rest if with valgrind
+    exit
+fi
+
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block sequenceGen b0\
+ --block sequenceCheck b1\
+ --block stdout out\
+ --connect b0 output 0 b1 input 0\
+ --connect b1 output 0 out input 0\
+ --configure-mk MK b0 TotalOutputBytes 0 MK\
+ --configure-mk MK b1 TotalOutputBytes 0 MK\
+ --start\
+ --sleep 0.0004\
+ --stop\
+ --sleep 0.0003\
+ --start\
+ --sleep 0.0001\
+ --stop\
+ --start\
+ --stop\
+ --start\
+ --stop\
+ --start
+
+
+# with loops
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g0 1\
+ --block sequenceGen b0\
+ --block sequenceCheck b1\
+ --block sequenceCheck b2\
+ --configure-mk MK b0 Seeds 22 MK\
+ --configure-mk MK b1 Seeds 22 MK\
+ --configure-mk MK b2 Seeds 22 MK\
+ --configure-mk MK b0 TotalOutputBytes 0 MK\
+ --configure-mk MK b1 TotalOutputBytes 0 MK\
+ --configure-mk MK b2 TotalOutputBytes 0 MK\
+ --connect b0 output 0 b1 input 0\
+ --connect b1 output 0 b1 input 1\
+ --connect b1 output 1 b1 input 2\
+ --connect b1 output 2 b1 input 3\
+ --connect b1 output 3 b2 input 0\
+ --connect b2 output 0 b1 input 4\
+ --connect b2 output 0 b1 input 5\
+ --start\
+ --sleep 0.0007\
+ --stop\
+ --start\
+ --sleep 0.001\
+ --stop
+
+
+# more threads and thread pools
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g0 4\
+ --block sequenceGen b0\
+ --block sequenceCheck b1\
+ --threads 4\
+ --block sequenceCheck b2\
+ --configure-mk MK b0 Seeds 22 MK\
+ --configure-mk MK b1 Seeds 22 MK\
+ --configure-mk MK b2 Seeds 22 MK\
+ --configure-mk MK b0 TotalOutputBytes 0 MK\
+ --configure-mk MK b1 TotalOutputBytes 0 MK\
+ --configure-mk MK b2 TotalOutputBytes 0 MK\
+ --connect b0 output 0 b1 input 0\
+ --connect b1 output 0 b1 input 1\
+ --connect b1 output 1 b1 input 2\
+ --connect b1 output 2 b1 input 3\
+ --connect b1 output 3 b2 input 0\
+ --connect b2 output 0 b1 input 4\
+ --connect b2 output 0 b1 input 5\
+ --start\
+ --sleep 0.0007\
+ --stop\
+ --start\
+ --sleep 0.001\
+ --stop
+

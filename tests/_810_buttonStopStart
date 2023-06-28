@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -ex
+
+
+if [ ! -x ../lib/quickstream/blocks/gtk3/button.so ] ; then
+    # We skip this test if a module is not built.
+    set +x
+    echo "skipping: ${BASH_SOURCE[0]}"
+    exit 123
+fi
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block gtk3/base gtk\
+ --block gtk3/button button\
+ --block test_blocks/sequenceGen gen\
+ --block test_blocks/stdout out\
+ --block test_blocks/destroyGraph destroy\
+ --block runner/run run\
+ --configure-mk MK gen TotalOutputBytes 0 MK\
+ --connect gen output 0 out input 0\
+ --configure-mk MK button label "Run" MK\
+ --connect destroy setter destroy gtk getter destroy\
+ --connect button getter value run setter run\
+ --display\
+ --parameter-set-mk MK button show True MK\
+ --wait-for-destroy
+

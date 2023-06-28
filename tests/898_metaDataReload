@@ -1,0 +1,41 @@
+#!/bin/bash
+
+set -ex
+
+if [  -n "${VaLGRIND_RuN}" ] ; then
+    # skip testing with valgrind
+    exit 123
+fi
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+# Write this test file
+superBlockName="data_$(basename $0).tmp"
+
+rm -f ${superBlockName}.c ${superBlockName}.so
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block sequenceGen b0\
+ --block sequenceCheck b1\
+ --connect b0 output 0 b1 input 0\
+ --add-metadata-mk MK key0 1234 this is metadata 1234 MK\
+ --add-metadata-mk MK key1 4321 this is more metadata 4321 MK\
+  --print-metadata key0\
+ --save-block ${superBlockName}
+
+
+../bin/quickstream\
+ --exit-on-error\
+ --graph g0 1 tp0 ${superBlockName}\
+ --print-metadata key0\
+ --print-metadata key1
+
+
+rm ${superBlockName}.c ${superBlockName}.so
+
+

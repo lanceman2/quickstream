@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# This takes 30 seconds to run on my computer:
+# Fri Apr 14 10:57:25 AM EDT 2023
+# It's a relatively bad ass machine from that period
+# AMD Ryzen 7 2700X (16) @ 3.700GHz
+# Memory: 32049MiB 
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+if [  -n "${VaLGRIND_RuN}" ] ; then
+    # skip testing with valgrind
+    exit 123
+fi
+
+
+# measured run time of about 30 seconds
+bytes=20100100
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 3 foo3\
+ --block sequenceGen i\
+ --block sequenceCheck o\
+ --block passThrough p1\
+ --block passThrough p2\
+ --block sequenceCheck p3\
+ --block passThrough p4\
+ --block passThrough p5\
+ --configure-mk MK i  TotalOutputBytes $bytes MK\
+ --configure-mk MK o  TotalOutputBytes $bytes MK\
+ --configure-mk MK p3 TotalOutputBytes $bytes MK\
+ --configure-mk MK p3 PassThrough 0 MK\
+ --configure-mk MK i  Seeds 1 2 3 4 MK\
+ --configure-mk MK o  Seeds 1 2 3 4 MK\
+ --configure-mk MK p3 Seeds 1 2 4 MK\
+ --connect p3 output 2 p3 input 3\
+ --connect p3 output 3 p3 input 4\
+ --connect i  output 3 p3 input 2\
+ --connect i  output 2 o  input 2\
+ --connect i  output 0 p1 input 0\
+ --connect p1 output 0 p2 input 0\
+ --connect p2 output 0 p3 input 0\
+ --connect p3 output 0 p4 input 0\
+ --connect p3 output 1 p1 input 1\
+ --connect p4 output 0 p5 input 0\
+ --connect p5 output 0 o  input 0\
+ --connect p1 output 1 p1 input 2\
+ --connect p1 output 2 p1 input 3\
+ --connect p1 output 3 o  input 1\
+ --connect i  output 1 p3 input 1\
+ --start\
+ --wait\
+ --start\
+ --wait
+

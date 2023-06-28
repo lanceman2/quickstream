@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -ex
+
+
+# I have a bug where failing to load a block caused the program to hang.
+# This will catch such a bug and hang the test.  Trying a few forms of
+# it.
+
+
+if ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block non_eXistenT_block b\
+ --wait ; then
+  exit 1
+fi
+
+
+if ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block non_eXistenT_block b ; then
+  exit 1
+fi
+
+../bin/quickstream\
+ -v 5\
+ --block non_eXistenT_block b\
+ -v 5
+
+
+../bin/quickstream\
+ -v 5\
+ --block non_eXistenT_block b

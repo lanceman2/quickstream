@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block sequenceGen b0\
+ --block sequenceCheck b1\
+ --connect b0 output 0 b1 input 0\
+ --add-metadata-mk MK key 1234 this is metadata 1234 MK\
+ --print-metadata key
+
+
+# stupid test block with meta data in it that is base64 encoded in the
+# super block DSO file.
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g0 1 tp0 superBlock_withMetaData\
+ --print-metadata key0\
+ --print-metadata key1
+
+

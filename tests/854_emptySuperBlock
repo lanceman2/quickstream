@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block emptySuperBlock
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g0 2 tp emptySuperBlock
+

@@ -1,0 +1,1122 @@
+/* This file and the program that it makes has to do with command-line
+   options for the quickstream program that is installed as "quickstream"
+   in bin/.
+
+   This program is not a quickstream user program, but it is used by the
+   quickstream command-line program to keep the command-line options and
+   their documentation consistent by having the options and the
+   documentation of them in one place, here in this file.  Also keeping
+   this separate from the quickstream program source code makes the
+   compiled quickstream program a little smaller.  We don't have all these
+   large strings in the quickstream program.
+
+   We wish the program "quickstream" to have all options (or commands)
+   that are provided in the libquickstream.so API (application programming
+   interface).  We may exclude some functions that may be considered
+   internal to Blocks like setting the number of input stream ports to any
+   value, but the Block may elect to provide a configuration interface to
+   setup input stream ports with the Block code monitoring the number.
+
+   Many quickstream API functions will have a one to one mapping to
+   command-line options of the "quickstream" program.
+
+   This program will make the building of the quickstream project fail
+   if quickstream options that are defined in the file are found to be
+   inconsistent at quickstream project build time.
+ */
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <stdbool.h>
+#include <signal.h>
+
+#include "../../../include/quickstream.h"
+
+/*  These are description special sequences that make HTML markup that is
+    in the description.  Of course they mean something else for other
+    output formats.  This special markup is only used in this file, and
+    none of this special markup "bleeds" out of this file, just the
+    standard markup comes out; be it HTML or simple ASCII text.  TODO: we
+    support outputting man page markup too.
+
+      "**" = start list <ul> 
+      "##"  = <li>
+      "&&" = end list   </ul>
+  
+      "  " = "&nbsp; "
+
+      "--*"  =  "<a href="#name">--*</a>"  where --* is a long_op
+
+      "::"   = "<span class=code>"  and will not add '\n' until @@
+      "@@"   = "</span>"
+ */
+
+/* The "quickstreamHelp" program has an auto-generated companion
+   qsOptions.h header file that is also generated from this file.
+   Changing some of the parameters and definitions in this file will
+   effect/configure the command-line "quickstream" program, and other
+   programs that use the "quickstream" program.
+
+
+   Thoughts: Should we just put this in an ASCII text file and write
+   another program, or use another program, that parses it?  We think
+   compiling the documentation file into the parser is a much simpler
+   solution.  The dis-advantages are:
+
+     1. that we must format the document strings as C strings,
+     2. this method is not common, and
+     3. the source to the quickstream package may be very slightly
+        larger.  I doubt it is.
+
+   The advantage with this method is:
+
+     1. it's simple,
+     2. it automatically checks that short arguments are not repeated,
+     3. it can be one source file less,
+     4. it's less easy to break,
+     5. installers are practically required to install this documentation.
+        You can't compile "quickstream" without it,
+     6. the quickstream program does not need to link to more shit; given
+        we require "quickstream" to be self documenting,
+     7. the "quickstream" program ends up smaller,
+     8. the "quickstream" program runs faster,
+     9. the installed quickstream package source ends up smaller, because
+        all these long comments do not get compiled into the installed code,
+    10. the list quickstream package prerequisites ends up smaller, and
+    11. I'm doing the work not you; so piss off.
+
+   Oh yes, and it's stupid ass simple for anyone that can program in C.
+*/
+
+
+#define DEFAULT_MAXTHREADS      7 // For a given quickstream threadPool
+
+
+// This is the spew level just for the quickstream program LEVEL which
+// maybe debug, info, notice, warn, error, and off which translates to: 5,
+// 4, 3, 2, 1, and 0; with higher levels of verbosity taking precedence.
+//
+#ifdef SPEW_LEVEL_DEBUG
+#  define DEFAULT_SPEW_LEVEL     5
+#elif defined(SPEW_LEVEL_INFO)
+#  define DEFAULT_SPEW_LEVEL     4
+#elif defined(SPEW_LEVEL_NOTICE)
+#  define DEFAULT_SPEW_LEVEL     3
+#elif defined(SPEW_LEVEL_WARN)
+#  define DEFAULT_SPEW_LEVEL     2
+#elif defined(SPEW_LEVEL_ERROR)
+#  define DEFAULT_SPEW_LEVEL     1
+#elif defined(SPEW_LEVEL_NONE)
+#  define DEFAULT_SPEW_LEVEL     0
+#endif
+
+
+#ifndef DEFAULT_SPEW_LEVEL
+#  define DEFAULT_SPEW_LEVEL 1 // error is the default
+#endif
+
+
+
+
+#define STRING(a)   _STR(a)
+#define _STR(a)     #a
+
+
+#ifndef PROG
+#  define PROG   "quickstream"
+#endif
+
+
+static void
+catcher(int sig) {
+
+    fprintf(stderr,
+            "Caught signal number %d\n\n"
+            "Pid %u will sleep now\n",
+            sig, getpid());
+    // nanosleep() whatever, who gives a shit...
+    while(1) usleep(10000);
+}
+
+
+
+static const char *usage =
+"  Usage: " PROG " OPTIONS\n"
+"\n"
+"  Build and run a quickstream flow graph.\n"
+"\n"
+"  What block modules to run with are given in command-line options."
+" This program takes action after each command-line argument it parses,"
+" so the order of command-line arguments is very important.  A connect"
+" option, --connect, before you load any blocks will have no good effect.\n"
+"\n"
+"  This program executes code after parsing each command line option"
+" in the order that the options are given.\n"
+"\n"
+"  It was found that the number of argument options needed to construct"
+" a large graph with many blocks and connects between them can very"
+" easily exceed the capacities of a shell command line buffer; so we"
+" provide a simple command interpreter mode which just mirrors all the"
+" command line options.  We currently have no interest in developing"
+" a full blow interpreter.  We only want a simple command line program"
+" and not burden users with yet another configuration file, be it YAML"
+" or XML.  If configuration files become wanted by the user community"
+" such development should be developed in parallel and will not drive"
+" the core development.   The architecture"
+" of this software is not driven by secondary languages,"
+" or else we'll lose the ability to simply extend the software.\n"
+"\n"
+"  All command line options require an preceding option flag.  All"
+" command line options with no arguments may be given in any of two"
+" forms.  The two argument option forms below are equivalent:\n"
+"\n"
+"**"
+"     ##-d\n"
+"     ##--display\n"
+"&&"
+"\n"
+"     -display is not a valid option.\n"
+"\n"
+"  All command line options with arguments may be given in any of three"
+" forms.  The three option examples below are equivalent:\n"
+"\n"
+"**"
+"     ##-b stdin\n"
+"     ##--block stdin\n"
+"     ##--block=stdin\n"
+"&&"
+"\n"
+"\n"
+"     -block stdin  and  -block=stdin  are not valid option arguments.\n"
+"\n";
+
+
+static const char *postHelpURL = "\n"
+"  See the quickstream homepage at " QUICKSTREAM_URL " ." ;
+
+
+
+// So by putting these options descriptions in this separate program we
+// can generate:
+//
+//   1. HTML documentation,
+//   2. the --help ASCII text from running 'quickstream --help', and
+//   3. man pages
+//
+// from this one source, and all the output forms stay consistent, because
+// they all come from this one source file.
+//
+// This is so much easier than using a parser and some bullshit document
+// format.  And it does not bloat any of the code with a crap load of
+// strings, except this program, which does not matter.  It's just this
+// one program that holds the strings.  The programs that use this are
+// different programs that run this program.  It's stupid simple.
+//
+static struct QsOption
+{
+  char *long_op;
+  char short_op;
+  char *arg;    // like  "--option ARG"  in the help spew
+  char *description;
+} opts[] = {
+
+// The code below will check for duplicate options, but it will not sort
+// these; so sort them now here:
+/*----------------------------------------------------------------------*/
+    { "--add-metadata-mk", 'M', "MK KEY ARG0 [ARGS...] MK",
+
+        "Add metadata to be stored in the next super block that is "
+        "generated via option --save-block or --save.\n"
+        "The argument MK may be any string without a space that serves "
+        "to delimit the start and the end of the argument strings to "
+        "be saved in the metadata in the super block.  KEY can be used "
+        "to access the metadata."
+    },
+/*----------------------------------------------------------------------*/
+    { "--block", 'b', "FILENAME [NAME]",
+
+        "Load block module with filename FILENAME.  An independent"
+        " instance of the block will be created for each time any block"
+        " is loaded.  For example:\n"
+        "\n"
+        "    --block fileOut out\n"
+        "\n"
+        "will load the \"fileOut\" block module and name it \"out\".  "
+        "This will automatically generate a block name if one is not "
+        "given in the command-line.  The block names must be unique "
+        "for a given graph.\n"
+        "\n"
+        "If that has been no --graph option given yet in the command "
+        "a graph will be automatically generated before loading the "
+        "block into it.\n"
+        "\n"
+        "If that has been no --threads option given yet in the command "
+        "a thread pool will be automatically generated before loading "
+        "the block."
+    },
+/*----------------------------------------------------------------------*/
+    { "--block-unload", 'u', "BLOCK_NAME0 [BLOCK_NAME1 ...]",
+
+        "Remove blocks from the current graph."
+    },
+/*----------------------------------------------------------------------*/
+    { "--block-help", 'B',  "FILENAME",
+
+        "Print the block module help to stdout and then exit."
+    },
+/*----------------------------------------------------------------------*/
+    { "--catch-sig", 'G',  "[SIG_NUM]",
+
+        "If a SIG_NUM signal is sent to this programs catch it "
+        "to stop waiting in --sleep.  This will only set the signal "
+        "catcher for one use.  You can give this option again before "
+        "the next --sleep."
+    },
+/*----------------------------------------------------------------------*/
+    { "--configure", 'F', "BLOCK_NAME ATTR_NAME [ARG1 ARG2 ...]",
+
+        "Configure an attributes of a block.  "
+        "This is like --configure-mk, but without argument markers.  "
+        "BLOCK_NAME is the name of the block who's attribute we wish "
+        "to make or change.  ATTR_NAME is the name that the block "
+        "gave to the attribute.\n"
+        "\n"
+        "This cannot be called while the stream is running."
+    },
+/*----------------------------------------------------------------------*/
+    { "--configure-mk", 'f', "MK BLOCK_NAME ATTR_NAME [ARG1 ARG2 ...] MK",
+
+        "Configure an attribute of a block.  "
+        "This is like --configure, but with argument markers so that "
+        "we may have arguments with preceding minus signs.  "
+        "In this case the arguments given must have a prefix marker that "
+        "is the same as the last argument that terminates the arguments "
+        "for this option.  All the arguments between the prefix marker "
+        "and the terminating marker are passed to the block configuration "
+        "callback.  "
+        "BLOCK_NAME is the name of the block who's attribute we wish "
+        "to make or change.  ATTR_NAME is the name that the block "
+        "gave to the attribute.\n"
+        "\n"
+        "This cannot be called while the stream is running."
+    },
+/*----------------------------------------------------------------------*/
+    { "--connect", 'c', "BLOCK_A TYPE_A PORT_A BLOCK_B TYPE_B PORT_B",
+
+        "Connect two block's ports.  We are connecting for *_A to *_B."
+        "TODO: MORE TEXT HERE."
+    },
+/*----------------------------------------------------------------------*/
+    { "--disconnect", 'I', "BLOCK PORT_TYPE PORT",
+
+        "Disconnect a connection."
+        "TODO: MORE TEXT HERE."
+    },
+/*----------------------------------------------------------------------*/
+    { "--display", 'd', 0,
+
+        "Display a graphviz dot graph of the stream graphs.\n\n" 
+        "This requires that the program \"display\" is in the users "
+        "PATH.  We recommend installing ImageMagick which installs "
+        "a program called display which can read and display a graphviz"
+        " dot file."
+    },
+/*----------------------------------------------------------------------*/
+    { "--display-wait", 'D', 0,
+        
+        "Like --display but this waits for the display program to exit "
+        "before going on to the next argument option."
+    },
+/*----------------------------------------------------------------------*/
+    { "--dot", 'o', 0,
+
+        "Print a graphviz dot file of the current existing graphs to "
+        "stdout."
+    },
+/*----------------------------------------------------------------------*/
+    { "--exit-on-error", 'E', "[True|False]",
+
+        "If running a command fails, exit with an error status "
+        "returned.  The optional argument may be used to unset this "
+        "\"exit on error\" mode by using passing argument \"False\" or "
+        "other false-like boolean: false FALSE No NO no 0 off Off and "
+        "etc.  Positive booleans are: true True T yes YeS On and etc.\n"
+        "\n"
+        "This \"exit on error\" mode of running may be toggled on and off "
+        "between any other commands.  As to what failure could depend on "
+        "what the command is.  If we consider the quickstream program "
+        "as a command interpreter then it's not so hard to see that a "
+        "failed command is just another measurement.\n"
+        "\n"
+        "If \"exit on error\" is set the program will return the status "
+        "of the last libquickstream command function that was called.  "
+        "If \"exit on error\" is not set the quickstream program will "
+        "return a success status 0, independent of the last "
+        "libquickstream command function that was run, letting you know "
+        "that the program succeeded in running, to distinguish it from "
+        "not running."
+    },
+/*----------------------------------------------------------------------*/
+    { "--graph", 'g',
+        "[NAME [MAXTHREADS [TP_NAME [SUPERBLOCK [HALT]]]]]",
+
+        "Create or set the current graph that this program applies "
+        "commands to.  There can be many graphs and this option "
+        "sets the current graph that this program acts on.  If the "
+        "graph named, NAME, does not exist yet this option will create "
+        "a new graph with that name and set the current graph to that "
+        "newly created graph.  If there is no graph with the name, NAME, "
+        "this will create a graph with that name and set the current "
+        "graph to that newly created graph."
+        "\n\n"
+        "TODO: MORE TEXT HERE"
+        "\n\n"
+        "If the argument SUPERBLOCK is given the newly created graph will "
+        "load a super block from the path being given as SUPERBLOCK. "
+        "The loaded super block will be \"flattened\" so that the "
+        "resulting graph will only contain the contents of the super "
+        "block and not contain the loaded super block.  There may still "
+        "be sub-super blocks in the graph, but not the top lever super "
+        "block that was refered to in the command line argument of "
+        "SUPERBLOCK."
+        "\n\n"
+        "If HALT is true than the graph will be halted just after it "
+        "is created.  See --halt.  By default the graph is not halted."
+    },
+/*----------------------------------------------------------------------*/
+    { "--halt", 'L', 0,
+
+        "Halt the current graph.  Halting a graph causes all the thread "
+        "pool worker threads to wait (sleep) indefinitely, until the "
+        "graph is un-halted via --unhalt.  "
+        "If there is no graph yet a graph will be created with "
+        "default settings.  "
+    },
+/*----------------------------------------------------------------------*/
+    { "--help", 'h', 0,
+
+        "Print this help to stdout and then exit."
+    },
+/*----------------------------------------------------------------------*/
+    { "--interpreter", 'i', "[FILE [LINENO]]",
+
+        "Run in the interpreter mode.  Reads all commands from stdin"
+        " or at your option FILE. "
+        " It reads one command per line.  # starts a comment.  It's good"
+        " for scripting from in a file, but does not use GNU readline."
+        " It works nicely with Shebang (#!) at the beginning of a script."
+        " All commands are the same as command-line options without the"
+        " -- or -.  For example:\n\n"
+        "    #!/usr/local/bin/quickstream -i\n"
+        "    block file/FileIn in0\n"
+        "    block file/FileOut out\n"
+        "    configure-mk MK in0 Filename $inFile MK\n"
+        "    connect in0 output 0 out input 0\n"
+        "    start\n"
+        "    wait\n"
+        "\n"
+        "We added another option argument syntax to this \"interpreter\""
+        " thing.  For example:\n\n"
+        "    #!/bin/bash\n"
+        "\n"
+        "    quickstream --block foo\\\n"
+        "    --interpreter ${BASH_SOURCE[0]} 6\n"
+        "    exit # for bash to exit and quickstream keeps running\n"
+        "    block file/FileIn in0\n"
+        "    block file/FileOut out\n"
+        "    configure-mk MK in0 Filename $inFile MK\n"
+        "    connect in0 output 0 out input 0\n"
+        "    start\n"
+        "    wait\n"
+        "\n"
+        "In this case the \"interpreter\" mode of reading commands will\n"
+        " start at the 2nd line after the --interpreter option argument.\n"
+        "\n"
+        " And yet another: It also works in an interactive shell session:"
+        " just end the command with --interpreter and it starts reading"
+        " and running commands after each newline; but remember don't"
+        " prefix the commands with the -- or - like in the regular"
+        " command-line arguments, the newline is the command separator,"
+        " not -- or -.\n"
+        "\n"
+        "The quickstream interpreter is nothing more than a command line "
+        "interpreter.  It is only intended to run quickstream programs.  "
+        "Do not think of it as a programming language, as it is nothing "
+        "more than a sequence of commands to run.  Complex programming "
+        "should be done in quickstream blocks and not with this simple "
+        "command line interpreter."
+        "\n"
+        " TODO: An option for a interactive interpreter that uses"
+        " GNU readline; and maybe not."
+    },
+/*----------------------------------------------------------------------*/
+    { "--make-port-alias", 'm',
+        "BLOCK_NAME PORT_TYPE PORT_NAME ALIAS_PORT_NAME",
+
+        "Make a alias name for an existing port in a loaded block.  "
+        "This alias will be saved in a super block if the current graph "
+        "is saved as a super block.  See --save-block."
+    },
+/*----------------------------------------------------------------------*/
+    { "--parameter-set-mk", 'S',
+            "MK BLOCK_NAME PARAMETER_NAME [VALUE ...] MK",
+
+        "Set a control parameter value.  The parameter must be a "
+        "setter that is not connected to a getter parameter "
+        "group yet.  "
+        "If the number of values, VALUE ..., is less than the number of "
+        "values in the control parameter than the last value given will "
+        "be repeated.  If no values are given a default value of 0 will "
+        "used for all values."
+    },
+/*----------------------------------------------------------------------*/
+    { "--print-metadata", 'K', "KEY",
+
+        "Print KEY metadata for the graph."
+    },
+/*----------------------------------------------------------------------*/
+    { "--rename-block", 'n', "BLOCK_NAME NEW_NAME",
+
+        "Change the name of a block."
+    },
+/*----------------------------------------------------------------------*/
+    { "--save", 'j', "BLOCK_FILENAME [GRAPH_FILENAME]",
+
+        "Save the current graph to super block module dynamic shared "
+        "object (DSO) file and an executable script file.  "
+        "BLOCK_FILENAME is the basename path to the DSO block file "
+        "to be saved.  Three files will be saved: BLOCK_FILENAME.c, "
+        "BLOCK_FILENAME.so, and GRAPH_FILENAME.  If the GRAPH_FLENAME "
+        "argument is not given then the executable script file will be "
+        "BLOCK_FILENAME.qs .   See --save-block."
+    },
+/*----------------------------------------------------------------------*/
+    { "--save-block", 'A', "FILENAME",
+
+        "Save the current graph to super block module dynamic shared "
+        "object (DSO) file.  FILENAME is the basename path to the file "
+        "to be saved.  Two files will be saved: FILENAME.c and "
+        "FILENAME.so .  See --save." 
+    },
+/*----------------------------------------------------------------------*/
+    { "--save-config", 'J', "[ON]",
+
+        "start saving/logging graph configure commands so they may be "
+        "saved in a super block via the --save-block command.  If \"ON\" "
+        "is false than this will turn off the saving of the saving of "
+        "the configure commands and purge any existing saved configure "
+        "commands for the current graph; though configured blocks do not "
+        "change."
+    },
+/*----------------------------------------------------------------------*/
+    { "--set-block-path", 'p', "[PATH]",
+
+        "set the environment variable QS_BLOCK_PATH to PATH.  "
+        "If the PATH argument is not given the environment variable "
+        "QS_BLOCK_PATH is unset.  The environment variable QS_BLOCK_PATH "
+        "is used to find quickstream DSO (dynamic shared object) module "
+        "blocks."
+    },
+/*----------------------------------------------------------------------*/
+    { "--sleep", 's', "[SEC]",
+
+        "Sleep the main thread SEC seconds.  This can be handy "
+        "for development to delay running the next commands from "
+        "up and coming options.  If SEC is 0 sleep indefinitely. "
+        "If SEC is not given than, the default is, sleep indefinitely. "
+        "See --catch-sig.  "
+    },
+/*----------------------------------------------------------------------*/
+    { "--start", 'r', 0,
+
+        "run/start the all streams in the current graph.  This "
+        "readies the streams, mapping the ring buffers, "
+        "and runs them."
+    },
+/*----------------------------------------------------------------------*/
+    { "--stop", 'T', 0,
+
+        "Stop the streams from flowing, for the current graph."
+    },
+/*----------------------------------------------------------------------*/
+    { "--threads", 't', "NUM [TP_NAME]",
+
+        "Create a new thread pool to run the current stream graph.  "
+        "The created thread pool will be used to run all blocks to "
+        "be loaded in later options for the current stream graph.  "
+        "If this option is not given before blocks are loaded the "
+        "program the loaded blocks will not have a thread pool to "
+        "run them and will be effectively be idle until they are "
+        "added to a thread pool via --threads-add option.\n"
+        "\n"
+        "TP_NAME is a thread pool name.  If not given than "
+        "a per graph unique thread pool name will be generated.\n"
+        "\n"
+        "If a thread pool with the given name already exists the "
+        "maximum number of threads will be set to NUM and the "
+        "default thread pool for the current graph is set to "
+        "that thread pool.\n"
+        "\n"
+        "On the a Linux based operating"
+        " system the maximum number of threads a process may have can be"
+        " gotten from running: cat /proc/sys/kernel/threads-max\n"
+        "\n"
+        "In quickstream, worker threads are shared between blocks."
+        " The number of threads that will run is dependent on the"
+        " flow graph that is constructed.  Threads will only be created"
+        " if when there a block that is not starved or clogged and all"
+        " the existing worker threads are busy on another block.  Think"
+        " of threads as flowing to anywhere in the stream graph"
+        " where they are needed.\n"
+        "\n"
+        "quickstream can run with one worker thread, for which you "
+        "can set the threads CPU affinity if you  would like to."
+    },
+/*----------------------------------------------------------------------*/
+    { "--threads-add", 'a', "TP_NAME BLOCK_NAME0 [BLOCK_NAME1 ...]",
+
+        "Add blocks to an existing thread pool with name TP_NAME.  "
+        "Doing so removes the blocks from their current affiliated "
+        "thread pools."
+    },
+/*----------------------------------------------------------------------*/
+    { "--threads-destroy", 'R', "TP_NAME0 [TP_NAME1 ...]",
+
+        "Destroy thread pools with the following names, TP_NAME0 ...  "
+        "from the current graph.  "
+        "Any simple blocks using the destroyed thread pools will be "
+        "assigned to another thread pool.  You may not destroy the "
+        "last existing thread pool in a graph if any simple blocks are "
+        "loaded in the graph."
+    },
+/*----------------------------------------------------------------------*/
+    { "--unhalt", 'l', 0,
+
+        "Un-halt the graph.  See --halt."
+    },
+/*----------------------------------------------------------------------*/
+    { "--usage", 'U', 0,
+
+        "Print just the quickstream command line options and then exit."
+    },
+/*----------------------------------------------------------------------*/
+    { "--verbose", 'v', "LEVEL",
+
+        "print more information to stderr as quickstream runs."
+        "  LEVEL maybe debug, info, notice, warn, error, and off"
+        " in upper or lower case;"
+        " or correspondingly the numbers 5, 4, 3, 2, 1, and 0."
+        "  This is more of a debugging tool."
+        "  Don't try to give to much meaning to the LEVEL terms used."
+        "  They are just levels where debug means more spew.\n"
+        "\n"
+        "The libquickstream library may be compiled with the more"
+        " verbose spewing levels removed for better performance.  See"
+        " function qsGetLibSpewLevel() for details."
+    },
+/*----------------------------------------------------------------------*/
+    { "--version", 'V', 0,
+
+        "print the quickstream package version and then exit."
+    },
+/*----------------------------------------------------------------------*/
+    { "--wait", 'w', "[SECONDS]",
+
+        "Wait for the current graph stream to run to completion "
+        " or other event.  "
+        "If SECONDS is greater than zero "
+        "then it waits just SECONDS seconds, and then goes to the next "
+        "command.  SECONDS may be a floating point number."
+    },
+/*----------------------------------------------------------------------*/
+    { "--wait-for-destroy", 'Z', "[SECONDS]",
+
+        "Wait for the current graph to be destroyed.  "
+        "If SECONDS is greater than zero "
+        "then it waits just SECONDS seconds, and then goes to the next "
+        "command.  SECONDS may be a floating point number."
+    },
+/*----------------------------------------------------------------------*/
+    { "--wait-for-stream", 'z', "[SECONDS]",
+
+        "Wait for the current stream to run to completion.  "
+        "If SECONDS is greater than zero "
+        "then it waits just SECONDS seconds, and then goes to the next "
+        "command.  SECONDS may be a floating point number."
+    },
+/*----------------------------------------------------------------------*/
+    { 0,0,0,0 } // Null Terminator.
+};
+
+
+// Kind-of like:
+// https://stackoverflow.com/questions/18783988/how-to-get-windows-size-from-linux
+static int getCols(const int fd) {
+    struct winsize sz;
+    int result;
+
+    do {
+        result = ioctl(fd, TIOCGWINSZ, &sz);
+    } while (result == -1 && errno == EINTR);
+
+    if(result == -1)
+        return 76; // default width
+    return sz.ws_col;
+}
+
+
+static inline int NSpaces(int n, int c) {
+    int ret = n;
+    if(n < 1) return 0;
+    while(n--) putchar(c);
+    return ret;
+}
+
+// examples:  str="  hi ho"  returns 4
+//            str=" hi ho"   returns 3
+//            str="hi ho"    returns 2
+static inline int GetNextWordLength(const char *str) {
+
+    int n = 0;
+
+    if(*str == '\n')
+        return n;
+
+    while(*str == ' ') {
+        ++n;
+        ++str;
+    }
+    while(*str && *str != ' ' && *str != '\n') {
+
+        // skip special chars
+        if(*str == '*' && *(str+1) == '*') {
+            str += 2;
+            continue;
+        } else if(*str == '#' && *(str+1) == '#') {
+            str += 2;
+            continue;
+        } else if(*str == '&' && *(str+1) == '&') {
+            str += 2;
+            continue;
+        }
+
+        ++n;
+        ++str;
+    }
+    return n;
+}
+
+// types of file output
+#define HTML  (0)
+#define TXT   (1)
+
+
+static inline int PutNextWord(const char **s, int type) {
+
+    int n = 0;
+    const char *str = *s;
+
+    while(*str == ' ') {
+        putchar(*str);
+        ++n;
+        ++str;
+    }
+    while(*str && *str != ' ' && *str != '\n') {
+
+        // replace special chars
+        if(*str == '*' && *(str+1) == '*') {
+            str += 2;
+            if(type == HTML) {
+                printf("<ul>\n");
+            }
+            continue;
+        } else if(*str == '#' && *(str+1) == '#') {
+            str += 2;
+            if(type == HTML)
+                printf("  <li>");
+            continue;
+        } else if(*str == '&' && *(str+1) == '&') {
+            str += 2;
+            if(type == HTML)
+                printf("</ul>");
+            continue;
+        }
+
+        putchar(*str);
+        ++n;
+        ++str;
+    }
+
+    *s = str;
+
+    return n;
+}
+
+
+static void
+printHtml(const char *s, int s1, int s2) {
+
+    while(*s) {
+    
+        int n = 0;
+        printf("<p>\n");
+
+        while(*s) {
+
+            // add desc up to length s2
+            while(*s && (n + GetNextWordLength(s)) <= s2) {
+                if(*s == '\n') { ++s; break; }
+                n += PutNextWord(&s, HTML);
+            }
+            printf("\n");
+            n = 0;
+            if(*s == '\n' || *s == '\0') {
+                printf("</p>\n");
+                if(*s) ++s;
+                break;
+            }
+        }
+    }
+}
+
+
+static void
+printParagraphs(const char *s, int s1, int s2, int count) {
+
+    int n = count;
+    bool starting;
+
+    while(*s) {
+
+        starting = true;
+
+        // add desc up to length s2
+        while(*s && (((n + GetNextWordLength(s)) <= s2) || starting)) {
+            if(*s == '\n') { ++s; break; }
+            starting = false;
+            n += PutNextWord(&s, TXT);
+        }
+
+        printf("\n");
+
+        if(*s == '\0') break;
+
+        // Start next row.
+        n = 0;
+        n += NSpaces(s1, ' ');
+
+        // Do not start with a single space.
+        if(*s == ' ' && *(s+1) != ' ') ++s;
+    }
+}
+
+
+static void
+printDescription(const struct QsOption *opt, int s0, int s1, int s2) {
+
+    const char *s = opt->description;
+    int n = 0;
+
+    // start with "    --long-arg ARG  "
+    n += NSpaces(s0, ' ');
+    n += printf("%s|-%c", opt->long_op, opt->short_op);
+    if(opt->arg)
+        n += printf(" %s", opt->arg);
+    n += printf("  ");
+    n += NSpaces(s1 - n, ' ');
+
+    printParagraphs(s, s1, s2, n);
+}
+
+
+
+char *ArgLowerToUpper(const char *str) {
+
+#define LEN 256
+    static char result[LEN+1];
+    char *r = result;
+    size_t len_in = strlen(str);
+
+    if(len_in > LEN) {
+        fprintf(stderr, "Fix this code: %s:%d\n", __FILE__, __LINE__);
+        exit(1);
+    }
+    const size_t delta = 'a' - 'A';
+
+    while(*str) {
+        if(*str >= 'a' && *str <= 'z')
+            *r = *str - delta;
+        else if(*str == '-')
+            *r = '_';
+        else {
+            fprintf(stderr, "Fix this code: %s:%d\n", __FILE__, __LINE__);
+            exit(1);
+        }
+        r++;
+        str++;
+    }
+    *r = '\0';
+
+    return result;     
+}
+
+
+int main(int argc, char **argv) {
+   
+    signal(SIGSEGV, catcher);
+
+    {
+        ssize_t n = 2;
+        if(argc > 1)
+            n = strlen(argv[1]);
+
+        if(argc != 2 || n != 2 ||
+                argv[1][0] != '-' || 
+                (argv[1][1] != 'c' &&
+                 argv[1][1] != 'H' &&
+                 argv[1][1] != 'i' &&
+                 argv[1][1] != 'o' && argv[1][1] != 'O' &&
+                 argv[1][1] != 's' &&
+                 argv[1][1] != 'u' &&
+                 argv[1][1] != 'w')
+                || argv[1][2] != '\0'
+        ) {
+            // Usage for the quickstream "usage program".  Wow: that
+            // actually makes sense.
+            //
+            printf("    Usage: %s "
+                    "[ -c | -H | -i | -o | -O | -s | -u | -U | -w ]\n"
+                "\n"
+                "    Generate HTML, text, and C code that is related\n"
+                "  to the program quickstream.\n"
+                "\n"
+                "    This program helps us keep documentation and code\n"
+                "  consistent, by putting the command-line options\n"
+                "  documentation and code in one file.\n"
+                "  Returns 0 on success and 1 on error unless stated\n"
+                "  otherwise.  This program always prints to stdout\n"
+                "  when successful.\n"
+                "\n"
+                " -----------------------------------------\n"
+                "              OPTIONS\n"
+                " -----------------------------------------\n"
+                "\n"
+                "    -c  print the C code of the argument options\n"
+                "\n"
+                "    -H  print --help text for quickstream and exit 0\n"
+                "\n"
+                "    -i  print intro in HTML\n"
+                "\n"
+                "    -o  print HTML options table\n"
+                "\n"
+                "    -O  print all options with a space between\n"
+                "\n"
+                "    -s  print all the quickstream program short options\n"
+                "\n"
+                "    -u  print just the quickstream program usage\n"
+                "\n"
+                "    -w  print all options without ARGS in a map\n"
+                "\n",
+                argv[0]);
+            return 1;
+        }
+    }
+
+    // start and stop char positions:
+    static int s0 = 3;
+    static int s1 = 18;
+    static int s2; // tty width or default width
+
+
+    struct QsOption *opt = opts;
+
+    while(opt->description) {
+        struct QsOption *opt2 = opt+1;
+        while(opt2->description) {
+            if(opt2->short_op == opt->short_op) {
+                fprintf(stderr,
+                        "ERROR there are at least two options with "
+                        "short option -%c in %s.in\n",
+                        opt2->short_op, __BASE_FILE__);
+                return 1;
+            }
+            ++opt2;
+        }
+        ++opt;
+    }
+
+    opt = opts;
+
+
+    switch(argv[1][1]) {
+
+        case 'c':
+            printf("// This is a generated file\n\n");
+            printf("#define DEFAULT_MAXTHREADS ((uint32_t) %d)\n\n",
+                    DEFAULT_MAXTHREADS);
+            printf("#define DEFAULT_SPEW_LEVEL (%d)\n\n",
+                    DEFAULT_SPEW_LEVEL);
+
+
+            while(opt->description) {
+                printf("#define %s  ('%c')\n",
+                        ArgLowerToUpper(opt->long_op + 2), opt->short_op);
+                ++opt;
+            }
+            printf("\n");
+
+            // reset opt to loop again.
+            opt = opts;
+
+            printf(
+                    "static const\n"
+                    "struct opts qsOptions[] = {\n");
+            while(opt->description) {
+                printf("    { \"%s\", '%c' },\n",
+                        opt->long_op + 2, opt->short_op);
+
+                { // START: Check for duplicate argument options:
+                    struct QsOption *o = opt;
+                    ++o;
+                    while(o->description) {
+                        if(strcmp(o->long_op, opt->long_op) == 0) {
+                            fprintf(stderr, "ERROR: We have at least 2 "
+                                    "long %s quickstream argument "
+                                    "options in " __FILE__ "\n",
+                                    o->long_op);
+                            return 1; // fail
+                        }
+                        if(o->short_op == opt->short_op) {
+                            fprintf(stderr, "ERROR: We have at least 2 "
+                                    "short %c quickstream argument "
+                                    "options in " __FILE__ "\n",
+                                    o->short_op);
+                            return 1; // fail
+                        }
+                        ++o;
+                    }
+                } // END: Check for duplicate argument options
+
+                ++opt;
+            }
+            printf("    { 0, 0 }\n};\n");
+            return 0;
+
+        case 'H':
+        case 'u':
+            s2 = getCols(STDOUT_FILENO) - 1;
+            if(s2 > 200) s2 = 200;
+            if(s2 < 60) s2 = 60;
+
+            printf("\n");
+            printParagraphs(usage, s0, s2, 0);
+            printf("\n");
+
+            if(argv[1][1] == 'u') {
+                // Just usage.
+                printf("\n  all OPTIONS, long than short, are:\n\n");
+                while((*opt).description) {
+                    if(opt->arg)
+                        // Has argument sub-argument
+                        printf(" %s %s\n -%c %s\n\n",
+                                opt->long_op, opt->arg,
+                                opt->short_op, opt->arg);
+                    else
+                        // No argument sub-argument
+                        printf(" %s\n -%c\n\n",
+                                opt->long_op, opt->short_op);
+                    ++opt;
+                }
+                return 0;
+            }
+
+            putchar(' ');
+            NSpaces(s2-1, '-');
+            putchar('\n');
+            NSpaces(s2/2 - 6, ' ');
+            printf("OPTIONS\n");
+            putchar(' ');
+            NSpaces(s2-1, '-');
+            printf("\n\n");
+
+            while((*opt).description) {
+                printDescription(opt, s0, s1, s2);
+                printf("\n");
+                ++opt;
+            }
+
+            printParagraphs(postHelpURL, s0, s2, 0);
+            printf("\n");
+            return 0; // no error
+
+        case 'i':
+            printHtml(usage, 4, 76);
+            return 0;
+
+        case 'o':
+            printf("<pre>\n");
+            s2 = 80;
+            printf("\n");
+            while((*opt).description) {
+                printDescription(opt, s0, s1, s2);
+                printf("\n");
+                ++opt;
+            }
+            printf("</pre>\n");
+            return 0;
+
+        case 'O': // Print all options with a space between
+
+            printf("%s", opt->long_op);
+            printf(" -%c", opt->short_op);
+            ++opt;
+            while(opt->description) {
+                printf(" %s", opt->long_op);
+                printf(" -%c", opt->short_op);
+                ++opt;
+            }
+            putchar('\n');
+            return 0;
+
+        case 's':
+
+            while(opt->description) {
+                printf("%c\n", opt->short_op);
+                ++opt;
+            }
+            putchar('\n');
+            return 0;
+    
+        case 'w': // Print all options without ARGS
+
+            {
+                bool gotOne = false;
+
+                // First long options
+                if(opt->arg == 0) {
+                    printf("[%s]=1", opt->long_op);
+                    printf(" [-%c]=1", opt->short_op);
+                    gotOne = true;
+                }
+                ++opt;
+                while(opt->description) {
+                    if(opt->arg == 0) {
+                        if(gotOne)
+                            putchar(' ');
+                        else
+                            gotOne = true;
+                        printf("[%s]=1", opt->long_op);
+                        printf(" [-%c]=1", opt->short_op);
+                    }
+                    ++opt;
+                }
+                putchar('\n');
+                return 0;
+            }
+     }
+
+    // This should not happen.
+    return 1;
+}

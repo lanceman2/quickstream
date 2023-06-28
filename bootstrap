@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# Download some files from github.com and verify them with sha512sum.
+
+
+#qb_tag=9bbddd7ba52043850221df15115108f06a48105e 
+qb_tag=b8c9897173b2daa6c0566dcf74a6f32adf445074
+qb_url=https://raw.githubusercontent.com/lanceman2/quickbuild/$qb_tag/quickbuild.make
+
+qb_sha512sum=37fecdb53c5cb8d0ebdadf80cc77df65af0\
+36e56ea1cc76ae0af4d7857f25a3d557a1685938b7dc12de\
+46964d140b203fd4fcae749ecf03ac93a361fa6769762
+
+
+
+c_rbtree_tag=v3.1.0
+c_rbtree_url=https://raw.githubusercontent.com/c-util/c-rbtree/$c_rbtree_tag/src/c-rbtree
+c_rbtree_c_sha512sum=1ece3e1cd11aae2ba9e5954085586\
+568eefe5d37ca98173e89e08ee7721aabac06bb14e14127122\
+764e201c8df74fd867ad873e9bbf0ab2d3d75bb8b8b1b73c7
+c_rbtree_h_sha512sum=a07f1138704c6a2fd65df37f56ffc\
+9add3670a7b62fbdd1246decb9704a395024f59357423acf2b\
+3364ebd9ce5e9a5951257c66117661d2d095a88568969e347
+c_rbtree_private_h_sha512sum=47563a66ff477f173eb43\
+66d334b395b56de0e11d642dc561b3aed61a9e96e51922eff3\
+bc0dd0425c5789aca1586d4d3e1f9115224a4f7ff8828fffad\
+c8b011f
+
+
+c_stdaux_tag=v1.3.0
+c_stdaux_url=https://raw.githubusercontent.com/c-util/c-stdaux/$c_stdaux_tag/src/c-stdaux
+c_stdaux_generic_h_sha512sum=f0b152dda878c7eefdf\
+853dd16e7e6fe4d4ef9a7efaeb75aa5b31dc48ca997caa36\
+83f52ddefcbd2f802408cec8c1c83260b213e1dc6123a9d1\
+88f8c11aa3489
+c_stdaux_gnuc_h_sha512sum=eb1061a7e6443983395206\
+3c4a0f6bbee91fc49d000a06c79b58aced2ef2ed2a52dee8\
+e348f871ed468d540e34b24ed2c7b9afc43c72467ad83205\
+6fa1101ea3
+c_stdaux_h_sha512sum=8802079a1349a17e5980d19a045\
+5b40a586db105e57be598b4b3306b6679873f30b698b193e\
+ba6eed0bf1a19eefccf75780192d1f6fd0f5b9cd5e42fa61\
+829f3
+c_stdaux_unix_h_sha512sum=0e2a4a1e91ef27e1794411\
+f6bb49e10f69333300c6a5287fd64da26c7282a05f2c7787\
+83d73655f2e2471581d0c0b258dc29ae3b6e7876511a8e19\
+59a2c4836e
+
+
+
+
+set -ex
+
+# Go to the directory there this script is.
+cd $(dirname ${BASH_SOURCE[0]})
+
+
+
+# GetFile DIR FILENAME URL [SHA512SUM]
+# $0      $1  $2       $3  $4
+function GetFile() {
+
+    [ -n "$3" ] || exit 1
+
+    cd $1
+
+    if [ ! -e "$2" ] ; then
+        wget --no-check-certificate "$3" -O "$2"
+    fi
+
+    if [ -n "$4" ] ; then
+        set +x
+        # We wanted a particular file, so we check its' sha512 sum.
+        echo "$4  $2" | sha512sum -c
+        set -x
+    else
+        sha512sum "$2"
+    fi
+
+    cd -
+}
+
+# GetFile DIR FILENAME URL [SHA512SUM]
+
+GetFile . quickbuild.make $qb_url $qb_sha512sum
+GetFile lib c-rbtree.c ${c_rbtree_url}.c $c_rbtree_c_sha512sum
+GetFile lib c-rbtree.h ${c_rbtree_url}.h $c_rbtree_h_sha512sum
+GetFile lib c-rbtree-private.h ${c_rbtree_url}-private.h $c_rbtree_private_h_sha512sum
+
+GetFile lib c-stdaux-generic.h ${c_stdaux_url}-generic.h $c_stdaux_generic_h_sha512sum
+GetFile lib c-stdaux-gnuc.h ${c_stdaux_url}-gnuc.h $c_stdaux_gnuc_h_sha512sum
+GetFile lib c-stdaux.h ${c_stdaux_url}.h $c_stdaux_h_sha512sum
+GetFile lib c-stdaux-unix.h ${c_stdaux_url}-unix.h $c_stdaux_unix_h_sha512sum
+
+
+set +x
+echo -e "\n$0 Success"

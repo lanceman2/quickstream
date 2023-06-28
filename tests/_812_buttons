@@ -1,0 +1,39 @@
+#!/bin/bash
+
+set -ex
+
+
+if [ ! -x ../lib/quickstream/blocks/gtk3/base.so ] ; then
+    # We skip this test if a module is not built.
+    set +x
+    echo "skipping ${BASH_SOURCE[0]}: missing build requirement"
+    exit 123
+fi
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block test_blocks/empty empty\
+ --block gtk3/base gtk\
+ --block gtk3/button runButton\
+ --block gtk3/button exitButton\
+ --block gtk3/button extraButton\
+ --block test_blocks/sequenceGen gen\
+ --block test_blocks/stdout out\
+ --configure-mk MK gen TotalOutputBytes 0 MK\
+ --connect gen output 0 out input 0\
+ --configure-mk MK runButton label "Run" MK\
+ --configure-mk MK exitButton label "Quit" MK\
+ --configure-mk MK extraButton label "Launch Nukes" MK\
+ --block runner/run run\
+ --block runner/destroy destroy\
+ --connect runButton getter value run setter run\
+ --connect exitButton getter value destroy setter destroy\
+ --parameter-set-mk MK gtk show True MK\
+ --parameter-set-mk MK gtk show False MK
+

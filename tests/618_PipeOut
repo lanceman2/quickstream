@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -ex
+
+
+inFile="data_$(basename $0)_in.tmp"
+outFile="data_$(basename $0)_out.tmp"
+
+
+dd if=/dev/urandom count=19 of=$inFile
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block file/FileIn in0\
+ --block file/PipeOut out\
+ --configure-mk MK out Program cat - MK\
+ --configure-mk MK out SignalNum 0 MK\
+ --connect in0 output 0 out input 0\
+ --start\
+ --wait-for-stream < $inFile > $outFile
+
+
+diff $inFile $outFile
+
+rm $inFile $outFile

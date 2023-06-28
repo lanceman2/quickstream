@@ -1,0 +1,109 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+# run a graph with just an empty block
+#
+# It should just pass through the start without doing anything.
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block empty b0\
+ --start\
+ --wait
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block empty\
+ --block empty\
+ --start\
+ --wait
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block sequenceGen b0\
+ --block stdout out\
+ --connect b0 output 0 out input 0\
+ --start\
+ --wait-for-stream
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block sequenceGen b0\
+ --block sequenceCheck out\
+ --connect b0 output 0 out input 0\
+ --start\
+ --wait
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g0 1\
+ --block sequenceGen b0\
+ --block sequenceCheck out\
+ --connect b0 output 0 out input 0\
+ --start\
+ --wait
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g0 3\
+ --block sequenceGen b0\
+ --block sequenceCheck b1\
+ --block sequenceCheck b2\
+ --configure-mk MK b0 Seeds 22 MK\
+ --configure-mk MK b1 Seeds 22 MK\
+ --configure-mk MK b2 Seeds 22 MK\
+ --connect b0 output 0 b1 input 0\
+ --connect b0 output 0 b1 input 1\
+ --connect b1 output 0 b2 input 0\
+ --connect b1 output 1 b2 input 1\
+ --start\
+ --wait
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g0 1\
+ --block sequenceGen b0\
+ --block sequenceCheck b1\
+ --block stdout b2\
+ --configure-mk MK b0 Seeds 22 MK\
+ --configure-mk MK b1 Seeds 22 MK\
+ --connect b0 output 0 b1 input 0\
+ --connect b0 output 0 b1 input 1\
+ --connect b1 output 0 b2 input 0\
+ --start\
+ --wait
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g0 1\
+ --block sequenceGen b0\
+ --block sequenceCheck b1\
+ --block sequenceCheck out\
+ --configure-mk MK b0 Seeds 22 MK\
+ --configure-mk MK b1 Seeds 22 MK\
+ --configure-mk MK out Seeds 22 MK\
+ --connect b0 output 0 b1 input 0\
+ --connect b1 output 0 out input 0\
+ --connect b0 output 0 b1 input 1\
+ --start\
+ --wait
+

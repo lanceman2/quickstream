@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# Save super blocks and than load them.
+#
+# This test takes a longer time to run than most.
+
+
+set -ex
+
+if [  -n "${VaLGRIND_RuN}" ] ; then
+    # skip testing with valgrind
+    exit 123
+fi
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+# Write this test file
+superBlockName="data_$(basename $0).tmp"
+
+rm -f\
+ ${superBlockName}.c\
+ ${superBlockName}.so
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --graph g0 1\
+ --save-config\
+ --block superSuperBlock b0\
+ --save-block ${superBlockName}
+
+
+../bin/quickstream\
+ --exit-on-error\
+ --block ${superBlockName}\
+ --start\
+ --wait-for-stream
+
+
+../bin/quickstream\
+ --exit-on-error\
+ --graph g0 1 tp0 ${superBlockName}\
+ --start\
+ --wait-for-stream
+
+
+
+rm ${superBlockName}.c\
+ ${superBlockName}.so
+

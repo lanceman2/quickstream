@@ -1,0 +1,59 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+# 2 graphs
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block lotsOfPorts b1\
+ --block lotsOfPorts b2\
+ --connect b1 getter freq1 b2 setter freq1\
+ --connect b1 getter freq1 b2 setter freq2\
+ --connect b1 getter freq1 b2 setter freq3\
+ --connect b2 getter gain b2 setter gain\
+ --connect b1 setter gain b2 setter gain\
+ --connect b1 input 0 b2 output 0\
+ --connect b1 input 1 b2 output 0\
+ --connect b1 input 2 b2 output 0\
+ --connect b1 input 3 b2 output 0\
+ --connect b2 input 0 b1 output 0\
+ --connect b2 input 1 b1 output 0\
+ --connect b2 input 2 b1 output 0\
+ --connect b2 input 3 b1 output 0\
+ --disconnect b2 input 2\
+  --graph\
+ --block add1 add\
+ --display
+
+exit 0
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block add1 b1\
+ --block add1 b2\
+ --connect b1 getter add b2 setter add\
+ --display
+
+exit 0
+
+
+
+
+# no graphs
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --display
+
+exit 0
+
+

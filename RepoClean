@@ -1,0 +1,138 @@
+#!/bin/bash
+
+# This removes files that are generated (from the build system) and files
+# that are downloaded from running bootstrap.  It does not remove all
+# files that are not in the git repository.  It is hoped that the files
+# that are not removed by this script are files that a developer is
+# working on.  For example if someone added the file named My_Notes.txt
+# or myTest.c this script will not delete them.
+
+set -ex
+
+
+cd $(dirname ${BASH_SOURCE[0]})
+
+topdir="$PWD"
+
+rm -f\
+ config.make\
+ quickbuild.make
+
+
+
+cd "$topdir/tests"
+
+rm -f\
+ 010_skipTest\
+ 021_debug\
+ 040_qsGraph_create\
+ 041_qsGraph_create_static\
+ 044_qsGraph_create_many\
+ 047_qsGraph_noDestroy\
+ 060_job\
+ 062_job_noLibDir\
+ 065_job\
+ 068_job_1t\
+ 070_job_2t\
+ 072_job_3t\
+ 074_job_4t\
+ 080_job_parallel\
+ 083_job\
+ 086_job_multiThreadPool\
+ 088_job_multiThreadPool\
+ 090_job_multiThreadPool\
+ 093_job_multiThreadPool\
+ 095_job_multiThreadPool\
+ 097_job_multiThreadPool\
+ 100_oneBlock\
+ 101_oneBlock\
+ 104_varyMaxThreads\
+ 107_varyMaxThreads\
+ 111_blocksChangeThreadPool\
+ 115_blocksChangeThreadPool\
+ 120_removeBlock\
+ 123_removeBlock\
+ 127_removeJobs\
+ 129_removeJobs\
+ 131_addMutexes\
+ 133_addMutexes\
+ atomic_test\
+ c-rbtree_00\
+ fail\
+ getline\
+ itimer_test\
+ malloc_leak\
+ mod\
+ pthread_once\
+ returnStatus\
+ setjmp\
+ success\
+ x
+
+rm -rf qb_build/ subDir/
+
+
+
+cd "$topdir/include"
+
+rm -f\
+ quickstream_debug.h\
+ quickstream_expanded.h\
+ quickstream.h
+
+
+
+cd "$topdir/lib"
+
+rm -f\
+ c-rbtree*\
+ c-stdaux*\
+ libquickstream.so\
+ libquickstream.a
+
+rm -rf qb_build/
+
+
+
+cd "$topdir/bin"
+
+rm -f\
+ quickstream
+
+rm -rf qb_build/
+
+
+
+cd "$topdir/share/bash-completion/completions"
+
+rm -f quickstream
+
+
+
+cd "$topdir/lib/pkgconfig"
+
+rm -f quickstream.pc
+
+
+
+cd "$topdir/lib/quickstream/misc"
+
+rm -f\
+ quickstreamHelp\
+ quickstreamHelp.c\
+ qsOptions.h
+
+rm -rf qb_build/
+
+
+cd "$topdir/lib/builtInBlocks"
+
+rm -f\
+ listBuiltInBlocks.c\
+ libbuiltInBlocks.a\
+ listBuiltInBlocksPaths
+
+rm -rf qb_build/
+
+
+

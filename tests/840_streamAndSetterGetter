@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -ex
+
+
+export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
+
+
+../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --threads 1\
+ --block sequenceGen b0\
+ --block passThroughCount b1\
+ --block sequenceCheck b2\
+ --block setterPrintUint64 p\
+ --connect b0 output 0 b1 input 0\
+ --connect b1 output 0 b2 input 0\
+ --connect p  setter value b1 getter trigger\
+ --configure-mk MK b0 TotalOutputBytes 0 MK\
+ --configure-mk MK b1 triggerCount 1000 MK\
+ --configure-mk MK b1 quitCount 80000 MK\
+ --configure-mk MK b2 TotalOutputBytes 0 MK\
+ --start\
+ --wait-for-stream
+
+
+
