@@ -17,22 +17,20 @@ has used it other than me, the sole author.  There is not a single bug in
 it that I know about.  It's complex code, so I know there will be bugs
 found when this code hits the wild.  I intend to make quickstream a
 [robust](http://www.linfo.org/robust.html) framework.  There are lots of
-obvious features missing, I consider there to be enough functionality to
-bring it to this alpha state.  It already does plenty of things that
-no other software can do.
+obvious features missing.  I consider there to be enough functionality
+to bring it to this alpha state.  It already does plenty of things that no
+other software can do.
 
 Being [free software](https://www.fsf.org/about/what-is-free-software)
 quickstream is making this alpha released software available here; and
-obviously the idea of alpha/beta and so on will in time depend on git
-tags, and will blur into a spectrum of tagged releases.  But, since no one
-but me has seen it yet, except me, we can clearly call it alpha.
-
+obviously the idea of alpha/beta and so on will be replaced by git tagged
+releases.  I guess that means first git tag will mark a beta release.
 
 ### Stability
 
-Being in currently in alpha, things can change.  If you don't like the
+Being currently in alpha, things can change.  If you don't like the
 name of a function in the API, than now it the time to act.  I'm not into
-making a lot of branches, but I encourage debate that make the code
+making a lot of branches, but I encourage debate that makes the code
 better.
 
 ### Dependencies
