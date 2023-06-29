@@ -69,7 +69,7 @@ The quickstreamGUI program is running the compiled flow graph code as
 you edit it in the quickstreamGUI program, and not in a forked and
 executed program like GNUradio does.  It is hoped that this tighter
 coupling between editor and block code will produce faster and more
-productive workflows patterns than is possible without this tight
+productive workflow patterns than is possible without this tight
 block/editor coupling.
 
 ### quickstream
