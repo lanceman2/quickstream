@@ -140,7 +140,7 @@ Next download the source from github and cd to the top source directory.
 
 Run ./bootstrap
 
-That will download some files.  No other build step with download files
+That will download some files.  No other build step will download files
 like this.
 
 ### ./configure
