@@ -6,7 +6,7 @@ root := ../../../..
 
 # DIR should be the relative path to this directory from the top source
 # directory.
-DIR := lib/quickstream/blocks/rtlsdr
+DIR := lib/quickstream/blocks/rtl-sdr
 
 
 RTLSDR_CFLAGS := $(shell pkg-config --cflags librtlsdr)
