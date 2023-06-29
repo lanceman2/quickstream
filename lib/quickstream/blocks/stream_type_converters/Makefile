@@ -5,7 +5,7 @@
 root := ../../../..
 
 
-INSTALL_DIR = $(PREFIX)/lib/quickstream/blocks/controlParameters
+INSTALL_DIR = $(PREFIX)/lib/quickstream/blocks/stream_type_converters
 
 c_plugins := $(patsubst %.c, %, $(wildcard [a-z]*.c) $(wildcard _[a-z]*.c))
 
