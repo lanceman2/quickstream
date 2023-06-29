@@ -119,7 +119,7 @@ handles isolating the blocks codes so they separate access of common
 variable and function names within the running program.  Of course,
 writers of built in (libquickstream.so) blocks require more dynamic memory
 allocates in the block code, as apposed to having the linker loader doing
-the memory allocating and mapping as it does in a DSO block.
+the memory allocating and mapping as it does for a DSO block.
 
 
 ## Building and Installing
