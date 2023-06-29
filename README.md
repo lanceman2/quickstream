@@ -59,6 +59,9 @@ links with C++ code (TODO: needs to add tests for that).
 
 ### quickstreamGUI
 
-![image of a stream graph being run and edited with the quickstream GUI program](https://lanceman2.github.io/quickstream/master/screenshot_00_small.png)
-[full size image](https://lanceman2.github.io/quickstream/master/screenshot_00.png)
+![image of a stream graph being run and edited with the quickstream GUI
+program](https://lanceman2.github.io/screenshot_00_small.png)
+
+[full size image](https://lanceman2.github.io/screenshot_00.png)
+
 
