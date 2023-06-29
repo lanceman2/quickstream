@@ -46,7 +46,7 @@ page.  I'll separate the parts that need root access.
 In brief: quickstream is a C code API (application programming interface)
 DSO (dynamic shared object) library and several executable programs that
 link with that library, and many smaller C code objects (modules) called
-blocks.  quickstream steals many great ideas from GNUradio but also
+blocks.  quickstream steals many great ideas from GNUradio, but also
 corrects many of it's short comings.  quickstream can be used to program
 SDRs (software defined radios) but that is only one usage domain that
 happens to be a very popular research topic lately.  Yes, of course, it
@@ -147,8 +147,9 @@ like this.
 
 Run ./configure
 
-That will generate a make file, "config.make".  You can edit the generated
-file to change your installation PREFIX, and other options.
+That will generate a very small make file, "config.make".  You can edit
+the generated file to change your installation PREFIX, and other
+options.
 
 
 ### make
