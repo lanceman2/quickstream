@@ -59,7 +59,7 @@ links with C++ code (TODO: need to add tests for that).
 program](https://repository-images.githubusercontent.com/659916367/85c2fe98-12bf-4e71-87b8-775de99850b4)
 
 The above image shows quickstreamGUI simultaneously running and editing a
-quickstream flow graph.  You you can see it is feeding two GNUradio programs
+quickstream flow graph.  You can see it is feeding two GNUradio programs
 with pipes.
 
 quickstreamGUI is a GTK3 GUI (graphical user interface) C compiled program
