@@ -296,12 +296,12 @@ Future.
 I started this project some time ago, documenting as I went along.  I have
 found that documenting at an early stage was a total waste of time.  I
 have, since starting this project, rewritten the "core" code of this
-software package at least three times.  Each rewrite was harvesting code
-from the last, but the interfaces (which I documented) changed
+software package at least three times.  In each rewrite I harvested code
+from the last writing, but the interfaces (which I documented) changed
 dramatically at each rewrite.  That experience caused me to document less
 and less as things progressed.
 
-Future, but soon.
+Documentation is in the future, and likely soon.
 
 
 #### Turorials?
@@ -383,8 +383,9 @@ Crap-loads.
 ## In Closing
 
 My biggest issue with GNUradio is that it does not meet the GNU coding
-standards of quality that I expected given the GNU in the name; then again
-neither does quickstream, but I did not name it with GNU.
+standards of quality that I expected given the GNU in the name, not even
+close.  If RMS was a jerk, like most people, he'd sue somebody about
+that.
 
 All code sucks!  Some less than others.
 
