@@ -352,6 +352,9 @@ Thanks for stopping by. Ha, ha.
   uses a completely different flow pointer advancement model which gives
   blocks control over ring buffer read and write sizes
 
+- quickstream can have loops in the stream flow.  A block may directly
+  connect to itself.
+
 - quickstream, more so, restricts what blocks can do (the idea is that
   without restriction there is no modularity)
 
@@ -360,8 +363,6 @@ Thanks for stopping by. Ha, ha.
   strive to be like an operating system kernel; robust
 
 - quickstream has no legacy code holding it back
-
-- read the above link
 
 
 Note: by "running" we mean that the flow graph process is running.  The
