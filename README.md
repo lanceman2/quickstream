@@ -380,9 +380,6 @@ the source to GNUradio is a moving target.
 
 Crap-loads.
 
-
-## In Closing
-
 My biggest issue with GNUradio is that it does not meet the GNU coding
 standards of quality that I expected given the GNU in the name, not even
 close.  If RMS was a jerk, like most people, he'd sue somebody about
