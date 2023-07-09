@@ -390,16 +390,18 @@ programs with gnuradio-companion.
 quickstreamGUI links and runs with the quickstream runtime library and
 therefore does provide a language binding for the quickstream runtime
 library (libquickstrea.so).  quickstreamGUI must save super (hier) blocks
-in order to save any thing.  Hence, quickstreamGUI forces users/developer
-to keep generated files in the user/developer quickstreamGUI workflow.
-The idea is that if a user/developer can run a quickstream program, then
-they can also edit that program, even if that was not the intent of the
-original program developer.  In this way quickstream keeps all quickstream
-programs (programs that link with libquickstream.so and load/run
-quickstream blocks) in the quickstream development workflow.
+in order to save anything.  Hence, quickstreamGUI forces users/developer
+to keep generated files in the user/developer quickstreamGUI workflow
+cycle.  The idea is that if a user/developer can run a quickstream
+program, then they can also edit that program, even if that was not the
+intent of the original program developer.  In this way quickstream keeps
+all quickstream programs (programs that link with libquickstream.so and
+load/run quickstream blocks) in the quickstream development workflow; and
+users/developers that do not like to share will be forced to share with
+other users/developers (to some extent).
 
 The same applies to the quickstream command-line program as it does with
 quickstreamGUI; quickstream command-line can be used in a user/developer
-workflow that is cyclic, but since it is not graphical in nature it can
-be difficult to see complex flow graphs with it.
+workflow that is cyclic, but since it is not graphical in nature, so it
+can be difficult to see complex flow graphs with it.
 
