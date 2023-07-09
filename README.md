@@ -218,7 +218,7 @@ make install
 ~~~
 
 Installing quickstream (the package) is optional.  The source files are
-layed out with the same relative paths as the installed files would be.
+laid out with the same relative paths as the installed files would be.
 The programs all tend to use this relative path layout to figure out how
 to run, so it runs the same in the source directory as it does in the
 installed directory tree.  One plus to installing it, is that the
@@ -290,6 +290,8 @@ a separate repository.
 
 Future.
 
+Script language bindings will not require any additional block code.
+
 
 #### Documentation?
 
@@ -320,16 +322,8 @@ Thanks for stopping by. Ha, ha.
 
 ## Features In quickstream that are not in GNUradio
 
-- User level worker thread to block assignment at process run time
-
-- Any flow graph can run with one worker thread, note I don't say
-  run well.   NumThreads is knob, turn it.
-
-- Flow graphs can run with any number of worker threads, limited to
-  one per block.  Ya, turn it up.
-
-- The block to worker thread distribution is programmable at the
-  user level (not block level), at run time.  Ya, it's a user knob.
+- User level worker thread to block assignment at process run time.
+  Blocks can share worker threads.
 
 - A block can be written with one source file of zero length
 
@@ -340,27 +334,27 @@ Thanks for stopping by. Ha, ha.
 
 - Blocks can be removed from a running flow graph
 
-- Flow graphs can be saved while they are running
+- Flow graphs can be saved while they are running and flowing
 
 - Stream flows can pass through a block without a copy.  We call
   it a "pass-through" ring buffers.  In general the stream ring
   buffers are all "pass-through" ring buffers but some have
-  zero pass-through blocks (non-pass-through case).  The blocks
+  zero pass-through ports (non-pass-through case).  The blocks
   code must decide they want to be a "pass-through" stream block.
 
 - quickstream uses a similar stream ring buffer mapping to GNUradio but it
   uses a completely different flow pointer advancement model which gives
-  blocks control over ring buffer read and write sizes
+  blocks control over stream ring buffer read and write sizes
 
 - quickstream can have loops in the stream flow.  A block may directly
-  connect to itself.
+  connect from itself back to itself.
 
 - quickstream, more so, restricts what blocks can do (the idea is that
   without restriction there is no modularity)
 
 - quickstream will make an effort to never let blocks use an inter-thread
   memory access method that corrupts memory, software frameworks should
-  strive to be like an operating system kernel; robust
+  strive to be robust like an operating system
 
 - quickstream has no legacy code holding it back
 
@@ -368,22 +362,10 @@ Thanks for stopping by. Ha, ha.
 Note: by "running" we mean that the flow graph process is running.  The
 stream flowing is a different kind of running.  If a stream connection is
 removed due to a block being removed while the process is running and the
-stream is flowing that stream flow may stop.  We decided that having the
+stream is flowing, that stream flow may stop.  We decided that having the
 stream flow automatically restart due to block removal (or addition) was
 too intrusive.
 
 Keep in mind that some of what is written above may be false given that
 the source to GNUradio is a moving target.
-
-
-## What can GNUradio do that quickstream can't?
-
-Crap-loads.
-
-My biggest issue with GNUradio is that it does not meet the GNU coding
-standards of quality that I expected given the GNU in the name, not even
-close.  If RMS was a jerk, like most people, he'd sue somebody about
-that.
-
-All code sucks!  Some less than others.
 
