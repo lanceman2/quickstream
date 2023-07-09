@@ -137,7 +137,7 @@ GNU/Linux dynamic linker loader system handles finding the needed symbols
 linker loader system handles isolating the blocks codes so they separate
 access of common variable and function names within the running program;
 OOP (object oriented programming) be damned.  C++ class object data would
-be redundant information especially for the cast of blocks when they are
+be redundant information especially for the case of blocks when they are
 loaded as a DSO.  The C++ sugar that is added to C can sometimes just
 increase boiler plate code, and block writing is a great example of how
 C++ bloats otherwise small C codes.  All that being said, you can write
