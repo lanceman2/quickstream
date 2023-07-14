@@ -402,6 +402,6 @@ other users/developers (to some extent).
 
 The same applies to the quickstream command-line program as it does with
 quickstreamGUI; quickstream command-line can be used in a user/developer
-workflow that is cyclic, but since it is not graphical in nature, so it
-can be difficult to see complex flow graphs with it.
+workflow that is cyclic, but since it is not graphical in nature, it can
+be difficult to see complex flow graphs with it.
 
