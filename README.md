@@ -58,7 +58,7 @@ program](https://repository-images.githubusercontent.com/659916367/85c2fe98-12bf
 
 The above image shows quickstreamGUI simultaneously running and editing a
 quickstream flow graph.  You can see it is feeding two GNUradio programs
-with pipes. If this was an animated image you could see the scopes giggle
+with pipes. If this was an animated image you could see the scopes jiggle
 there displays.  The two GNUradio programs are running and feeding the
 QT_GUI_Sink block from a pipe from the quickstreamGUI process.  The
 quickstream GUI editor runs in the same process as the quickstream flow
@@ -150,7 +150,7 @@ more code.  Seems stupid to me.  It's just adding layers with no added
 function, just sugar.
 
 Writers of built-in (libquickstream.so) blocks require more dynamic memory
-allocations in the block code, as apposed to having the linker loader do
+allocations in the block code, as opposed to having the linker loader do
 the memory allocating and mappings as it loads a DSO block (nothing to do
 with whither it's C or C++).
 
