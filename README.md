@@ -163,7 +163,9 @@ As noted before, it's currently be developed on Debian GNU/Linux 12 with a
 GNOME desktop, so here's a list of the deb packages that I think are
 needed to build quickstream:
 
+~~~
 gcc make graphviz imagemagick doxygen libgtk-3-dev librtlsdr-dev gnuradio-dev
+~~~
 
 Some of these packages are optional, like the last three -dev packages.
 
