@@ -145,9 +145,8 @@ quickstream blocks in C++.
 
 I've written C++ template based DSO loaders with the libdl.so API and I
 had to ask myself what the hell am I doing.  Making a loader wrapper code
-to make a C++ object for the sake of forcing users to write a shit ton
-more code.  Seems stupid to me.  It's just adding layers with no added
-function, just sugar.
+to make a C++ object for the sake of forcing users to write more code.
+It's just adding layers with no added function, just sugar.
 
 Writers of built-in (libquickstream.so) blocks require more dynamic memory
 allocations in the block code, as opposed to having the linker loader do
