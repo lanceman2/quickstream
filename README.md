@@ -342,7 +342,7 @@ Thanks for stopping by. Ha, ha.
 - Stream flows can pass through a block without a copy.  We call
   it a "pass-through" ring buffers.  In general the stream ring
   buffers are all "pass-through" ring buffers but some have
-  zero pass-through ports (non-pass-through case).  The blocks
+  zero pass-through ports (non-pass-through case).  The block's
   code must decide they want to be a "pass-through" stream block.
 
 - quickstream uses a similar stream ring buffer mapping to GNUradio but it
