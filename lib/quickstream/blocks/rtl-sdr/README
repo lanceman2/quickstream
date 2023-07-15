@@ -51,6 +51,13 @@ To run programs with the module here you'll need to do something like:
      cd rtl-sdr
      sudo cp rtl-sdr.rules /etc/udev/rules.d/
 
+Or (at your risk):
+
+    wget --no-check-certificate\
+    https://raw.githubusercontent.com/osmocom/rtl-sdr/master/rtl-sdr.rules\
+    -O - | sudo bash -c 'cat > /etc/udev/rules.d/rtl-sdr.rules'
+
+
 
 See: https://www.rtl-sdr.com/rtl-sdr-quick-start-guide/
 
