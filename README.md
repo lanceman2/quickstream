@@ -347,7 +347,11 @@ Thanks for stopping by. Ha, ha.
 
 - quickstream uses a similar stream ring buffer mapping to GNUradio but it
   uses a completely different flow pointer advancement model which gives
-  blocks control over stream ring buffer read and write sizes
+  blocks control over stream ring buffer read and write sizes.  There are
+  no thread synchronization primitives held when block callbacks are
+  called; as I imagine GNUradio does the same when "work()" is called.
+  Put another way the stream ring buffers are "lock-less" (kind-of
+  an obvious requirement).
 
 - quickstream can have loops in the stream flow.  A block may directly
   connect from itself back to itself.
