@@ -112,13 +112,14 @@ whither the block is a separate DSO file or is it built into
 libquickstream.so.  Another aspect of a block is whither it is a simple
 block or a super block.  Super blocks are in some ways similar to GNUradio
 hier (hierarchical) blocks, but they play a more pivotal role in a
-quickstream user/developer workflow; i.e. quickstream forces users to make
-a super block order to be able to run a flow graph.  That helps to insure
-that product stays in the quickstream workflow, as compared to in the
-GNUradio workflow most product is lost to programs outside the GNUradio
-workflow.  If you don't know what I mean, try to reproduce a GNUradio flow
-graph (native gnuradio-companion file) from a python script that was
-generated from gnuradio-companion, or from the C++ code it generated.
+quickstream user/developer workflow; i.e. quickstream forces users to
+make a super block order to be able to run a flow graph.  That helps to
+insure that product stays in the quickstream workflow, as compared to in
+the GNUradio workflow where most product is lost to programs outside the
+GNUradio workflow.  If you don't know what I mean, try to reproduce a
+GNUradio flow graph (native gnuradio-companion file) from a python script
+that was generated from gnuradio-companion, or from the C++ code it
+generated.
 
 
 #### On Block Boiler Plate Code
