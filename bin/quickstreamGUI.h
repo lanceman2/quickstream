@@ -523,6 +523,10 @@ static inline bool NoGoodButtonPressEvent(GdkEventButton *e) {
 
 extern
 struct Block *movingBlocks;
+
+extern
+bool blocksMoved;
+
 extern
 gdouble x_root, y_root; // For moving the blocks.
 

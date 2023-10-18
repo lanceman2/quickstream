@@ -11,6 +11,11 @@
 // set.
 struct Block *movingBlocks = 0;
 
+// If the blocks are moved via the left mouse button we need to know
+// so that we can tell that the left mouse button press was a block
+// move and not a double left button press.
+bool blocksMoved = false;
+
 // For moving the blocks.
 gdouble x_root, y_root;
 
@@ -324,12 +329,27 @@ Press_cb(GtkWidget *w, GdkEventButton *e, struct Block *b) {
     DASSERT(b);
     DASSERT(b->layout);
 
-    if(e->type != GDK_BUTTON_PRESS)
+    //DSPEW("e->type=%d  GDK_DOUBLE_BUTTON_PRESS=%d GDK_BUTTON_PRESS=%d",
+    //          e->type, GDK_DOUBLE_BUTTON_PRESS, GDK_BUTTON_PRESS);
+
+    if(e->type != GDK_BUTTON_PRESS && e->type != GDK_DOUBLE_BUTTON_PRESS)
         return FALSE;
 
-    // GDK has buttons numbered from 1 to 5.
+    // GDK has mouse buttons numbered from 1 to 5.
 
     if(e->button == 1/*left mouse*/) {
+
+        if(e->type == GDK_DOUBLE_BUTTON_PRESS) {
+
+            if(movingBlocks) {
+                PopUpBlock(movingBlocks);
+                movingBlocks = 0;
+            }
+            SetWidgetCursor(b->layout->layout, "default");
+
+            ShowBlockConfigWindow(b);
+            return TRUE;
+        }
 
         // We cannot pop up the block until after the user finishes moving
         // it.  To pop up the block we must detach the GTK widget from its
@@ -343,6 +363,7 @@ Press_cb(GtkWidget *w, GdkEventButton *e, struct Block *b) {
             UnselectAllBlocks(b->layout, b);
 
         movingBlocks = b->layout->selectedBlocks;
+        blocksMoved = false;
         DASSERT(movingBlocks);
 
         for(struct Block *bl = movingBlocks; bl; bl = bl->nextSelected) {
@@ -351,17 +372,20 @@ Press_cb(GtkWidget *w, GdkEventButton *e, struct Block *b) {
         }
         x_root = e->x_root;
         y_root = e->y_root;
-        SetWidgetCursor(b->layout->layout, "grabbing");
+
+        // We will do this when the blocks start to move and
+        // not before:
+        //SetWidgetCursor(b->layout->layout, "grabbing");
+
         return TRUE; // TRUE => eat the event.
     }
 
     if(e->button == 3/*right mouse*/) {
         movingBlocks = 0;
         ShowBlockPopupMenu(b);
+        PopUpBlock(b);
         return TRUE;
     }
-
-
 
     DSPEW();
     return FALSE; // FALSE => call more handlers.
@@ -380,7 +404,13 @@ Release_cb(GtkWidget *w, GdkEventButton *e, struct Block *b) {
 
     if(e->button == 1/*left mouse*/) {
         if(movingBlocks) {
-            PopUpBlock(movingBlocks);
+            // If we do this we lose the ability to catch a
+            // double left mouse click; so we added the
+            // blocksMoved flag:
+            if(blocksMoved) {
+                blocksMoved = false;
+                PopUpBlock(movingBlocks);
+            }
             movingBlocks = 0;
         }
         SetWidgetCursor(b->layout->layout, "default");

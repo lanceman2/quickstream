@@ -271,7 +271,11 @@ Release_cb(GtkWidget *layout, GdkEventButton *e, struct Layout *l) {
     // We have a left button release.
 
     if(movingBlocks) {
-        PopUpBlock(movingBlocks);
+        if(blocksMoved) {
+            blocksMoved = false;
+            PopUpBlock(movingBlocks);
+        }
+        //PopUpBlock(movingBlocks);
         SetWidgetCursor(layout, "default");
         movingBlocks = 0;
         return TRUE; // TRUE == eat event
@@ -314,6 +318,10 @@ Motion_cb(GtkWidget *layout, GdkEventMotion *e, struct Layout *l) {
 
             gtk_layout_move(GTK_LAYOUT(layout),
                     b->parent, b->x, b->y);
+        }
+        if(!blocksMoved) {
+            blocksMoved = true;
+            SetWidgetCursor(l->layout, "grabbing");
         }
         return TRUE;
     }

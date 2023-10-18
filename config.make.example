@@ -22,7 +22,7 @@ PREFIX = /usr/local/encap/quickstream
 # SPEW_LEVEL_* controls macros in lib/debug.h
 #
 # The following may be defined; defining them turns on the following CPP
-# macro functions that are in debug.h which is source for
+# macro functions that are in debug.h which is a source file for
 # libquickstream.so
 #
 #
