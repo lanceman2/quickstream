@@ -189,7 +189,6 @@ void DrawLayoutNewSurface(struct Layout *l,
 
 
     if(layoutSelection.active) {
-        DASSERT(!fromPort);
         // Draw the selection box.
         cairo_set_source_rgba(cr, sel.r, sel.g, sel.b, sel.a);
         cairo_rectangle(cr, layoutSelection.x, layoutSelection.y,

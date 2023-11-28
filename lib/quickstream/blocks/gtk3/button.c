@@ -18,11 +18,6 @@
 
 static struct QsParameter *getter;
 
-// This mutex will be shared with all the widgets from all the
-// widget blocks for a given graph.  We just have one top level
-// window per graph.
-static pthread_mutex_t *mutex = 0;
-
 
 // This Button will be added into the struct Window in the widget list.
 //
@@ -38,8 +33,6 @@ int Value_setter(const struct QsParameter *p, bool *value,
             uint32_t readCount, uint32_t queueCount,
             void *userData) {
 
-    CHECK(pthread_mutex_lock(mutex));
-
     DSPEW("*value=%d", *value);
 
     if(button.value == *value)
@@ -54,8 +47,6 @@ int Value_setter(const struct QsParameter *p, bool *value,
 
 finish:
 
-    CHECK(pthread_mutex_unlock(mutex));
-
     return 0;
 }
 
@@ -69,25 +60,14 @@ static void
 SetValue(const bool *value) {
 
 DSPEW("*value=%d", *value);
-    CHECK(pthread_mutex_lock(mutex));
-    // Locked so we can access button.value.
 
     button.value = *value;
 
-    CHECK(pthread_mutex_unlock(mutex));
-
-    // No mutex lock needed for this call, value it in this function call
-    // stack.
     qsGetterPush(getter, value);
 }
 
 
 int declare(void) {
-
-    struct Window *win = CreateWidget(&button.widget);
-    DASSERT(win);
-    mutex = win->mutex;
-    DASSERT(mutex);
 
     qsCreateSetter("value",
         sizeof(button.value), QsValueType_bool, 0/*0=no initial value*/,
@@ -103,6 +83,9 @@ int declare(void) {
     button.setValue = qsAddInterBlockJob(
             (void (*)(void *)) SetValue,
             sizeof(bool), 7/*queueMax*/);
+
+    struct Window *win = CreateWidget(&button.widget);
+    DASSERT(win);
 
     DSPEW();
     return 0;

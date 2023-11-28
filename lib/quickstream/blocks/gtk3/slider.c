@@ -22,17 +22,11 @@ static struct QsParameter *getter, *active;
 static bool isActive = false;
 
 
-// This mutex will be shared with all the widgets from all the
-// widget blocks for a given graph.  We just have one top level
-// window per graph.
-static pthread_mutex_t *mutex = 0;
-
-
 // This Slider will be added into the struct Window in the widget list.
 //
 static struct Slider slider = {
     .widget.type = Slider,
-    // numTicks is the only variable that effect the GTK3 widget
+    // numTicks is the only variable that effects the GTK3 widget
     // internals.  We keep the GTK scale (that is the slider GTK widget)
     // with a fixed -1 to +1 scaling and use a linear transformation in
     // this file to get user values.
@@ -98,14 +92,14 @@ static double GetValue(double val) {
 static
 void SetSliderValue(double val) {
 
-    // Invert the val to slider value (-1, 1)
+    // Convert the val to slider value [-1, 1]
     //
     // 1. clip it.
     if(val < clipMin)
         val = clipMin;
     else if(val > clipMax)
         val = clipMax;
-    // 2. Invert the linear transformation to [-1, +1]
+    // 2. Linearly transformation to [-1, +1]
     val = -1.0 + (val - min) * (2.0) / (max - min);
 
     if(slider.setSliderValue)
@@ -117,19 +111,14 @@ void SetSliderValue(double val) {
 
 // This is a user telling the slider where to be.
 //
+// See comments in _run.c:SetSliderValue().
+//
 static
 int Value_setter(const struct QsParameter *p, double *val,
             uint32_t readCount, uint32_t queueCount,
             void *userData) {
 
-DSPEW();
-
-    CHECK(pthread_mutex_lock(mutex));
-
     SetSliderValue((*val)/scale);
-
-    CHECK(pthread_mutex_unlock(mutex));
-
     return 0;
 }
 
@@ -139,12 +128,13 @@ DSPEW();
 static
 char *SetDisplayedValue(const struct Slider *s, double val) {
 
-    CHECK(pthread_mutex_lock(mutex));
+//static int count=0;
+// Wow, GTK3 calls this a lot when the pointer is moving near this scale
+// widget
+//DSPEW("count=%d", ++count);
 
     // Note: this value does not include the scale factor.
     char *ret = mprintf(fmt, GetValue(val));
-
-    CHECK(pthread_mutex_unlock(mutex));
 
     return ret;
 }
@@ -156,8 +146,6 @@ char *Attributes_config(int argc, const char * const *argv,
 
     if(argc < 5) return QS_CONFIG_FAIL;
 
-
-    CHECK(pthread_mutex_lock(mutex));
 
     char *ret = QS_CONFIG_FAIL;
 
@@ -254,8 +242,6 @@ char *Attributes_config(int argc, const char * const *argv,
 
 finish:
 
-    CHECK(pthread_mutex_unlock(mutex));
-
     return ret;
 }
 
@@ -266,11 +252,7 @@ static double lastValueOut = NAN;
 static void
 SetValue(double *val) {
 
-    CHECK(pthread_mutex_lock(mutex));
-
     double x = scale * GetValue(*val);
-
-    CHECK(pthread_mutex_unlock(mutex));
 
     // We don't getter push if the value did not change.
     if(lastValueOut != x) {
@@ -284,14 +266,7 @@ SetValue(double *val) {
 static void
 SetActive(bool *isActive) {
 
-    // If this needed to access Window of Slider data:
-    //CHECK(pthread_mutex_lock(mutex));
-
 //DSPEW("Block: %s    isActive=%d", qsBlockGetName(), *isActive);
-
-
-    // If this needed to access Window of Slider data:
-    //CHECK(pthread_mutex_unlock(mutex));
 
     qsGetterPush(active, isActive);
 }
@@ -301,11 +276,9 @@ int declare(void) {
 
     slider.setDisplayedValue = SetDisplayedValue;
 
-    struct Window *win = CreateWidget(&slider.widget);
-    DASSERT(win);
-    mutex = win->mutex;
-    DASSERT(mutex);
-
+    // We need fmt set before CreateWidget() in case GTK is going to
+    // immediately allocate the GTK slider widget in CreateWidget();
+    // which will call slider.c:SetDisplayedValue() and access fmt.
     fmt = strdup("%5.5lf");
     ASSERT(fmt, "strdup() failed");
 
@@ -363,6 +336,9 @@ int declare(void) {
     slider.setActive = qsAddInterBlockJob(
             (void (*)(void *)) SetActive,
             sizeof(bool), 10/*queueMax*/);
+
+    struct Window *win = CreateWidget(&slider.widget);
+    DASSERT(win);
 
     DSPEW();
     return 0;

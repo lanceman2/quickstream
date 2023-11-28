@@ -676,8 +676,10 @@ void ShowTextPopover(struct Terminal *t, GdkEvent *e) {
 
     if(textPopover.terminal != t) {
         textPopover.terminal = t;
+//DSPEW();
         gtk_popover_set_relative_to(GTK_POPOVER(textPopover.popover),
                         t->drawingArea);
+//DSPEW();
     }
 
     GdkRectangle rec;

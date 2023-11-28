@@ -1,8 +1,9 @@
 // This block can be optionally used with other GTK3 widgety blocks from
-// this directory to set GTK3 main window attributes.  Without this
-// block the user will be default "attributes".
+// this directory to set GTK3 main window attributes.  Without this block
+// the user will get default "attributes".
 
-// This file is NOT linked with the GTK3 libraries.
+// This file, when compiled into a DSO (dynamic shared object), is NOT
+// linked with the GTK3 libraries.
 
 #define _GNU_SOURCE
 #include <link.h>
@@ -12,6 +13,9 @@
 
 #include <gtk/gtk.h>
 
+// This file is in a fixed directory relative to the quickstream source
+// code.  It is dependent on source files in ../../.., hence we can
+// include other source files like so:
 #include "../../../../include/quickstream.h"
 #include "../../../debug.h"
 #include "../../../mprintf.h"

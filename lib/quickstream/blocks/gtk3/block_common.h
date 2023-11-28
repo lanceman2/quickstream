@@ -2,7 +2,7 @@
 // NOTE: Everything in this file is static and it has to be that way.
 //
 // Don't confuse this C global static with C++ class static.  Nothing but
-// the block code can see this code.  Why I'm I writing this comment.
+// the block code can see this code (Why I'm writing this comment.).
 //
 // In effect this adds code to what ever C file you put it in.
 // It's only used for blocks that are "Widget blocks".
@@ -10,7 +10,7 @@
 
 // This will point to inter-thread shared memory for this block.
 //
-// There's a different pointer in each loaded block.
+// There's a different pointer variable in each loaded block.
 static struct Window *win = 0;
 
 // mutex to protect the data pointed to by win.
@@ -24,6 +24,10 @@ static inline void InitRunAPI(void) {
     DASSERT(win);
 
     // This will ASSERT() if it fails; a small dlopen(3) wrapper.
+    //
+    // _run.so is linked with the needed GTK3 libraries, so the GTK3
+    // libraries get automatically loaded with _run.so if they are not
+    // loaded already.
     //
     void *dlhandle = qsOpenRelativeDLHandle("_run.so");
     win->dlhandle = dlhandle;

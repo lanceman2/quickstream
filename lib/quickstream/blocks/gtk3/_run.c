@@ -7,9 +7,9 @@
 // graph builder does not have to load this DSO when just building the
 // graph.  This DSO is just loaded at "run-time", and is not required to
 // be loaded at quickstream graph "build-time".  This DSO links with the
-// large number of libraries needed for the GTK (Gimp ToolKit) widget
-// libraries, and we do not necessarily want that at quickstream flow
-// graph "build-time".
+// large number of libraries needed for the GTK (Gimp ToolKit, GTK3)
+// widget libraries, and we do not necessarily want that at quickstream
+// flow graph "build-time".
 
 
 // Why is this so complicated?  I don't know how thread safe GTK is; and I
@@ -28,9 +28,9 @@
 // GTK main loop.  GTK as in GTK3 is not very modular.  It's the fucking
 // center-of-the-universe.  You can use dlopen() to load it and run it,
 // but once you run it (gtk_init()) you can't unload it.  It leaks system
-// resources like a stuck pig.  I don't imagine QT is any better.  QT is a
-// super bloated monster.  GTK3 is just a regular bloated monster.  Both
-// are broken in their own way.
+// resources like a stuck pig bleeds.  I don't imagine QT is any better.
+// QT is a super bloated monster.  GTK3 is just a regular bloated monster.
+// Both are broken in their own way.
 //
 // I'm just being objective.  quickstream sucks donkey dick.  There I said
 // it.  quickstream is total shit.  But, maybe you can use it to do your
@@ -48,26 +48,28 @@
 
 
 // RANT:
+//
 // We cannot get this to run with tests with ValGrind.  It's likely we
 // will not be able to get GTK (version 3) to not leak memory and other
 // computer operating system resources.  Yes, that is confirmed by GTK
 // developers.  GTK3 is not designed to unload all it's system resources
 // when it is unloaded via dlclose(2).  It also, obviously, has no way to
 // undo what gtk_init() does; and that is not in the GTK3 documentation.
-// GTK3 is very refined and finished in many ways, but it totally sucks
-// at the core.  Too many programmers specialize and can't doing system
-// core programming.  gObject is a total CPP macro madness shit show.
-// glib has some cool shit, but the bloat use cost is too high for me and
-// most of it is just a very light (and in-your-way useless) wrappers of
-// libc and NPTL.  I figure, if you can't program with NPTL, you should
-// not call yourself a computer programmer (not in the game I'm playing).
+// GTK3 is very refined and finished in many ways, but it totally sucks at
+// the core.  Too many programmers specialize and can't do system core
+// programming.  gObject is a total CPP macro madness shit show.  glib has
+// some cool shit, but the bloat use cost is too high for me and most of
+// it is just a very light (and in-your-way useless) wrappers of libc and
+// NPTL.  I figure, if you can't program with NPTL, you should not call
+// yourself a computer programmer (not in the game I'm playing).
 // GNU/Linux was a piece of shit before NPTL; at least when you think
 // about threads.
 //
 // Don't get me started on QT ...
 
 
-// This file is linked with the GTK3 libraries.
+// This file is linked with the GTK3 libraries, to make a DSO that is
+// loaded when we "show" the "widgets".
 
 #include <math.h>
 #include <unistd.h>
@@ -90,7 +92,7 @@
 
 
 // This DSO (from compiling this file) is not a quickstream block.  It is
-// loaded once per process.
+// loaded once per process; because GTK3 is limited (see above).
 //
 // Unlike blocks that get loaded for each instance/call of
 // qsGraph_createBlock(); and don't forget there can be any number of
@@ -312,7 +314,6 @@ void SetButtonValue(struct Button *button, bool val) {
 
     DASSERT(button);
     DASSERT(button->widget.win);
-    DASSERT(button->widget.win->mutex);
 
 DSPEW("value=%d", val);
 
@@ -466,24 +467,30 @@ gboolean SliderFocusOutEvent_cb(GtkWidget *widget,
 }
 
 
-// The caller of this must lock the Window::mutex.
+// The Slider *s data is owned by the block instance that is the slider.
+// This is called by the slider block's value setter (quickstream setter
+// control parameter).  This call does not access the data in the struct
+// Window object, but just the block's data that the struct Window object
+// points to it.
+//
+// BUG (now fixed):
+// We had a CHECK(pthread_mutex_lock(mutex)) of the struct Window object
+// mutex before calling this, but that is not needed and causes a mutex
+// dead lock.  The slide block owns the data in struct Slider *s, not the
+// shared struct Window object.  We need to go through all GTK widget
+// quickstream block's setter callbacks (slider(here), button and text)
+// and make sure we don't do this (mutex dead lock) in them.
 //
 static
 void SetSliderValue(struct Slider *s, double val) {
 
     DASSERT(s);
-    DASSERT(s->widget.win);
-    DASSERT(s->widget.win->mutex);
-
-    CHECK(pthread_mutex_lock(s->widget.win->mutex));
 
     qsGetGTKContext();
 
     gtk_adjustment_set_value(s->adjustment, val);
 
     qsReleaseGTKContext();
-
-    CHECK(pthread_mutex_unlock(s->widget.win->mutex));
 }
 
 
@@ -538,7 +545,9 @@ static char *
 FormatValue_cb(GtkScale *scale,
                double value,
                struct Slider *s) {
-
+    // GTK calls this callback any time the widget comes in or out of
+    // mouse (pointer) focus; so this can get called a many many times
+    // when the pointer is moving near this scale widget.
 //DSPEW("value=%lg", value);
 
     return s->setDisplayedValue(s, value);
@@ -575,6 +584,10 @@ CreateSlider(struct Window *win, struct Slider *s) {
     g_signal_connect(w, "value-changed",
                 G_CALLBACK(SliderValueChanged_cb), s);
     g_signal_connect(w, "format-value",
+                // GTK will handle freeing the memory that
+                // FormatValue_cb() will return. FormatValue_cb() will be
+                // like strdup(3) in that it returns memory from the
+                // malloc(3) family of libc functions.
                 G_CALLBACK(FormatValue_cb), s);
     g_signal_connect(w, "focus-out-event",
                 G_CALLBACK(SliderFocusOutEvent_cb), s);
@@ -594,7 +607,8 @@ CreateSlider(struct Window *win, struct Slider *s) {
 
 
 
-// The caller of this will have the mutex locked from block_common.h.
+// The caller of this will have the Window::mutex locked from
+// block_common.h.
 //
 void window_setTitle(struct Window *win) {
 
@@ -672,7 +686,8 @@ void window_reinit(struct Window *win, bool needLock) {
 
 
 
-// The caller of this will have the mutex locked from block_common.h.
+// The caller of this will have the Window::mutex locked from
+// block_common.h.
 //
 // if needLock is true call qsGetGTKContext() and qsReleaseGTKContext().
 //
@@ -695,7 +710,7 @@ void window_init(struct Window *win, bool needLock) {
         // is in scope in some thread.
         pthread_barrier_t barrier;
         CHECK(pthread_barrier_init(&barrier, 0, 2));
-
+        // We share the barrier with this thread that we create now:
         CHECK(pthread_create(&gtkThread, 0,
                 (void  *(*)(void *)) RunGtk3Main, &barrier));
 

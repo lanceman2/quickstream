@@ -375,8 +375,10 @@ static void SetValue_cb(GtkWidget *w, gpointer data) {
 
         gtk_widget_show(box);
     } else {
+//DSPEW();
         gtk_popover_set_relative_to(GTK_POPOVER(setValuePopover),
                 port->terminal->drawingArea);
+//DSPEW();
     }
 
     const size_t Len = 80;

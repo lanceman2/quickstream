@@ -1,4 +1,5 @@
 
+// "Widget Types" that we define in this directory.
 enum Type {
 
     Text,
