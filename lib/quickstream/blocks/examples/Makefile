@@ -17,10 +17,10 @@ root := ../../../..
 
 INSTALL_DIR = $(PREFIX)/lib/quickstream/blocks/examples
 
-c_plugins := $(patsubst %.c, %, $(wildcard [a-zA-Z]*.c) $(wildcard _[a-zA-Z]*.c))
+c_plugins := $(patsubst %.c, %, $(wildcard [0-9a-zA-Z]*.c) $(wildcard _[0-9a-zA-Z]*.c))
 
 
-INSTALLED := $(filter-out %.so %.c Makefile qb_build, $(wildcard [a-zA-Z]*))
+INSTALLED := $(filter-out %.so %.c Makefile qb_build, $(wildcard [0-9a-zA-Z]*))
 
 
 define makeSOURCES
