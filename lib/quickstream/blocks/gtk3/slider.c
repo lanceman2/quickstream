@@ -118,7 +118,9 @@ int Value_setter(const struct QsParameter *p, double *val,
             uint32_t readCount, uint32_t queueCount,
             void *userData) {
 
-    SetSliderValue((*val)/scale);
+    // We just push the latest value.
+    if(readCount == queueCount)
+        SetSliderValue((*val)/scale);
     return 0;
 }
 

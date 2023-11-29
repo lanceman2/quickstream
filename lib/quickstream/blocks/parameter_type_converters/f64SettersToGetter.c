@@ -10,7 +10,9 @@ int Value_setter(const struct QsParameter *p, double *value,
             uint32_t readCount, uint32_t queueCount,
             void *userData) {
 
-    qsGetterPush(getter, value);
+    // We just push the latest value.
+    if(readCount == queueCount)
+        qsGetterPush(getter, value);
 
     return 0;
 }
