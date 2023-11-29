@@ -41,7 +41,7 @@ int declare(void) {
     if(!qsGraph_createBlock(0, 0, "controlParameters/not.so", "not", 0))
         FAIL();
 
-    if(!qsGraph_createBlock(0, 0, "controlParameters/gate.so", "gate", 0))
+    if(!qsGraph_createBlock(0, 0, "controlParameters/f64_gate.so", "gate", 0))
         FAIL();
 
     ///////////////////////////////////////////////////////////////

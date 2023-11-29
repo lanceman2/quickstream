@@ -18,10 +18,10 @@ struct QsBlockOptions options = { .type = QsBlockType_super };
 //  Block Meta Data
 ///////////////////////////////////////////////////////////////////
 const char *QS_quickstreamGUI =
-    "ZjY0U2V0dGVyc1RvR2V0dGVyAHNsaWRlcldpdGhGZWVkYmFja18zAHNsaWRlcldp"
-    "dGhGZWVkYmFja18yAHNsaWRlcldpdGhGZWVkYmFjawAAAAAAAAAAOJpAAAAAAAC4"
-    "nUCcAAAAAAAAAAAAAAAA9KJAAAAAAADInUDkAAAAAAAAAAAAAAAAOqFAAAAAAABI"
-    "nUDkAAAAAAAAAAAAAAAA8J5AAAAAAADgnEDkAAAAAAAAAA==";
+    "ZjY0U2V0dGVyc1RvR2V0dGVyAHNsaWRlcl8zAHNsaWRlcl8yAHNsaWRlcgAAAAAA"
+    "AAAAAAAAAN6gQAAAAAAAeJpA5AAAAAAAAAAAAAAAAJyiQAAAAAAABJ5A5AAAAAAA"
+    "AAAAAAAAABygQAAAAAAAxJ1A5AAAAAAAAAAAAAAAAIibQAAAAAAAWJ1A5AAAAAAA"
+    "AAA=";
 
 // A null terminated array of all metaData symbol suffixes above:
 const char *qsMetaDataKeys[] = {
@@ -37,13 +37,13 @@ int declare(void) {
     //    Load child blocks
     ///////////////////////////////////////////////////////////////
 
-    if(!qsGraph_createBlock(0, 0, "examples/sliderWithFeedback.so", "sliderWithFeedback", 0))
+    if(!qsGraph_createBlock(0, 0, "gtk3/slider.so", "slider", 0))
         FAIL();
 
-    if(!qsGraph_createBlock(0, 0, "examples/sliderWithFeedback.so", "sliderWithFeedback_2", 0))
+    if(!qsGraph_createBlock(0, 0, "gtk3/slider.so", "slider_2", 0))
         FAIL();
 
-    if(!qsGraph_createBlock(0, 0, "examples/sliderWithFeedback.so", "sliderWithFeedback_3", 0))
+    if(!qsGraph_createBlock(0, 0, "gtk3/slider.so", "slider_3", 0))
         FAIL();
 
     if(!qsGraph_createBlock(0, 0, "parameter_type_converters/f64SettersToGetter.so", "f64SettersToGetter", 0))
@@ -53,6 +53,9 @@ int declare(void) {
     //    Setup Port Aliases to child block ports
     ///////////////////////////////////////////////////////////////
 
+    if(qsBlock_makePortAlias(0, "slider", "s", "show", "show"))
+        FAIL();
+
     ///////////////////////////////////////////////////////////////
     //    Configure child blocks
     ///////////////////////////////////////////////////////////////
@@ -61,22 +64,22 @@ int declare(void) {
     //    Connect child blocks
     ///////////////////////////////////////////////////////////////
 
-    if(qsGraph_connectByStrings(0, "f64SettersToGetter", "g", "out", "sliderWithFeedback", "s", "in"))
+    if(qsGraph_connectByStrings(0, "f64SettersToGetter", "g", "out", "slider", "s", "display"))
         FAIL();
 
-    if(qsGraph_connectByStrings(0, "sliderWithFeedback", "s", "in", "sliderWithFeedback_2", "s", "in"))
+    if(qsGraph_connectByStrings(0, "slider", "s", "display", "slider_2", "s", "display"))
         FAIL();
 
-    if(qsGraph_connectByStrings(0, "sliderWithFeedback", "s", "in", "sliderWithFeedback_3", "s", "in"))
+    if(qsGraph_connectByStrings(0, "slider", "s", "display", "slider_3", "s", "display"))
         FAIL();
 
-    if(qsGraph_connectByStrings(0, "sliderWithFeedback", "g", "out", "f64SettersToGetter", "s", "0"))
+    if(qsGraph_connectByStrings(0, "slider", "g", "value", "f64SettersToGetter", "s", "0"))
         FAIL();
 
-    if(qsGraph_connectByStrings(0, "sliderWithFeedback_2", "g", "out", "f64SettersToGetter", "s", "4"))
+    if(qsGraph_connectByStrings(0, "slider_2", "g", "value", "f64SettersToGetter", "s", "4"))
         FAIL();
 
-    if(qsGraph_connectByStrings(0, "sliderWithFeedback_3", "g", "out", "f64SettersToGetter", "s", "1"))
+    if(qsGraph_connectByStrings(0, "slider_3", "g", "value", "f64SettersToGetter", "s", "1"))
         FAIL();
 
     ///////////////////////////////////////////////////////////////

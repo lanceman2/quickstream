@@ -90,7 +90,7 @@ static double GetValue(double val) {
 // example values like a radio station frequency: 1.053e+8 Hz.
 // Not the slider scale (-1 to +1).
 static
-void SetSliderValue(double val) {
+void SetSliderValue(double val, bool pushValue) {
 
     // Convert the val to slider value [-1, 1]
     //
@@ -103,7 +103,8 @@ void SetSliderValue(double val) {
     val = -1.0 + (val - min) * (2.0) / (max - min);
 
     if(slider.setSliderValue)
-        slider.setSliderValue(&slider, val);
+        slider.setSliderValue(&slider, val,
+                pushValue/*true=push Value too*/);
     else
         slider.value = val;
 }
@@ -120,9 +121,26 @@ int Value_setter(const struct QsParameter *p, double *val,
 
     // We just push the latest value.
     if(readCount == queueCount)
-        SetSliderValue((*val)/scale);
+        SetSliderValue((*val)/scale, true);
     return 0;
 }
+
+
+// This is a user telling the slider the value to be displayed.
+//
+// See comments in _run.c:SetSliderValue().
+//
+static
+int Display_setter(const struct QsParameter *p, double *val,
+            uint32_t readCount, uint32_t queueCount,
+            void *userData) {
+
+    // We just push the latest value.
+    if(readCount == queueCount)
+        SetSliderValue((*val)/scale, false);
+    return 0;
+}
+
 
 
 // This is called by a thread not from a thread pool; a GTK callback.
@@ -221,7 +239,7 @@ char *Attributes_config(int argc, const char * const *argv,
 
         val = qsParseDouble(val);
         if(isnormal(val))
-            SetSliderValue(val);
+            SetSliderValue(val, false);
     }
 
     DSPEW("attributes min=%lg clipMin=%lg clipMax=%lg "
@@ -289,6 +307,13 @@ int declare(void) {
         (int (*)(const struct QsParameter *, const void *,
             uint32_t readCount, uint32_t queueCount,
             void *)) Value_setter);
+
+    qsCreateSetter("display",
+        sizeof(double), QsValueType_double, 0/*0 == no initial value*/,
+        (int (*)(const struct QsParameter *, const void *,
+            uint32_t readCount, uint32_t queueCount,
+            void *)) Display_setter);
+
 
     getter = qsCreateGetter("value", sizeof(double),
             QsValueType_double, 0/*0 == no initial value*/);

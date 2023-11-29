@@ -429,7 +429,8 @@ void SliderValueChanged_cb(GtkRange *range, struct Slider *slider) {
 
     //DSPEW("              val=%lg", val);
 
-    qsQueueInterBlockJob(slider->setValue, &val);
+    if(slider->pushValue)
+        qsQueueInterBlockJob(slider->setValue, &val);
 
     if(!slider->isActive && gtk_widget_is_focus(GTK_WIDGET(range))) {
         // The value changed and this widget has focus.  We guess that
@@ -482,13 +483,17 @@ gboolean SliderFocusOutEvent_cb(GtkWidget *widget,
 // and make sure we don't do this (mutex dead lock) in them.
 //
 static
-void SetSliderValue(struct Slider *s, double val) {
+void SetSliderValue(struct Slider *s, double val, bool pushValue) {
 
     DASSERT(s);
+
+    s->pushValue = pushValue;
 
     qsGetGTKContext();
 
     gtk_adjustment_set_value(s->adjustment, val);
+
+    s->pushValue = true;
 
     qsReleaseGTKContext();
 }
@@ -562,6 +567,7 @@ CreateSlider(struct Window *win, struct Slider *s) {
 
     GtkWidget *w = gtk_label_new(s->widget.label);
     s->widget.gtkLabel = w;
+    s->pushValue = true;
 
     gtk_box_pack_start(GTK_BOX(hbox), w, FALSE/*expand*/,
                 FALSE/*fill*/, 2/*padding*/);

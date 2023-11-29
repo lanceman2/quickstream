@@ -146,6 +146,11 @@ struct Slider {
     // shows.
     double value;
 
+    // Do we push the getter value?  We do not if we are just setting the
+    // slider value that is displayed; that's different than moving the
+    // slider with the mouse.
+    bool pushValue;
+
     GtkAdjustment *adjustment; // That the scale is built from.
     GtkScale *scale;
 
@@ -161,7 +166,7 @@ struct Slider {
     //
     // Called from a thread pool worker.
     //
-    void (*setSliderValue)(struct Slider *s, double x);
+    void (*setSliderValue)(struct Slider *s, double x, bool pushValue);
     //
     void (*setSliderRange)(struct Slider *s);
     //

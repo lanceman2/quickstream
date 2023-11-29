@@ -3,22 +3,16 @@
 # This is a generated file
 
 set-block-path ../../misc/test_blocks
-graph g3 2 tp0 /home/lance/git/quickstream/lib/quickstream/blocks/examples/3sliders
+graph g1 2 tp0 /home/lance/git/quickstream/lib/quickstream/blocks/examples/3sliders
 ############################################
 # Create More Thread Pools
 ############################################
 ############################################
 # Assign Blocks to Thread Pools
 ############################################
-threads-add tp0 sliderWithFeedback:slider
-threads-add tp0 sliderWithFeedback:not
-threads-add tp0 sliderWithFeedback:gate
-threads-add tp0 sliderWithFeedback_2:slider
-threads-add tp0 sliderWithFeedback_2:not
-threads-add tp0 sliderWithFeedback_2:gate
-threads-add tp0 sliderWithFeedback_3:slider
-threads-add tp0 sliderWithFeedback_3:not
-threads-add tp0 sliderWithFeedback_3:gate
+threads-add tp0 slider
+threads-add tp0 slider_2
+threads-add tp0 slider_3
 threads-add tp0 f64SettersToGetter
 ############################################
 start
