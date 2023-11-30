@@ -310,7 +310,7 @@ Delete_cb(GtkWidget *w, GdkEvent *e, struct Window *win) {
 // The caller of this function needs the Window::mutex lock.
 //
 static
-void SetButtonValue(struct Button *button, bool val) {
+void SetButtonValue(struct Button *button, bool val, bool doPush) {
 
     DASSERT(button);
     DASSERT(button->widget.win);
@@ -318,14 +318,16 @@ void SetButtonValue(struct Button *button, bool val) {
 DSPEW("value=%d", val);
 
     qsGetGTKContext();
-    gtk_toggle_button_set_active(
-            GTK_TOGGLE_BUTTON(button->button),
-            val?TRUE:FALSE);
 
     if(button->value != val) {
-        button->value = val;
-        qsQueueInterBlockJob(button->setValue, &button->value);
+        button->pushValue = doPush;
+        gtk_toggle_button_set_active(
+            GTK_TOGGLE_BUTTON(button->button),
+            val?TRUE:FALSE);
+DSPEW();
+        button->pushValue = true;
     }
+
     qsReleaseGTKContext();
 }
 
@@ -345,9 +347,11 @@ ButtonToggled_cb(GtkToggleButton *togglebutton,
 
     button->value = button->value?false:true;
 
-    // This copies the value at button->value and then queues the event
-    // to a thread pool worker.
-    qsQueueInterBlockJob(button->setValue, &button->value);
+DSPEW();
+    if(button->pushValue)
+        // This copies the value at button->value and then queues the
+        // event to a thread pool worker.
+        qsQueueInterBlockJob(button->setValue, &button->value);
 
     CHECK(pthread_mutex_unlock(button->widget.win->mutex));
 }
@@ -406,6 +410,7 @@ CreateButton(struct Window *win, struct Button *button) {
 
     GtkWidget *b =
         gtk_toggle_button_new_with_label(button->widget.label);
+    button->pushValue = true;
     g_signal_connect(b, "toggled", G_CALLBACK(ButtonToggled_cb), button);
     gtk_box_pack_start(GTK_BOX(win->vbox), b, FALSE, TRUE, 2);
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(b), button->value);

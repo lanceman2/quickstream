@@ -116,10 +116,16 @@ struct Button {
 
     bool value; // toggle depressed or not.
 
+    // Do we push the getter value?  We do not if we are just setting the
+    // button value that is displayed; that's different than toggling the
+    // button with the mouse.
+    bool pushValue;
+
     GtkWidget *button;
 
     // Lets the block set the GTK3 button value.
-    void (*setButtonValue)(struct Button *button, bool val);
+    void (*setButtonValue)(struct Button *button, bool val,
+            bool pushValue/*to getter*/);
 
     // button.so creates this interface in declare().
     //

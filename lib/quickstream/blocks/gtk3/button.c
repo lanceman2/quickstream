@@ -22,12 +22,13 @@ static struct QsParameter *getter;
 // This Button will be added into the struct Window in the widget list.
 //
 static struct Button button = {
-    .widget.type = Button
+    .widget.type = Button,
+    .value = false
 };
 
 
-// This is the Setter parameter callback that can
-// toggle the button.
+// This is the Setter parameter callback that can toggle the button and
+// push the value to the getter.
 static
 int Value_setter(const struct QsParameter *p, bool *value,
             uint32_t readCount, uint32_t queueCount,
@@ -38,17 +39,39 @@ int Value_setter(const struct QsParameter *p, bool *value,
     if(button.value == *value)
         goto finish;
 
-    button.value = *value;
-
     if(!button.setButtonValue)
         goto finish;
 
-    button.setButtonValue(&button, button.value);
+    button.setButtonValue(&button, *value, true/*to getter*/);
 
 finish:
 
     return 0;
 }
+
+
+// This is the Setter parameter callback that can toggle the button; but
+// it does not push the value to the getter.
+static
+int Display_setter(const struct QsParameter *p, bool *value,
+            uint32_t readCount, uint32_t queueCount,
+            void *userData) {
+
+    DSPEW("*value=%d", *value);
+
+    if(button.value == *value)
+        goto finish;
+
+    if(!button.setButtonValue)
+        goto finish;
+
+    button.setButtonValue(&button, *value, false/*to getter*/);
+
+finish:
+
+    return 0;
+}
+
 
 
 // Feedback from GtkWidget.
@@ -74,6 +97,13 @@ int declare(void) {
         (int (*)(const struct QsParameter *, const void *,
             uint32_t readCount, uint32_t queueCount,
             void *)) Value_setter);
+
+    qsCreateSetter("display",
+        sizeof(button.value), QsValueType_bool, 0/*0=no initial value*/,
+        (int (*)(const struct QsParameter *, const void *,
+            uint32_t readCount, uint32_t queueCount,
+            void *)) Display_setter);
+
 
     getter = qsCreateGetter("value", sizeof(button.value),
             QsValueType_bool, 0/*0=no initial value*/);
