@@ -3,7 +3,7 @@
 # This is a generated file
 
 set-block-path ../../misc/test_blocks
-graph g1 2 tp0 /home/lance/git/quickstream/lib/quickstream/blocks/examples/rtlsdr_GNUradioSink_0
+graph g2 2 tp0 /home/lance/git/quickstream/lib/quickstream/blocks/examples/rtlsdr_GNUradioSink_0
 ############################################
 # Create More Thread Pools
 ############################################
