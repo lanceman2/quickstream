@@ -416,11 +416,15 @@ struct Layout *CreateLayout(struct Window *w, const char *path) {
 
     DASSERT(w);
 
+    // The initial graph halt state and halt toggle button setting is:
+    bool isHalted = false; // You should be able to change this.
+
     // If path is set, this will load the path of a block.  If the block
     // is a super block the super block will be flattened and will become
     // the graph (top block).
     struct QsGraph *g = qsGraph_create(path, 2/*maxThreads*/,
-            0/*graph name*/, 0, QS_GRAPH_HALTED | QS_GRAPH_SAVE_ATTRIBUTES);
+            0/*graph name*/, 0,
+            (isHalted? QS_GRAPH_HALTED:0) | QS_GRAPH_SAVE_ATTRIBUTES);
     if(!g)
         // Fail
         return 0;
@@ -433,7 +437,8 @@ struct Layout *CreateLayout(struct Window *w, const char *path) {
     ASSERT(l, "calloc(1,%zu) failed", sizeof(*l));
     l->window = w;
     l->qsGraph = g;
-    l->isHalted = true;
+    // The initial halt toggle button setting is:
+    l->isHalted = isHalted;
 
     qsGraph_saveConfig(g, true);
 

@@ -492,10 +492,6 @@ void CreateButtonBar(struct Layout *l) {
 
     l->buttonBar = hbox;
 
-    // When we make the layout we set the halt flag in the
-    // qsGraph_create() call.
-    SetHaltButton(l, true);
-
     gtk_widget_show_all(hbox);
 }
 
@@ -510,7 +506,6 @@ void SetHaltButton(struct Layout *l, bool isHalted) {
 
     bool isActive = gtk_toggle_button_get_active(l->haltButton);
     l->isHalted = isHalted;
-
 
     if(isHalted && isActive) return;
     if(!isHalted && !isActive) return;
