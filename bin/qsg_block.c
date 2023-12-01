@@ -114,6 +114,26 @@ void UnselectAllBlocks(struct Layout *l, struct Block *sb) {
 }
 
 
+static inline
+void CheckForValuePopover(struct Terminal *t) {
+
+    if(setValuePopover && t->drawingArea ==
+                    gtk_popover_get_relative_to(
+                            GTK_POPOVER(setValuePopover)))
+        //
+        // Not doing this was a BUG that left setValuePopover set to
+        // an invalid pointer.
+        //
+        // This is the case where the setValuePopover widget is a child of
+        // the terminal drawing area; so when we destroy the drawing area
+        // (with the block stuff) the setValuePopover will get destroyed
+        // too.  We could re-parent the setValuePopover, but then, to what
+        // block and terminal drawing area?; so we'll just let it get
+        // re-made and mark this setValuePopover pointer as needing to be
+        // recreated like so:
+        setValuePopover = 0;
+}
+
 
 static inline void FreePorts(struct Terminal *t) {
 
@@ -159,6 +179,16 @@ static inline void FreePorts(struct Terminal *t) {
     else
         ASSERT(!t->ports);
 #endif
+}
+
+
+static void Destroy_cb(GtkWidget *parent,
+               struct Block *b) {
+
+    CheckForValuePopover(b->terminals + In);
+    CheckForValuePopover(b->terminals + Out);
+    CheckForValuePopover(b->terminals + Set);
+    CheckForValuePopover(b->terminals + Get);
 }
 
 
@@ -374,7 +404,7 @@ Press_cb(GtkWidget *w, GdkEventButton *e, struct Block *b) {
         y_root = e->y_root;
 
         // We will do this when the blocks start to move and
-        // not before:
+        // not before:ShowBlockPopupMenu
         //SetWidgetCursor(b->layout->layout, "grabbing");
 
         return TRUE; // TRUE => eat the event.
@@ -383,7 +413,8 @@ Press_cb(GtkWidget *w, GdkEventButton *e, struct Block *b) {
     if(e->button == 3/*right mouse*/) {
         movingBlocks = 0;
         ShowBlockPopupMenu(b);
-        PopUpBlock(b);
+        // We cannot pop up the block now but
+        // we will after the popup menu is done.
         return TRUE;
     }
 
@@ -563,6 +594,7 @@ void CreateBlock(struct Layout *l,
     g_signal_connect(e, "motion-notify-event", G_CALLBACK(Motion_cb), b);
     g_signal_connect(e, "button-press-event", G_CALLBACK(Press_cb), b);
     g_signal_connect(e, "button-release-event", G_CALLBACK(Release_cb), b);
+    g_signal_connect(e, "destroy", G_CALLBACK(Destroy_cb), b);
 
     GtkWidget *grid = gtk_grid_new();
 

@@ -27,6 +27,8 @@ static void RemoveBlock_cb(GtkWidget *w, gpointer data) {
     DASSERT(block->layout->layout);
 
     gtk_widget_destroy(block->parent);
+
+    block = 0;
 }
 
 
@@ -85,6 +87,18 @@ void AddSeparator(void) {
 }
 
 
+static void Done_cb(GtkWidget *m, gpointer data) {
+
+    DASSERT(m);
+    DASSERT(m == menu);
+
+    if(block) {
+        PopUpBlock(block);
+        block = 0;
+    }
+}
+
+
 static inline
 void CreateBlockPopupMenu(void) {
 
@@ -92,6 +106,7 @@ void CreateBlockPopupMenu(void) {
 
     menu = gtk_menu_new();
     ASSERT(menu);
+    g_signal_connect(menu, "selection-done", G_CALLBACK(Done_cb), 0);
 
     MakeMenuItem("Remove block", RemoveBlock_cb);
     AddSeparator();

@@ -36,7 +36,9 @@ GtkWidget *removeAlias;
 GtkWidget *left, *right, *top, *bottom;
 
 
-static GtkWidget *setValuePopover = 0;
+GtkWidget *setValuePopover = 0;
+// Widgets that will be children of setValuePopover which we need to
+// change before each use of setValuePopover.
 static GtkWidget *setValueLabel = 0;
 static GtkWidget *setValueEntry = 0;
 
@@ -70,7 +72,7 @@ static inline bool GetBool(char c) {
 
 
 static void
-SetValueEntry_cb(GtkWidget *w, gpointer data) {
+SetValueEntry_cb(GtkWidget *entry, gpointer data) {
 
     DASSERT(port);
     DASSERT(port->terminal == terminal);
@@ -79,7 +81,7 @@ SetValueEntry_cb(GtkWidget *w, gpointer data) {
     struct QsParameter *p = (void *) port->qsPort;
     DASSERT(p);
 
-    const char *text = gtk_entry_get_text(GTK_ENTRY(setValueEntry));
+    const char *text = gtk_entry_get_text(GTK_ENTRY(entry));
 
     gtk_popover_popdown(GTK_POPOVER(setValuePopover));
 
@@ -356,9 +358,6 @@ static void SetValue_cb(GtkWidget *w, gpointer data) {
         ASSERT(setValuePopover);
         gtk_widget_set_name(setValuePopover, "port_info");
 
-        DASSERT(setValueEntry == 0);
-        DASSERT(setValueLabel == 0);
-
         GtkWidget *box = gtk_box_new(
                 GTK_ORIENTATION_HORIZONTAL, 10/*spacing*/);
         gtk_container_add(GTK_CONTAINER(setValuePopover), box);
@@ -375,11 +374,13 @@ static void SetValue_cb(GtkWidget *w, gpointer data) {
 
         gtk_widget_show(box);
     } else {
-//DSPEW();
         gtk_popover_set_relative_to(GTK_POPOVER(setValuePopover),
                 port->terminal->drawingArea);
-//DSPEW();
     }
+
+    DASSERT(setValueEntry);
+    DASSERT(setValueLabel);
+
 
     const size_t Len = 80;
     char label[Len];
@@ -422,8 +423,6 @@ static void SetValue_cb(GtkWidget *w, gpointer data) {
     // This seems to position the popup in an okay way:
     gtk_popover_set_pointing_to(GTK_POPOVER(setValuePopover), &rec);
     gtk_popover_popup(GTK_POPOVER(setValuePopover));
-
-    DSPEW();
 }
 
 

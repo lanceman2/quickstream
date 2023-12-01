@@ -335,7 +335,7 @@ struct Block {
 
     // The top GTK3 parent widget for the block.
     //
-    // Happens to be an event_box, so that the grind can receive events.
+    // Happens to be an event_box, so that the grid can receive events.
     GtkWidget *parent;
 
     // The top level gtk widget for a block is a grid.
@@ -535,6 +535,10 @@ extern
 struct Port *fromPort;
 extern
 double fromX, fromY;
+
+
+extern
+GtkWidget *setValuePopover;
 
 
 extern
