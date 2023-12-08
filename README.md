@@ -321,7 +321,8 @@ Web page tutorial?  Maybe I need more blocks first?
 
 [My issue with GNUradio](https://github.com/gnuradio/gnuradio/issues/3702)
 
-Thanks for stopping by. Ha, ha.
+I like coding.  I plan to mix nonlinear dynamics and SDR (software define
+radio).
 
 
 ## Features In quickstream that are not in GNUradio
