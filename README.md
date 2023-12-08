@@ -28,7 +28,7 @@ coding regression.
 ### Stability?
 
 Being currently in alpha, things can change.  If you don't like the
-name of a function in the API, than now it the time to act.  I'm not into
+name of a function in the API, than now is the time to act.  I'm not into
 making a lot of branches, but I encourage debate that makes the code
 better.
 
