@@ -30,39 +30,27 @@
 //  libquickstream.so source is not dependent on quickstreamGUI source
 //
 //
-//
-// Design is all "get and take".
-//
 
 
-
-// GNUradio RANT:  If you compare this idea to GNUradio you'll see that
-// they did not pick a middle ground on this idea; the gnuradio-companion,
-// the GNUradio GUI program, does not even link with
+// GNUradio RANT:  gnuradio-companion does not link with
 // libgnuradio-runtime.so (if it does it's not using it effectively), and
 // the result is that they add an intermediate computer language to store
-// the state of the GNUradio GUI program.  That adds a shit ton complexity
-// to the problem.  It adds a whole new dimension to the problem that
-// correspondingly does not exist in quickstream.  The GNUradio block
-// builder has to write a lot more code.  The management and consistency
-// of use of this "new language" as it is used between
-// libgnuradio-runtime.so, the blocks, and the gnuradio-companion becomes
-// a thing; where in compared to the quickstream framework does not even
-// have the concept.  That is a shit ton of work not in existence in
-// quickstream.  That is, in this lowest order approximation, infinitely
-// times better.  Okay: that is unless the use of the "new language"
-// provides a positive useful function for users at some level.  I argue
-// there is no positive useful function for this "new language", only
-// negative.  Negative, like making users do mundane work to use GNUradio.
-// There is no information in the "new language" files that is not in the
-// blocks, and the constructed programs that use them.  The construct of
-// this "new language" introduces unnecessary and useless protocols.  The
-// existence of this kind of stupid shit infuriates me.  So much so, that
-// I wrote a replacement for GNUradio, at least for the parts of it that I
-// merit as useful to me.
-//
-// Looking at it from the other side: ...Nope, don't see it, it's just bad
-// design.
+// the state of the GNUradio GUI program.  That adds complexity to the
+// problem.  It adds a lot to the problem that correspondingly does not
+// exist in quickstream.  The GNUradio block builder has to write a lot
+// more code.  The management and consistency of use of this "new
+// language" as it is used between libgnuradio-runtime.so, the blocks, and
+// the gnuradio-companion becomes a thing; where in compared to the
+// quickstream framework does not even have the concept.  That is a shit
+// ton of work not in existence in quickstream.  That is, in this lowest
+// order approximation, infinitely times better.  Okay: that is unless the
+// use of the "new language" provides a positive useful function for users
+// at some level.  I argue there is no positive useful function for this
+// "new language", only negative.  Negative, like making users do mundane
+// work to use GNUradio.  There is no information in the "new language"
+// files that is not in the blocks, and the constructed programs that use
+// them.  The construct of this "new language" introduces unnecessary and
+// useless protocols.
 //
 // I'd guess that the introduction of this "new YML based language" came
 // about for two reasons:
@@ -73,20 +61,15 @@
 //     libgnuradio-runtime.so.
 //
 // I see that both of these reasons as not "directly" helping users.  I
-// see the complexity added from this as hindering users.  I grant you,
-// this is the lowest order assessment; but what emerges to the users is
-// addition mundane work to use GNUradio.  Also; the separation that
-// this adds makes many in-the-loop development features impossible.
+// see the complexity added from this as hindering users.  This adds
+// addition mundane work to use GNUradio.  Also; the separation that this
+// adds makes many in-the-loop development features impossible.
 // quickstreamGUI runs with the quickstream run-time library automatically
 // verifying consistency, without introducing protocols that aren't there
 // otherwise.
 //
 // I see no good in that kind of design pattern.
 //
-//
-// All this shit talk is so hard to verify.  It's not like I can talk to
-// anyone about this stuff.  I tried and failed to connect.  So, I rant to
-// myself.  If you don't like it, don't read it.
 //
 // Okay.  Got another point.  Because quickstreamGUI can run the stream
 // graphs in it's process, it (the quickstream package) has a much higher
@@ -98,19 +81,13 @@
 // it edits.
 //
 
-
-
 //
 // I've always had a problem with configuration files.  They always, or at
 // least tend to, evolve into another computer language that is unique to
 // the application that spawned it.  I'd argue that it is best to put off
-// configuration file development to as late as possible in the
-// application development, and it is best not to have it at all.
+// configuration file development to as late as possible in the code
+// development, and it is best not to have it at all.
 //
-//
-//
-// -- Please don't pull words out of context.
-
 
 
 // TODO: get rid of this CPP macro crap.  For now we need it to keep the
