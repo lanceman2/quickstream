@@ -41,9 +41,8 @@
 // more code.  The management and consistency of use of this "new
 // language" as it is used between libgnuradio-runtime.so, the blocks, and
 // the gnuradio-companion becomes a thing; where in compared to the
-// quickstream framework does not even have the concept.  That is a shit
-// ton of work not in existence in quickstream.  That is, in this lowest
-// order approximation, infinitely times better.  Okay: that is unless the
+// quickstream framework does not even have the concept.  That is a
+// ton of work not in existence in quickstream.  Okay: that is unless the
 // use of the "new language" provides a positive useful function for users
 // at some level.  I argue there is no positive useful function for this
 // "new language", only negative.  Negative, like making users do mundane
@@ -67,8 +66,6 @@
 // quickstreamGUI runs with the quickstream run-time library automatically
 // verifying consistency, without introducing protocols that aren't there
 // otherwise.
-//
-// I see no good in that kind of design pattern.
 //
 //
 // Okay.  Got another point.  Because quickstreamGUI can run the stream
