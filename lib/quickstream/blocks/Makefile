@@ -6,6 +6,7 @@ SUBDIRS :=\
  parameter_type_converters\
  rtl-sdr\
  gnuradio-3.10.1\
+ wsServer\
  examples
 
 

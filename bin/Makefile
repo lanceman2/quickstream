@@ -55,6 +55,10 @@ gtk_cells_LDFLAGS :=\
 gtk_cells_CPPFLAGS := $(GTK_CFLAGS)
 
 
+quickstreamGUI_attach_SOURCES :=\
+ quickstreamGUI_attach.c\
+ ../lib/debug.c
+
 quickstreamGUI_SOURCES :=\
  quickstreamGUI.c\
  qsg_window.c\

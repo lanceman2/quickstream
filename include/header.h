@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <signal.h>
 #include <dlfcn.h>
 
 /** \defgroup macros CPP macros
@@ -39,6 +40,28 @@ as we define it from the \c QS_MAJOR, \c QS_MINOR, and \c QS_EDIT.
 */
 #define QUICKSTREAM_VERSION  (QS_STR(QS_MAJOR) "." QS_STR(QS_MINOR) "." QS_STR(QS_EDIT))
 
+
+/** The signal number used to have libquickstream.so catch a signal and
+then run quickstreamGUI; by running quickstreamGUI_attach.
+
+It's like when you attach a debugger to your already running program.  In
+this case the debugger is quickstreamGUI, and the program that invokes it
+is quickstreamGUI_attach which exits after trying to add the
+quickstreamGUI to the already running program.
+
+If the running libquickstream.so program is already running with
+quickstreamGUI than running quickstreamGUI_attach with do nothing.
+
+Note: quickstreamGUI does not control the running of the program like a
+debugger; i.e. it does not use the system call ptrace(2).
+quickstreamGUI_attach just adds the quickstreamGUI code to the running
+program using the system dynamic linker/loader, ld-linux.so, dlopen(3),
+dlsym(3) and like functions.
+
+We need to define this CPP (C preprocessor) macro in one place and that
+place is currently here.
+*/
+#define QS_GUI_CONNECT_SIGNAL  SIGUSR2
 
 
 #define QUICKSTREAM_URL  "Unset"
