@@ -1,0 +1,25 @@
+#!/usr/bin/env quickstream_interpreter
+#
+# This is a generated file
+
+set-block-path ../../misc/test_blocks
+graph g1 2 tp0 /home/lance/git/quickstream/lib/quickstream/misc/test_blocks/fOSDEM2024
+############################################
+# Create More Thread Pools
+############################################
+############################################
+# Assign Blocks to Thread Pools
+############################################
+threads-add tp0 sequenceCheck
+threads-add tp0 sequenceCheck_2
+threads-add tp0 sequenceCheck_3
+threads-add tp0 sequenceCheck_4
+threads-add tp0 sequenceGen
+threads-add tp0 FileOut
+threads-add tp0 button
+threads-add tp0 run
+threads-add tp0 empty
+############################################
+start
+wait-for-stream
+

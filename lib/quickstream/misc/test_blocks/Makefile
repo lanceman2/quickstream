@@ -4,6 +4,33 @@
 
 root := ../../../..
 
+
+##############################
+# BUG FIX: temporary?? (not sure)
+#
+# The problem with wild-card make targets...
+#
+# fOSDEM.so_CFLAGS fixes building fOSDEM.so from fOSDEM.c
+# because it has #include <quickstream.h> in it that
+# was generated from quickstreamGUI.
+#
+# When quickstreamGUI compiles fOSDEM.so from fOSDEM.c is works
+# out fine, but this makefile needs to add this -I option.
+#
+# We could consider add CFLAGS := -I$(root)/include so
+# that all block C source files with "#include <quickstream.h>"
+# dumped in this directory can be built with this make file.
+# But that will pollute the compile commands that do not need
+# this fix.  Pick one line to uncomment.
+#
+# uncomment to add cc option to all binaries built in this directory:
+CFLAGS := -I$(root)/include
+#
+# or uncomment (less intrusive):
+#fOSDEM.so_CFLAGS := -I$(root)/include
+##############################
+
+
 INSTALL_DIR = $(PREFIX)/lib/quickstream/misc/test_blocks
 
 c_plugins := $(sort $(patsubst %.c, %, $(wildcard [a-z]*.c) $(wildcard _[a-z]*.c)) empty)
