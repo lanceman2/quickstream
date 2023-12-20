@@ -27,12 +27,13 @@ static GtkWidget *dirMenu = 0;
 static GtkWidget *loadFlattenedBlock;
 
 
-// The path depends on what treeView selection was made.
-static char *path = 0;
+// The blockPath depends on what treeView selection was made.
+static char *blockPath = 0;
+// The dirPath depends on what treeView selection was made.
+static char *dirPath = 0;
 
 
-static
-GtkEntryBuffer *envBuffer = 0;
+static GtkEntryBuffer *envBuffer = 0;
 
 
 
@@ -166,21 +167,33 @@ static void ShowAllBlocks_cb(GtkWidget *w, gpointer data) {
 }
 
 
+#if 0
+static void OpenTerminal_cb(GtkWidget *w, gpointer data) {
+
+    DASSERT(window);
+    DASSERT(window->treeView);
+ERROR("More code here.");
+
+}
+#endif
+
+
+
 static void Load_cb(GtkWidget *w, gpointer data) {
 
-    DASSERT(path);
-    DSPEW("loading block path=\"%s\"", path);
+    DASSERT(blockPath);
+    DSPEW("loading block blockPath=\"%s\"", blockPath);
     
-    CreateBlock(window->layout, path, 0, -1.0, -1.0, 0, 1);
+    CreateBlock(window->layout, blockPath, 0, -1.0, -1.0, 0, 1);
 }
 
 
 static void LoadGraph_cb(GtkWidget *w, gpointer data) {
 
-    DASSERT(path);
-    DSPEW("loading block path as graph=\"%s\"", path);
+    DASSERT(blockPath);
+    DSPEW("loading block blockPath as graph=\"%s\"", blockPath);
 
-    struct Layout *l = CreateLayout(window, path);
+    struct Layout *l = CreateLayout(window, blockPath);
 
     if(l)
         RecreateTab(window->layout/*old layout*/, l/*new layout*/);
@@ -218,7 +231,6 @@ void CreatePathPopupMenu(void) {
     DASSERT(window->layout);
     DASSERT(window->layout->window == window);
 
-
     MakeMenuItem(pathMenu, "Load Into Graph", Load_cb);
 
     AddSeparator(pathMenu);
@@ -230,23 +242,36 @@ void CreatePathPopupMenu(void) {
 }
 
 
-static inline void FreePath(void) {
+static inline void FreeDirPath(void) {
 
-    if(path) {
+    if(dirPath) {
 #ifdef DEBUG
-        memset(path, 0, strlen(path));
+        memset(dirPath, 0, strlen(dirPath));
 #endif
-        free(path);
-        path = 0;
+        free(dirPath);
+        dirPath = 0;
+    }
+}
+
+static inline void FreeBlockPath(void) {
+
+    if(blockPath) {
+#ifdef DEBUG
+        memset(blockPath, 0, strlen(blockPath));
+#endif
+        free(blockPath);
+        blockPath = 0;
     }
 }
 
 
 static void
+
 CreateDirPopupMenu(void) {
 
     dirMenu = gtk_menu_new();
     ASSERT(dirMenu);
+
     DASSERT(window);
     DASSERT(window->layout);
     DASSERT(window->layout->window == window);
@@ -257,10 +282,22 @@ CreateDirPopupMenu(void) {
             ReloadBlocksEnv_cb);
     AddSeparator(dirMenu);
     MakeMenuItem(dirMenu, "Show All Blocks", ShowAllBlocks_cb);
+#if 0
+    AddSeparator(dirMenu);
+    {
+ERROR("path=\"%s\"", path);
+        char *menuStr = path;
+        menuStr += strlen(path);
+        // TODO: Linux specific '/' directory separator.
+        while(menuStr != path && *menuStr != '/') ++menuStr;
+        menuStr = mprintf("Open Terminal Shell in Directory: %s ...", menuStr);
+        MakeMenuItem(dirMenu, menuStr, OpenTerminal_cb);
+        free(menuStr);
+    }
+#endif
 
     g_object_ref(dirMenu);
 }
-
 
 
 
@@ -274,15 +311,24 @@ ShowDirPopupMenu(void) {
 }
 
 
-// newPath is malloc()ed memory, and we must free() it some time.
-// We get lazy about free()ing it, which is okay in this case.
-void ShowTreeViewPopupMenu(char *newPath, void *userData) {
+// newBlockPath is malloc()ed memory, and we must free() it some time.  We
+// get lazy about free()ing it, which is okay in this case.
+//
+// If newBlockPath is not set this is a click on a directory in the tree
+// thingy, and so dir will be set and dir if set must be free()ed.
+//
+void ShowTreeViewPopupMenu(char *newBlockPath, char *dir) {
 
     DASSERT(window);
     DASSERT(window->layout);
 
-    if(!newPath) {
+
+    if(!newBlockPath) {
+        DASSERT(dir);
+        dirPath = dir;
+ERROR("dir=\"%s\"", dir);
         ShowDirPopupMenu();
+        FreeDirPath();
         return;
     }
 
@@ -290,9 +336,9 @@ void ShowTreeViewPopupMenu(char *newPath, void *userData) {
         CreatePathPopupMenu();
 
     // Lazy free.  Freeing it just before we get a new one to replace it.
-    FreePath();
+    FreeBlockPath();
     //
-    path = newPath;
+    blockPath = newBlockPath;
 
     if(window->layout->blocks)
         gtk_widget_set_sensitive(loadFlattenedBlock, FALSE);
@@ -305,12 +351,8 @@ void ShowTreeViewPopupMenu(char *newPath, void *userData) {
 
 void CleanupTreeViewPopupMenu(void) {
 
-    if(!pathMenu) {
-        DASSERT(!path);
-        return;
-    }
-
-    FreePath();
+    FreeBlockPath();
+    FreeDirPath();
 
     if(pathMenu) {
         g_object_unref(pathMenu);

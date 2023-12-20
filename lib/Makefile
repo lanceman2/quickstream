@@ -1,4 +1,4 @@
-SUBDIRS := builtInBlocks pkgconfig quickstream/misc
+SUBDIRS := pkgconfig quickstream/misc
 
 
 INSTALL_DIR = $(PREFIX)/lib
@@ -38,6 +38,9 @@ libquickstream.so: retain-symbols.txt libquickstream.a
 # -Wl,--retain-symbols-file=retain-symbols.txt we get more symbols that
 # libquickstream.so users can access, which we do not want.
 
+builtInBlocks_c :=\
+ $(addprefix quickstream/blocks/,\
+$(addsuffix .c, $(shell cat builtInBlocks.txt | grep -ve '^\#')))
 
 
 # Why build a library archive (libquickstream.a)?  We need it to make test
@@ -79,12 +82,18 @@ libquickstream.a_SOURCES :=\
  qsGraph_saveSuperBlock.c\
  qsGraph_save.c\
  metaData.c\
- builtInBlocks/listBuiltInBlocks.c\
- $(wildcard builtInBlocks/[A-Z]*.c builtInBlocks/*/[A-Z]*.c)
+ listBuiltInBlocks.c\
+ $(builtInBlocks_c)
+
+libbuiltInBlocks.a_SOURCES := $(builtInBlocks_c)
+
+BUILD_NO_INSTALL := listBuiltInBlocks.c libbuiltInBlocks.a
 
 # compiling c-rbtree.c requires this:
 libquickstream.a_CPPFLAGS := -I.
 
+listBuiltInBlocks.c: listBuiltInBlocks.bash libbuiltInBlocks.a
+	if ! ./listBuiltInBlocks.bash libbuiltInBlocks.a > $@ ; then rm $@ ; fi
 
 
 GTK_CFLAGS := $(shell pkg-config --cflags gtk+-3.0)

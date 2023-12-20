@@ -1,16 +1,16 @@
 # Note: not much happens with the files in this directory if
 # the software package librtlsdr is not found via pkg-config.
+#
+# https://github.com/librtlsdr/librtlsdr
+#
+# apt install librtlsdr-dev
 
 root := ../../../..
 
 
-# DIR should be the relative path to this directory from the top source
-# directory.
-DIR := lib/quickstream/blocks/rtl-sdr
-
 
 RTLSDR_CFLAGS := $(shell pkg-config --cflags librtlsdr)
-ifeq ($(WITHOUT_RTLSDR),) 
+ifeq ($(WITHOUT_GTK3),) 
 RTLSDR_LDFLAGS := $(shell pkg-config --libs librtlsdr)
 endif
 
@@ -19,37 +19,28 @@ endif
 ifeq ($(RTLSDR_LDFLAGS),)
 # --------------------------------------------------------------------
 
-# RTLSDR development libraries were not found so in this case we will
-# not be building anything.
-$(warning "Not building RTL-SDR blocks from $(DIR))
+# wsServer development libraries were not found so in this case we will
+# not be building or installing anything.
+$(warning "Not building wsServer blocks from $(shell pwd)")
 
 # --------------------------------------------------------------------
 else
 # --------------------------------------------------------------------
 
-
-INSTALL_DIR = $(PREFIX)/$(DIR)
-
-
-BUILD_NO_INSTALL := RawToASCII
-
-RawToASCII_SOURCES := RawToASCII.c
-
-_run.so_SOURCES := _run.c
+# Looks like every thing we compile (CPP) needs the RTLSDR_CFLAGS
+CPPFLAGS := $(RTLSDR_CFLAGS)
 
 _run.so_LDFLAGS :=\
  $(RTLSDR_LDFLAGS)\
+ -L../../.. -lqsGtk_init\
  -Wl,-rpath=\$$ORIGIN/../../..
 
-_run.so_CPPFLAGS := $(RTLSDR_CFLAGS)
 
+# We now use the generic block building make rules from:
+include $(root)/lib/quickstream/blocks/common.make
 
-rtlsdr.so_SOURCES := rtlsdr.c
-rtlsdr.so_CFLAGS := $(RTLSDR_CFLAGS)
 
 # --------------------------------------------------------------------
 endif
 # --------------------------------------------------------------------
 
-
-include $(root)/quickbuild.make

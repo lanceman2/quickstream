@@ -1,10 +1,13 @@
-// TODO: Add a non-blocking read version/option that uses the qs
-// epoll_wait(2) thread.
-
-// quickstream (built-in) Block that is a sink that writes to a file using
+// This is the source code to a built-in block the is compiled into
+// lib/libquickstream.so
+//
+// quickstream built-in block that is a sink that writes to a file using
 // system call write(2).  This does not use the standard buffered file
 // stream.  The user may set the file descriptor or a file path to
 // open(2).
+//
+// TODO: Add a non-blocking read version/option that uses the qs
+// epoll_wait(2) thread.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,9 +19,9 @@
 #include <limits.h>
 #include <stdarg.h>
 
-#include "../../debug.h"
-#include "../../mprintf.h"
-#include "../../../include/quickstream.h"
+#include "../../../debug.h"
+#include "../../../mprintf.h"
+#include "../../../../include/quickstream.h"
 
 
 #define DEFAULT_INPUTMAX 2048

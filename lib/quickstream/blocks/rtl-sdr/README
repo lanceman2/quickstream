@@ -154,9 +154,9 @@ with 10000 samples and the file size of 20000 bytes
 $ stat xxx
 
 
-Wrote the program RawToASCII.c to read that xxx file or:
+Wrote the program _RawToASCII.c to read that xxx file or:
 
-rtl_sdr -f 105300000 -s 74000  -n 10000  - | ./RawToASCII > xxx.txt
+rtl_sdr -f 105300000 -s 74000  -n 10000  - | ./_RawToASCII > xxx.txt
 
 
 

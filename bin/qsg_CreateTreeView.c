@@ -5,6 +5,7 @@
 #include "../include/quickstream.h"
 
 #include "../lib/debug.h"
+#include "../lib/mprintf.h"
 #include "../lib/Dictionary.h"
 
 
@@ -97,6 +98,9 @@ char *_GetBlockPath(GtkTreeView *treeView, GtkTreePath *tpath,
     GtkTreeIter parent;
 
     if(!len) {
+        // If this is a leaf node we will start with the
+        // path being the name of the leaf and recurse
+        // to prepend the directory names to it.
         ASSERT(!model);
         ASSERT(!child);
         ASSERT(addLen == 0);
@@ -113,7 +117,7 @@ char *_GetBlockPath(GtkTreeView *treeView, GtkTreePath *tpath,
             return 0;
 
         if(!gtk_tree_model_iter_parent(model, &parent, &it))
-            // This iterator, it, does not have a parent.
+            // WTF: This iterator, it, does not have a parent.
             // We did not make the tree like that.
             return 0;
 
@@ -169,6 +173,80 @@ char *_GetBlockPath(GtkTreeView *treeView, GtkTreePath *tpath,
 char *GetBlockPath(GtkTreeView *treeView, GtkTreePath *tpath) {
 
     return _GetBlockPath(treeView, tpath, 0, 0, 0, 0);
+}
+
+
+static
+char *GetDirPath(GtkTreeView *treeView, GtkTreePath *tpath) {
+
+    DASSERT(treeView);
+    DASSERT(tpath);
+
+    GtkTreeIter itA;
+    GtkTreeIter itB;
+    char *name;
+    GtkTreeIter *parent = &itB;
+    GtkTreeIter *it = &itA;
+    GtkTreeModel *model = gtk_tree_view_get_model(treeView);
+    ASSERT(model);
+    gtk_tree_model_get_iter(model, it, tpath);
+
+    if(!gtk_tree_model_iter_children(model, parent, it)) {
+        // This iterator does not have children, and so is not a
+        // directory node that should exist.  We should not have this
+        // case.  We are in a bad way, but we do not need to quit
+        // running the program ... ???
+        ERROR("GTK3 tree directory does not have children");
+        return 0;
+    }
+
+    // TODO: Linux specific code, directory seperator "/":
+    gtk_tree_model_get(model, it, 0, &name, -1);
+    char *path = strdup(name);
+    ASSERT(path, "strdup() failed");
+
+DSPEW();
+    while(gtk_tree_model_iter_parent(model, parent, it)) {
+DSPEW();
+
+        // Switch the child, "it", to point to the parent memory and the
+        // parent to point to the memory that we will overwrite in the
+        // next gtk_tree_model_iter_parent() call setting parent to the
+        // next parent.
+        if(it == &itA) {
+            DASSERT(parent == &itB);
+            it = &itB;
+            parent = &itA;
+        } else {
+            DASSERT(it == &itB);
+            DASSERT(parent == &itA);
+            it = &itA;
+            parent = &itB;
+        }
+
+        if(gtk_tree_model_iter_parent(model, parent, it))
+            gtk_tree_model_get(model, it, 0, &name, -1);
+        else
+            // if we have no parent for this "it" node than
+            // this is a top level node and
+            // we get the index [2] in the store entry
+            // which is the rest of the path root.
+            // This path could be full or relative depending on
+            // if QS_BLOCK_PATH is used and it is full or relative.
+            gtk_tree_model_get(model, it, 2, &name, -1);
+        char *dir = path;
+        // Concatenate and allocate a longer path.
+        path = mprintf("%s/%s", name, dir);
+        // Free the old shorter path.
+        free(dir);
+        g_free(name);
+    }
+
+DSPEW("path=\"%s\"", path);
+    // Now we have something like path = "root/a/b/c/d"
+    //
+    // path must be free()ed by the caller.
+    return path;
 }
 
 
@@ -238,12 +316,38 @@ TreeViewButtonRelease_cb(GtkTreeView *treeView, GdkEventButton *e,
 
     char *path = GetBlockPath(treeView, 0);
 
-    DSPEW("path=\"%s\"", path);
+    if(path) {
+        DASSERT(path[0]);
+        DSPEW("path=\"%s\"", path);
+        // The memory for path is owned by the ShowTreeViewPopupMenu()
+        // thingy.
+        ShowTreeViewPopupMenu(path, 0);
+        return FALSE; // FALSE => go to the next handler.
+    }
 
+    // At this point we do not have a block path selected in the tree
+    // view.
+    //
+    // TODO: some of this could be mash together with the
+    // GetBlockPath() above.
+    //
+    GtkTreePath *tpath = GetTreePath(treeView);
+    if(!tpath)
+        // This should not have been called if nothing was selected;
+        // but okay, we'll return 0.
+        return FALSE; // FALSE => go to the next handler.
 
-    // The memory for path is owned by the ShowTreeViewPopupMenu()
-    // thingy.
-    ShowTreeViewPopupMenu(path, 0);
+    // We have not selected a leaf node in the tree.  It must be a
+    // directory.
+
+    path = GetDirPath(treeView, tpath);
+
+    // We have not selected a leaf node in the tree.  It must be a
+    // directory.
+    //
+    // ShowTreeViewPopupMenu() will free path if it is set.
+    //
+    ShowTreeViewPopupMenu(0, path);
 
     return FALSE; // FALSE => go to the next handler.
 }

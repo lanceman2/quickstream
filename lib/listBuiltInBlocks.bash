@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# this fails is there are no files [A-Z]*.c in .
+# this fails if there are no files [A-Z]*.c in .
 #set -euo pipefail
 # Because of the $(nm $1 | grep -e ' B ' | awk '{print $3}' | sort -u)
 
@@ -40,20 +40,19 @@ cat << EOF
 #include <stdatomic.h>
 #include <pthread.h>
 
-#include "../../include/quickstream.h"
+#include "../include/quickstream.h"
 
-#include "../debug.h"
-#include "../Dictionary.h"
+#include "debug.h"
+#include "Dictionary.h"
 
-#include "../c-rbtree.h"
-#include "../name.h"
-#include "../threadPool.h"
-#include "../block.h"
-#include "../graph.h"
-#include "../job.h"
+#include "c-rbtree.h"
+#include "name.h"
+#include "threadPool.h"
+#include "block.h"
+#include "graph.h"
+#include "job.h"
 
-#include "./builtInBlocks.h"
-
+#include "builtInBlocks.h"
 
 
 // These are not the correct function prototypes, but the correct
@@ -117,7 +116,7 @@ cat << EOF
 const char * const qsBuiltInBlocks[] = {
 EOF
 
-for i in $(cat listBuiltInBlocksPaths); do
+for i in $(cat builtInBlocks.txt | grep -ve '^\#'); do
     echo "    \"${i}\","
 done
 

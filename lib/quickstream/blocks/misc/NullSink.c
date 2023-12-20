@@ -1,7 +1,9 @@
+// This is the source code to a built-in block the is compiled into
+// lib/libquickstream.so
 
-#include "../../debug.h"
+#include "../../../debug.h"
 
-#include "../../../include/quickstream.h"
+#include "../../../../include/quickstream.h"
 
 
 // This defines built-in block "NullSink"
@@ -10,11 +12,12 @@
 //
 // symbols that are shared outside this file are prefixed with "NullSink_"
 //
-// make anything else that is file scope must be static.
+// Anything else that is file scope must be static.
 
 #define MAX_INPUTS  5
 
 
+// Block callback declare()
 int NullSink_declare(void) {
 
     // This block is a sink with at least one input stream
@@ -24,6 +27,7 @@ int NullSink_declare(void) {
 }
 
 
+// Block callback flow()
 int NullSink_flow(const void * const in[], const size_t inLens[],
         uint32_t numIn,
         void * const out[], const size_t outLens[], uint32_t numOut,

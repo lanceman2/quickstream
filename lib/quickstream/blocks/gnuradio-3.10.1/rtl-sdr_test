@@ -15,6 +15,6 @@ fi
 
 
 rtl_sdr - -S -g 100 -f 105300000 -s 2000000 |\
-./u8tofloat |\
+./_U8tofloat |\
 ./QT_GUI_Sink --samp_rate 2000000
 

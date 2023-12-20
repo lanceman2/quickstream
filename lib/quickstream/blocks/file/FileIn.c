@@ -1,10 +1,13 @@
-// TODO: Add a non-blocking read version/option that uses the qs
-// epoll_wait(2) thread.
-
-// quickstream (built-in) Block that is a source that reads a file using
+// This is the source code to a built-in block the is compiled into
+// lib/libquickstream.so
+//
+// quickstream built-in block that is a source that reads a file using
 // system call read(2).  This does not use the standard buffered file
 // stream.  The user may set the file descriptor or a file path to
 // open(2).
+
+// TODO: Add a non-blocking read version/option that uses the qs
+// epoll_wait(2) thread.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,9 +17,9 @@
 #include <unistd.h>
 #include <string.h>
 
-#include "../../debug.h"
+#include "../../../debug.h"
 
-#include "../../../include/quickstream.h"
+#include "../../../../include/quickstream.h"
 
 #define DEFAULT_OUTPUTMAX 2048
 #define STR(s)   XSTR(s)

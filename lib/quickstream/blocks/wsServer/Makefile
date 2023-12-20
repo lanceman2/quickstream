@@ -1,21 +1,14 @@
 # Note: not much happens with the files in this directory if
-# the wsServer software is not found.
+# wsServer is not found.
 #
-# https://github.com/Theldus/wsServer
-
+# https://github.com/Theldus/wsServer/
 
 root := ../../../..
 
 
-# DIR should be the relative path to this directory from the top source
-# directory.
-DIR := lib/quickstream/blocks/wsServer
-
-
-# WSS stands for wsServer
 
 WSS_CFLAGS := $(shell pkg-config --cflags wsserver)
-ifeq ($(WITHOUT_WSS),) 
+ifeq ($(WITHOUT_GTK3),) 
 WSS_LDFLAGS := $(shell pkg-config --libs wsserver)
 endif
 
@@ -24,31 +17,28 @@ endif
 ifeq ($(WSS_LDFLAGS),)
 # --------------------------------------------------------------------
 
-# WSS development libraries were not found so in this case we will
-# not be building anything.
-$(warning "Not building wsServer block(s) from $(DIR))
+# wsServer development libraries were not found so in this case we will
+# not be building or installing anything.
+$(warning "Not building wsServer blocks from $(shell pwd)")
 
 # --------------------------------------------------------------------
 else
 # --------------------------------------------------------------------
 
+# Looks like every thing we compile (CPP) needs the WSS_CFLAGS
+CPPFLAGS := $(WSS_CFLAGS)
 
-INSTALL_DIR = $(PREFIX)/$(DIR)
-
-
-_run.so_SOURCES := _run.c
 _run.so_LDFLAGS :=\
  $(WSS_LDFLAGS)\
+ -L../../.. -lqsGtk_init\
  -Wl,-rpath=\$$ORIGIN/../../..
-_run.so_CPPFLAGS := $(WSS_CFLAGS)
 
-websocketServer.so_SOURCES := websocketServer.c
-websocketServer.so_CFLAGS := $(WSS_CFLAGS)
+
+# We now use the generic block building make rules from:
+include $(root)/lib/quickstream/blocks/common.make
 
 
 # --------------------------------------------------------------------
 endif
 # --------------------------------------------------------------------
 
-
-include $(root)/quickbuild.make

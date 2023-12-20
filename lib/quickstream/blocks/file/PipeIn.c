@@ -1,9 +1,12 @@
+// This is the source code to a built-in block the is compiled into
+// lib/libquickstream.so
+//
 // TODO: Add a non-blocking read version/option that uses the qs
 // epoll_wait(2) thread.
-
-// quickstream (built-in) Block that launches a program at construct() or
-// start(), then writes a pipe which may be read by the program.
 //
+// quickstream built-in block that launches a program at construct() or
+// start(), then reads a pipe which may be feed by the program.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -14,27 +17,23 @@
 #include <string.h>
 #include <sys/wait.h>
 
-#include "../../debug.h"
-#include "../../parseBool.h"
-#include "../../../include/quickstream.h"
-#include "../../mprintf.h"
+#include "../../../debug.h"
+#include "../../../parseBool.h"
+
+#include "../../../../include/quickstream.h"
 
 
 
-
-
-#define DEFAULT_INPUTMAX 2048
+#define DEFAULT_OUTPUTMAX 2048
 #define STR(s)   XSTR(s)
 #define XSTR(s)  #s
 
 
-
-// We allocate a PipeOut for each PipeOut block loaded.
-struct PipeOut {
+// We allocate a PipeIn for each PipeIn block loaded.
+struct PipeIn {
 
     int fd;          // file descriptor
     char **program;  // program to run
-    char *Path;      // used for PATH at program launch
     pid_t childPid;
     int signalNum;   // signal at stop() or destroy() 0 => none
     bool atStart;    // or at construct()
@@ -43,18 +42,7 @@ struct PipeOut {
 
 
 
-static inline void CleanUpFd(struct PipeOut *p) {
-
-    DASSERT(p);
-
-    if(p->fd > -1) {
-        close(p->fd);
-        p->fd = -1;
-    }
-}
-
-
-static inline void CleanUpProgram(struct PipeOut *p) {
+static void CleanUpProgram(struct PipeIn *p) {
 
     DASSERT(p);
 
@@ -75,32 +63,29 @@ static inline void CleanUpProgram(struct PipeOut *p) {
 }
 
 
-static void inline CleanUpPath(struct PipeOut *p) {
+static void CleanUpFd(struct PipeIn *p) {
 
     DASSERT(p);
 
-    if(p->Path) {
-#ifdef DEBUB
-        memset(p->Path, 0, strlen(p->path));
-#endif
-        free(p->Path);
-        p->Path = 0;
+    if(p->fd > -1) {
+        close(p->fd);
+        p->fd = -1;
     }
 }
 
 
 static
-char *InputMax_config(int argc, const char * const *argv,
-        struct PipeOut *p) {
+char *OutputMax_config(int argc, const char * const *argv,
+        struct PipeIn *p) {
 
     DASSERT(p);
 
-    size_t inputMax = qsParseSizet(DEFAULT_INPUTMAX);
+    size_t outputMax = qsParseSizet(DEFAULT_OUTPUTMAX);
 
-    if(inputMax < 1)
-        inputMax = 1;
-
-    qsSetInputMax(0, inputMax);
+    if(outputMax < 1)
+        outputMax = 1;
+ 
+    qsSetOutputMax(0, outputMax);
 
     return 0;
 }
@@ -108,7 +93,7 @@ char *InputMax_config(int argc, const char * const *argv,
 
 static
 char *SignalNum_config(int argc, const char * const *argv,
-        struct PipeOut *p) {
+        struct PipeIn *p) {
 
     DASSERT(p);
 
@@ -123,7 +108,7 @@ char *SignalNum_config(int argc, const char * const *argv,
 
 static
 char *AtStart_config(int argc, const char * const *argv,
-        struct PipeOut *p) {
+        struct PipeIn *p) {
 
     DASSERT(p);
 
@@ -140,7 +125,7 @@ char *AtStart_config(int argc, const char * const *argv,
 
 static
 char *Program_config(int argc, const char * const *argv,
-        struct PipeOut *p) {
+        struct PipeIn *p) {
 
     DASSERT(p);
 
@@ -174,26 +159,10 @@ WARN("p=%p p->childPid=%u", p, p->childPid);
 }
 
 
-static
-char *RelativePath_config(int argc, const char * const *argv,
-        struct PipeOut *p) {
 
-    if(argc < 2 || !argv[1][0])
-        return QS_CONFIG_FAIL;
+int PipeIn_declare(void) {
 
-    CleanUpPath(p);
-
-    p->Path = strdup(argv[1]);
-    ASSERT(p->Path, "strdup() failed");
-
-    return mprintf("RelativePath %s", p->Path);
-}
-
-
-int PipeOut_declare(void) {
-
-
-    struct PipeOut *p = calloc(1, sizeof(*p));
+    struct PipeIn *p = calloc(1, sizeof(*p));
     ASSERT(p, "calloc(1,%zu) failed", sizeof(*p));
 
     // Defaults
@@ -203,18 +172,19 @@ int PipeOut_declare(void) {
 
     qsSetUserData(p);
 
-    // This block is a sink with a single input stream
-    qsSetNumInputs(1, 1);
+    // This block is a source with a single output stream
+    qsSetNumOutputs(1, 1);
 
-    qsSetInputMax(0/*port*/, DEFAULT_INPUTMAX);
+    qsSetOutputMax(0, DEFAULT_OUTPUTMAX);
 
 
     qsAddConfig(
             (char *(*)(int, const char * const *, void *))
-            InputMax_config, "InputMax",
+            OutputMax_config, "OutputMax",
             "Bytes written per flow() call.",
-            "InputMax BYTES",
-            "InputMax " STR(DEFAULT_INPUTMAX));
+            "OutputMax BYTES",
+            "OutputMax " STR(DEFAULT_OUTPUTMAX));
+
 
     char defaultSigNum[32];
     snprintf(defaultSigNum, 32, "SignalNum %d", SIGTERM);
@@ -240,104 +210,35 @@ int PipeOut_declare(void) {
             "Program COMMAND [ARG1 ...]",
             "Program cat");
 
-    char *helpText = mprintf(
-            "Prepend a directory to the PATH used to launch the program. "
-            "If the directory given is not a full file path, prepend the "
-            "library run directory of libquickstream.so which is "
-            "currently %s.  The current PATH is %s",
-            qsLibDir, getenv("PATH"));
-
-    qsAddConfig(
-            (char *(*)(int, const char * const *, void *))
-            RelativePath_config, "RelativePath", helpText,
-            "RelativePath PATH",
-            "RelativePath ");
-#ifdef DEBUG
-    memset(helpText, 0, strlen(helpText));
-#endif
-    free(helpText);
-
 
     return 0; // success
 }
 
 
-static void SignalCatcher(int sig) {
-
-    INFO("----------------caught signal %d", sig);
-}
-
-
 static inline int
-Start(struct PipeOut *p) {
+Start(struct PipeIn *p) {
 
     DASSERT(p);
     ASSERT(p->program, "Program to run was not set");
     DASSERT(p->childPid == 0);
     DASSERT(p->fd < 0);
 
-    DSPEW("Starting program: %s", p->program[0]);
-
     int fd[2];
     ASSERT(pipe(fd) == 0);
-
-    {
-        struct sigaction act = {
-            .sa_handler = SignalCatcher,
-            .sa_flags = SA_NODEFER
-        };
-        //
-        // I think we have to either catch these or block them.  If we
-        // don't the program will just be terminated do to the signals
-        // default action.  Now if the program receiving the piped data do
-        // not generate these signals, then ya...
-        //
-        // I'll try just catching them, and doing nothing.  We handle the
-        // write() error broken pipe and we get the return status of the
-        // child.
-        CHECK(sigaction(SIGCHLD, &act, 0));
-        CHECK(sigaction(SIGPIPE, &act, 0));
-    }
 
     p->childPid = fork();
     ASSERT(p->childPid >= 0, "fork() failed");
     if(p->childPid) {
         // I'm the parent.
-        p->fd = fd[1];
-        close(fd[0]);
-        DSPEW("Parent process starting child to run "
-                "\"%s\" complete", p->program[0]);
+        p->fd = fd[0];
+        close(fd[1]);
         return 0;
     }
 
     // else I'm the child:
-    close(fd[1]);
-    DASSERT(STDIN_FILENO == 0);
-    ASSERT(dup2(fd[0], STDIN_FILENO) != -1);
-
-    if(p->Path) {
-
-        char *path;
-
-        // TODO: Linux specific code here:
-        char *currentPath = getenv("PATH");
-        if(p->Path[0] != '/') {
-            if(currentPath)
-                path = mprintf("%s/%s:%s", qsLibDir,
-                        p->Path, currentPath);
-            else
-                // WTF no current PATH?  Oh well.
-                path = mprintf("%s/%s", qsLibDir, p->Path);
-        } else {
-            if(currentPath)
-                path = mprintf("%s:%s", currentPath, p->Path);
-            else
-                // WTF no current PATH?  Oh well.
-                path = p->Path;
-        }
-
-        ASSERT(0 == setenv("PATH", path, 1/*overwrite*/));
-    }
+    close(fd[0]);
+    DASSERT(STDOUT_FILENO == 1);
+    ASSERT(dup2(fd[1], STDOUT_FILENO) != -1);
 
     execvp(p->program[0], p->program);
 
@@ -348,7 +249,7 @@ Start(struct PipeOut *p) {
 
 
 static inline int
-Stop(struct PipeOut *p) {
+Stop(struct PipeIn *p) {
 
     DASSERT(p);
     DASSERT(p->program);
@@ -356,9 +257,6 @@ Stop(struct PipeOut *p) {
     DASSERT(p->fd >= 0);
 
     close(p->fd);
-
-    CHECK(sigaction(SIGCHLD, 0, 0));
-    CHECK(sigaction(SIGPIPE, 0, 0));
 
     if(p->signalNum)
         if(kill(p->childPid, p->signalNum))
@@ -382,7 +280,8 @@ Stop(struct PipeOut *p) {
 }
 
 
-int PipeOut_construct(struct PipeOut *p) {
+
+int PipeIn_construct(struct PipeIn *p) {
 
     if(p->program && !p->atStart)
         return Start(p);
@@ -391,8 +290,8 @@ int PipeOut_construct(struct PipeOut *p) {
 }
 
 
-int PipeOut_start(uint32_t numInputs, uint32_t numOutputs,
-        struct PipeOut *p) {
+int PipeIn_start(uint32_t numInputs, uint32_t numOutputs,
+        struct PipeIn *p) {
 
     DASSERT(p);
 
@@ -403,38 +302,37 @@ int PipeOut_start(uint32_t numInputs, uint32_t numOutputs,
 }
 
 
-int PipeOut_flow(const void * const in[], const size_t inLens[],
+int PipeIn_flow(const void * const in[], const size_t inLens[],
         uint32_t numIn,
         void * const out[], const size_t outLens[], uint32_t numOut,
-        struct PipeOut *p) {
+        struct PipeIn *p) {
 
     DASSERT(p->fd >= 0);
 
-    if(!(*inLens))
-        // Got no input.
+    if(!(*outLens))
+        // Got no room to write output to.
         return 0;
 
-    ssize_t ret = write(p->fd, *in, *inLens);
+
+    ssize_t ret = read(p->fd, *out, *outLens);
 
     if(ret <= 0) {
         if(ret < 0)
-            WARN("write(%d,%p,%zu)=%zd failed", p->fd, *in, *inLens, ret);
+            WARN("read(%d,%p,%zu)=%zd failed", p->fd, *out, *outLens, ret);
         else
-            // Returned 0.  What does that mean?
-            INFO("write(%d,%p,%zu) returned 0", p->fd, *in, *inLens);
+            // Returned 0.  End of file, so I guess.
+            INFO("read(%d,%p,%zu) returned 0", p->fd, *out, *outLens);
         return 1; // done for this flow cycle.
     }
 
-    qsAdvanceInput(0, ret);
+    qsAdvanceOutput(0, ret);
 
     return 0; // success
 }
 
 
-int PipeOut_stop(uint32_t numInputs, uint32_t numOutputs,
-        struct PipeOut *p) {
-
-    DSPEW();
+int PipeIn_stop(uint32_t numInputs, uint32_t numOutputs,
+        struct PipeIn *p) {
 
     if(p->program && p->atStart)
         return Stop(p);
@@ -443,7 +341,7 @@ int PipeOut_stop(uint32_t numInputs, uint32_t numOutputs,
 }
 
 
-int PipeOut_destroy(struct PipeOut *p) {
+int PipeIn_destroy(struct PipeIn *p) {
 
     if(p->program && !p->atStart)
         return Stop(p);
@@ -452,14 +350,13 @@ int PipeOut_destroy(struct PipeOut *p) {
 }
 
 
-int PipeOut_undeclare(struct PipeOut *p) {
+int PipeIn_undeclare(struct PipeIn *p) {
 
     DASSERT(p);
     DSPEW();
 
     CleanUpProgram(p);
     CleanUpFd(p);
-    CleanUpPath(p);
 
 #ifdef DEBUG
     memset(p, 0, sizeof(*p));

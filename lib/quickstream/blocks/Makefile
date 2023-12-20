@@ -7,7 +7,9 @@ SUBDIRS :=\
  rtl-sdr\
  gnuradio-3.10.1\
  wsServer\
- examples
+ examples\
+ file\
+ misc
 
 
 INSTALL_DIR = $(PREFIX)/lib/quickstream/blocks

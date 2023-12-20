@@ -22,11 +22,13 @@
 #include <gtk/gtk.h>
 
 #include "../lib/debug.h"
+#include "../lib/mprintf.h"
 #include "../lib/Dictionary.h"
 
 #include "./qsg_treeView.h"
 #include "./quickstreamGUI.h"
 
+// TODO: Linux specific code using '/' directory separator.
 #define DIRCHAR  ('/')
 
 
@@ -43,10 +45,17 @@ GtkWidget *treeViewCreate(void) {
 
     // We can add more columns here:
     GtkTreeStore *store =
-        gtk_tree_store_new(2,/*number of columns*/
-            G_TYPE_STRING/*0 path gets rendered*/,
-            G_TYPE_STRING/*1 tooltip description*/);
-
+        gtk_tree_store_new(
+            3/*number of columns*/,
+            G_TYPE_STRING/* 0 - path gets rendered, it's the directory name
+                          * or block name*/,
+            G_TYPE_STRING/* 1 - tooltip description*/,
+            G_TYPE_STRING/* 2 - path used just for top level node is
+                            qsBlockDir for core blocks and is a top
+                            directory path for blocks that are not core
+                            blocks gotten from QS_BLOCK_PATH environment
+                            variable.*/);
+    /* The 2 index G_TYPE_STRING is not uses except in top level nodes. */
     gtk_tree_view_set_model(GTK_TREE_VIEW(treeView),
             GTK_TREE_MODEL(store));
 
@@ -142,13 +151,13 @@ cleanup:
 // This will close dirfd.
 //
 static
-void AddView(GtkTreeStore *store, const char *path,  const char *name,
+void AddView(GtkTreeStore *store, const char *path,
         int dirfd, GtkTreeIter *parentIt,
         bool (*CheckFile)(int dirfd, const char *path),
         char * (*GetName)(int dirfd, const char *path),
         uint32_t recurseMax) {
 
-    if(!name) name = path;
+    DASSERT(path);
 
     DIR *dir = 0;
     int dirFd = -1;
@@ -197,6 +206,7 @@ void AddView(GtkTreeStore *store, const char *path,  const char *name,
             {
                 int fd = openat(dirFd, ent->d_name, 0);
                 if(fd >= 0) {
+                    DASSERT(ent->d_name[0]);
                     if(CheckDir(fd, CheckFile, recurseMax)) {
 
                         GtkTreeIter iter;
@@ -213,12 +223,12 @@ void AddView(GtkTreeStore *store, const char *path,  const char *name,
                         fd = openat(dirFd, ent->d_name, 0);
                         if(fd >= 0)
                             // Dive.  Dive.
-                            AddView(store, ent->d_name, 0, fd, &iter,
+                            AddView(store, ent->d_name, fd, &iter,
                                     CheckFile, GetName, recurseMax);
                     }
                 }
             }
-                break;
+            break;
         }
         ent = readdir(dir);
     }
@@ -425,9 +435,12 @@ bool treeViewAdd_usingStringArray(
 // iterator at this level.
 //
 bool treeViewAdd(GtkWidget *tree,
-        const char *path,  const char *name, GtkTreeIter *topIter,
+        const char *path,  const char *nodeName, GtkTreeIter *topIter,
         bool (*CheckFile)(int dirfd, const char *path),
         char *(*GetName)(int dirfd, const char *path)) {
+
+    DASSERT(path);
+    DASSERT(path[0]);
 
     int fd = open(path, 0);
     if(fd <= 0) {
@@ -457,20 +470,23 @@ bool treeViewAdd(GtkWidget *tree,
             // Use stack memory for the iterator by default.
             topIter = &sIter;
         // But if the user pasted in a pointer to memory we will use it,
-        // and then the user can use it to add entries at the point in the
-        // tree view.
+        // and then the user can use it to add entries at that iterators
+        // point in the tree view.
 
         gtk_tree_store_append(store, topIter, 0);
         const size_t len = 256;
         char tooltip[len];
         snprintf(tooltip, len, "directory: %s", path);
         gtk_tree_store_set(store, topIter,
-                0, name,
+                0, nodeName,
                 1, tooltip,
+                // We add a path to top level tree nodes.
+                2, path,
                 -1);
 
-        AddView(store, path, name, fd, topIter, CheckFile, GetName,
+        AddView(store, path, fd, topIter, CheckFile, GetName,
                 recurseMax);
+        DSPEW("Added block tree view for top directory=\"%s\"", path);
     }
 
     return ret;

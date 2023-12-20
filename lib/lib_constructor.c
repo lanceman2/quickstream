@@ -21,7 +21,7 @@
 #include "block.h"
 #include "graph.h"
 
-#include "./builtInBlocks/builtInBlocks.h"
+#include "builtInBlocks.h"
 
 
 

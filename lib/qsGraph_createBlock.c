@@ -21,7 +21,7 @@
 #include "LoadDSOFromTmpFile.h"
 #include "stream.h"
 
-#include "./builtInBlocks/builtInBlocks.h"
+#include "builtInBlocks.h"
 
 
 // Finds the function (symbol) name and then the pointer to the function

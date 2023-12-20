@@ -1,0 +1,10 @@
+# These are the built in blocks.  Their source is the directories with
+# the DSO (dynamic shared object) blocks.  The function names of callbacks
+# in the built in blocks are a little different from the DSO blocks.
+
+file/FileIn
+file/FileOut
+file/PipeIn
+file/PipeOut
+misc/NullSink
+
