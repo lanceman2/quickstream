@@ -1,4 +1,4 @@
-// This is the source code to a built-in block the is compiled into
+// This is the source code to a built-in block that is compiled into
 // lib/libquickstream.so
 //
 // TODO: Add a non-blocking read version/option that uses the qs

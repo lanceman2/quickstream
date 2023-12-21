@@ -538,7 +538,7 @@ double PortIndexToPosition(const struct Terminal *t, uint32_t portNum) {
 
 
 extern
-char *GetBlockPath(GtkTreeView *treeView, GtkTreePath *tpath);
+char *GetBlockLoadPath(GtkTreeView *treeView, GtkTreePath *tpath);
 extern
 void CreateTreeView(GtkContainer *sw, struct Window *w);
 extern

@@ -1,4 +1,4 @@
-// This is the source code to a built-in block the is compiled into
+// This is the source code to a built-in block that is compiled into
 // lib/libquickstream.so
 //
 // quickstream built-in block that is a source that reads a file using

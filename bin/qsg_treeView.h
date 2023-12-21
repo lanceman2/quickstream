@@ -20,4 +20,8 @@ void treeViewShow(GtkWidget *tree, const char *header);
 
 
 extern
-void ShowTreeViewPopupMenu(char *newPath, char *dir);
+void ShowTreeViewPopupMenu(GtkTreeView *treeView,
+        char *newPath, char *dir);
+
+extern
+char *GetBlockSourcePath(GtkTreeView *treeView);

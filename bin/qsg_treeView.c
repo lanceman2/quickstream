@@ -486,7 +486,7 @@ bool treeViewAdd(GtkWidget *tree,
 
         AddView(store, path, fd, topIter, CheckFile, GetName,
                 recurseMax);
-        DSPEW("Added block tree view for top directory=\"%s\"", path);
+        DSPEW("Added block tree view for tree top directory=\"%s\"", path);
     }
 
     return ret;

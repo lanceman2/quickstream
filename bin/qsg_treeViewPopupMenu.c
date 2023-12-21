@@ -1,13 +1,16 @@
 #include <stdlib.h>
+#include <unistd.h>
 #include <math.h>
 #include <stdio.h>
 #include <inttypes.h>
 #include <gtk/gtk.h>
 
 #include "../lib/debug.h"
+#include "../lib/mprintf.h"
 #include "../lib/Dictionary.h"
 #include "../include/quickstream.h"
 
+#include "qsg_treeView.h"
 #include "quickstreamGUI.h"
 
 
@@ -16,21 +19,25 @@
 
 // There are two pop up menus in this file:
 //
-// 1. If the user clicked on a file.
+// 1. If the user clicked on a file (block).
 static GtkWidget *pathMenu = 0;
 //
 // 2. If the user clicked on a directory:
 static GtkWidget *dirMenu = 0;
 
 
-// menu item to load a super block as a graph
+// menu item to load a super block as a graph that is in the block menu.
 static GtkWidget *loadFlattenedBlock;
+// menu item to view block source code that is in the directory menu.
+static GtkWidget *viewSource_menu;
 
 
 // The blockPath depends on what treeView selection was made.
 static char *blockPath = 0;
 // The dirPath depends on what treeView selection was made.
 static char *dirPath = 0;
+
+static char *blockSourcePath = 0;
 
 
 static GtkEntryBuffer *envBuffer = 0;
@@ -167,15 +174,44 @@ static void ShowAllBlocks_cb(GtkWidget *w, gpointer data) {
 }
 
 
-#if 0
 static void OpenTerminal_cb(GtkWidget *w, gpointer data) {
 
     DASSERT(window);
     DASSERT(window->treeView);
-ERROR("More code here.");
 
+    pid_t pid = fork();
+
+    if(pid <= -1) {
+        WARN("fork() failed");
+        return;
+    }
+    if(pid != 0)
+        // I am the parent.
+        return;
+
+    // I am the child.
+
+    char *run = getenv("QS_TERMINAL");
+
+    if(0 != chdir(dirPath)) {
+        WARN("execlp() failed");
+        exit(1);
+    }
+
+    if(!run)
+        run = "gnome-terminal";
+
+    // Note: there is no reason to free run because we will call
+    // execlp(3).
+
+    // TODO: add an option to change the shell or remove it all together
+    // and run the program without a shell to parse the command.
+    DSPEW("using bash running: \"%s\" in %s", run, getcwd(0, 0));
+    execlp("bash", "/bin/bash", "-c", run, NULL);
+
+    WARN("execlp() failed");
+    exit(1);
 }
-#endif
 
 
 
@@ -198,6 +234,44 @@ static void LoadGraph_cb(GtkWidget *w, gpointer data) {
     if(l)
         RecreateTab(window->layout/*old layout*/, l/*new layout*/);
 }
+
+
+static void ViewSource_cb(GtkWidget *w, gpointer data) {
+
+    DASSERT(blockSourcePath);
+    DSPEW("Editing block source=\"%s\"", blockSourcePath);
+
+    pid_t pid = fork();
+
+    if(pid <= -1) {
+        WARN("fork() failed");
+        return;
+    }
+    if(pid != 0)
+        // I am the parent.
+        return;
+
+    // I am the child.
+
+    char *run = getenv("QS_EDITOR");
+
+    if(!run)
+        run = "gvim";
+
+    run = mprintf("%s %s", run, blockSourcePath);
+
+    // Note: there is no reason to free run because we will call
+    // execlp(3).
+
+    // TODO: add an option to change the shell or remove it all together
+    // and run the program without a shell to parse the command.
+    DSPEW("using bash running: \"%s\" in %s", run, getcwd(0, 0));
+    execlp("bash", "/bin/bash", "-c", run, NULL);
+
+    WARN("execlp() failed");
+    exit(1);
+}
+
 
 
 static inline
@@ -234,9 +308,13 @@ void CreatePathPopupMenu(void) {
     MakeMenuItem(pathMenu, "Load Into Graph", Load_cb);
 
     AddSeparator(pathMenu);
-
     loadFlattenedBlock = MakeMenuItem(pathMenu,
             "Load As Graph", LoadGraph_cb);
+
+    AddSeparator(pathMenu);
+    viewSource_menu =
+        MakeMenuItem(pathMenu,
+                "View Block Source in Editor ...", ViewSource_cb);
 
     g_object_ref(pathMenu);
 }
@@ -264,10 +342,20 @@ static inline void FreeBlockPath(void) {
     }
 }
 
+static inline void FreeBlockSourcePath(void) {
 
-static void
+    if(blockSourcePath) {
+#ifdef DEBUG
+        memset(blockSourcePath, 0, strlen(blockSourcePath));
+#endif
+        free(blockSourcePath);
+        blockSourcePath = 0;
+    }
+}
 
-CreateDirPopupMenu(void) {
+
+
+static void CreateDirPopupMenu(void) {
 
     dirMenu = gtk_menu_new();
     ASSERT(dirMenu);
@@ -282,30 +370,24 @@ CreateDirPopupMenu(void) {
             ReloadBlocksEnv_cb);
     AddSeparator(dirMenu);
     MakeMenuItem(dirMenu, "Show All Blocks", ShowAllBlocks_cb);
-#if 0
     AddSeparator(dirMenu);
-    {
-ERROR("path=\"%s\"", path);
-        char *menuStr = path;
-        menuStr += strlen(path);
-        // TODO: Linux specific '/' directory separator.
-        while(menuStr != path && *menuStr != '/') ++menuStr;
-        menuStr = mprintf("Open Terminal Shell in Directory: %s ...", menuStr);
-        MakeMenuItem(dirMenu, menuStr, OpenTerminal_cb);
-        free(menuStr);
-    }
-#endif
+    MakeMenuItem(dirMenu, "Open a Terminal in this Directory ...",
+            OpenTerminal_cb);
 
     g_object_ref(dirMenu);
 }
 
 
 
-static inline void
-ShowDirPopupMenu(void) {
+static inline void ShowDirPopupMenu(GtkTreeView *treeView) {
+
+    DASSERT(dirPath);
+    DASSERT(dirPath[0]);
+    DASSERT(treeView);
 
     if(!dirMenu)
         CreateDirPopupMenu();
+    DASSERT(dirMenu);
 
     gtk_menu_popup_at_pointer(GTK_MENU(dirMenu), 0);
 }
@@ -315,35 +397,47 @@ ShowDirPopupMenu(void) {
 // get lazy about free()ing it, which is okay in this case.
 //
 // If newBlockPath is not set this is a click on a directory in the tree
-// thingy, and so dir will be set and dir if set must be free()ed.
+// thingy, and so dir will be set.  If dir is set is must be free()ed.
 //
-void ShowTreeViewPopupMenu(char *newBlockPath, char *dir) {
+void ShowTreeViewPopupMenu(GtkTreeView *treeView,
+        char *newBlockPath, char *dir) {
+
+    DASSERT(treeView);
+    DASSERT(newBlockPath || dir);
+    DASSERT(!newBlockPath || !dir);
 
     DASSERT(window);
     DASSERT(window->layout);
+
+    // Lazy clean-up of old values:
+    FreeBlockPath();
+    FreeBlockSourcePath();
+    FreeDirPath();
 
 
     if(!newBlockPath) {
         DASSERT(dir);
         dirPath = dir;
-ERROR("dir=\"%s\"", dir);
-        ShowDirPopupMenu();
-        FreeDirPath();
+        ShowDirPopupMenu(treeView);
         return;
     }
 
     if(!pathMenu)
         CreatePathPopupMenu();
 
-    // Lazy free.  Freeing it just before we get a new one to replace it.
-    FreeBlockPath();
-    //
     blockPath = newBlockPath;
 
     if(window->layout->blocks)
         gtk_widget_set_sensitive(loadFlattenedBlock, FALSE);
     else
         gtk_widget_set_sensitive(loadFlattenedBlock, TRUE);
+
+    blockSourcePath = GetBlockSourcePath(treeView);
+
+    if(blockSourcePath)
+        gtk_widget_set_sensitive(viewSource_menu, TRUE);
+    else
+        gtk_widget_set_sensitive(viewSource_menu, FALSE);
 
     gtk_menu_popup_at_pointer(GTK_MENU(pathMenu), 0);
 }
@@ -352,6 +446,7 @@ ERROR("dir=\"%s\"", dir);
 void CleanupTreeViewPopupMenu(void) {
 
     FreeBlockPath();
+    FreeBlockSourcePath();
     FreeDirPath();
 
     if(pathMenu) {

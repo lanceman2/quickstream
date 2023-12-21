@@ -210,7 +210,7 @@ Press_cb(GtkWidget *layout, GdkEventButton *e, struct Layout *l) {
         DASSERT(l == l->window->layout);
         DASSERT(l->window->treeView);
 
-        char *path = GetBlockPath(l->window->treeView, 0);
+        char *path = GetBlockLoadPath(l->window->treeView, 0);
 
         if(!path)
             // A block file is not selected.  It could be a directory is
