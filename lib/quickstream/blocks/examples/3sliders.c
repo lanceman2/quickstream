@@ -19,8 +19,8 @@ struct QsBlockOptions options = { .type = QsBlockType_super };
 ///////////////////////////////////////////////////////////////////
 const char *QS_quickstreamGUI =
     "ZjY0U2V0dGVyc1RvR2V0dGVyAHNsaWRlcl8zAHNsaWRlcl8yAHNsaWRlcgAAAAAA"
-    "AAAAAAAAAN6gQAAAAAAAeJpA5AAAAAAAAAAAAAAAAJyiQAAAAAAABJ5A5AAAAAAA"
-    "AAAAAAAAABygQAAAAAAAxJ1A5AAAAAAAAAAAAAAAAIibQAAAAAAAWJ1A5AAAAAAA"
+    "AAAAAAAAAHCfQAAAAAAASJpA5AAAAAAAAAAAAAAAAJqhQAAAAAAAUJpAtAAAAAAA"
+    "AAAAAAAAADyZQAAAAAAAJJpAtAAAAAAAAAAAAAAAAFicQAAAAAAANJpAtAAAAAAA"
     "AAA=";
 
 // A null terminated array of all metaData symbol suffixes above:

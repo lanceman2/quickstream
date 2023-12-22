@@ -284,7 +284,7 @@ struct QsSimpleBlock {
 
 
     // If we have any stream inputs and/or outputs "streamJob" is
-    // allocated.
+    // allocated otherwise it is 0.
     //
     // This may seem a little redundant given we have pointers to all jobs
     // in the jobsBlock part of this structure.  But, it is needed since

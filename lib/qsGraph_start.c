@@ -24,6 +24,42 @@
 
 
 
+// We had a problem that the stream would start when there where no blocks
+// with connected stream ports.  Now we call this from qsGraph_start() to
+// check.
+static inline
+bool CheckForConnectedStreams(struct QsBlock *b) {
+
+    if(b->type & QS_TYPE_PARENT) {
+        // This could be a super block or the top block graph.
+        struct QsParentBlock *p = (void *) b;
+        // We reuse variable b.  No reason not to.
+        // It does not get used after this for loop.
+        for(b = p->firstChild; b; b = b->nextSibling)
+            if(CheckForConnectedStreams(b))
+                return true;
+    } else if(b->type == QsBlockType_simple &&
+        ((struct QsSimpleBlock *) b)->streamJob) {
+        struct QsStreamJob *j = ((struct QsSimpleBlock *) b)->streamJob;
+        DASSERT((j->maxOutputs && j->outputs) ||
+                (!j->maxOutputs && !j->outputs));
+        for(int i = j->maxOutputs-1; i != -1; --i) {
+            // Note: we only check for a connection to a stream output.
+            // If there is a connection to a stream output than there must
+            // be a connection to a stream input.
+            if(j->outputs[i].inputs) {
+                DASSERT(j->outputs[i].numInputs);
+                // We have a connection to output port i.
+                // We just needed to find one, so we are done.
+                return true;
+            }
+        }
+    }
+    // No connection found in this block, b.
+    return false;
+}
+
+
 // Halt just the job blocks with a stream job.
 //
 uint32_t HaltStreamBlocks(struct QsBlock *b) {
@@ -658,7 +694,8 @@ int qsGraph_start(struct QsGraph *g) {
 
     CHECK(pthread_mutex_lock(&g->mutex));
 
-    if(!g->parentBlock.firstChild) {
+    if(!g->parentBlock.firstChild ||
+            !CheckForConnectedStreams((struct QsBlock *)g)) {
         // There's nothing to start.
         ret = 1;
         goto finish2;

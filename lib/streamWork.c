@@ -421,7 +421,8 @@ void CheckStreamFinished(struct QsGraph *g) {
 
     CHECK(pthread_mutex_lock(&g->cqMutex));
 
-    DSPEW("Graph \"%s\" stream finished running, no stream jobs",
+    DSPEW("Graph \"%s\" stream finished running,"
+            " no stream jobs left to run",
             g->name);
 
     if(g->waiting)
