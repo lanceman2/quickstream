@@ -239,7 +239,8 @@ really is impossible to make this fool proof given how things can vary.
 ~~~
 sudo apt install \
 gcc make graphviz imagemagick doxygen \
-libgtk-3-dev librtlsdr-dev gnuradio-dev
+libgtk-3-dev librtlsdr-dev gnuradio-dev \
+vim-gtk3 gnome-terminal
 ~~~
 
 
