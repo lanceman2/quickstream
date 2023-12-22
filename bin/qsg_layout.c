@@ -544,8 +544,6 @@ struct Layout *CreateLayout(struct Window *w, const char *path) {
     ASSERT(g_object_get_data(G_OBJECT(overlay), "Layout") == 0);
     // When the overlay is destroyed DestroyLayout_cb() is called to clean
     // up the quickstream graph that is being edited in the layout.
-    // "overlay" is the widget that will be the of the notebook page
-    // widget.
     g_object_set_data_full(G_OBJECT(overlay), "Layout", (void *) l,
             (void (*)(void *)) DestroyLayout_cb);
     ASSERT(g_object_get_data(G_OBJECT(overlay), "Layout") == l);

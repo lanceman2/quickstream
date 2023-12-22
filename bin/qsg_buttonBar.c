@@ -463,6 +463,28 @@ void Destroy(GtkWidget *object, struct Layout *l) {
 }
 
 
+// BUG (TODO): The button bar button tooltips will not display.  May be
+// something to do with the button bar being in a GTK overlay.  Maybe
+// we'll figure out how to make it work someday; so I leave this unused
+// code here for the future if GTK3 gets fixed.  It's most likely GTK3
+// developers will just say: "We don't support that."  It's more likely
+// am just a dumb-ass.
+#if 0
+static inline void
+SetTooltip(GtkWidget *w, const char *text) {
+    gtk_widget_set_has_tooltip(w, TRUE);
+    gtk_widget_set_tooltip_text(w, text);
+    //gtk_widget_set_has_tooltip(w, TRUE);
+}
+#else
+// Here's a way to leave all those TEXT strings out of the compiled
+// binary, and not have the compiler complain about W being an unused
+// variable; all while leaving the code in there that should have
+// worked.
+#  define SetTooltip(W,TEXT) ASSERT(W)
+#endif
+
+
 static
 void CreateButtonBar(struct Layout *l) {
 
@@ -480,15 +502,22 @@ void CreateButtonBar(struct Layout *l) {
     gtk_widget_set_valign(hbox, GTK_ALIGN_START);
 
     l->haltButton = AddCheckButton(l, GTK_BOX(hbox), "_Halt", Halt_cb);
+    SetTooltip(GTK_WIDGET(l->haltButton),
+            "(un)halt all the thread pools");
 
     l->runButton = AddCheckButton(l, GTK_BOX(hbox), "_Run", Run_cb);
+    SetTooltip(GTK_WIDGET(l->runButton), "run (or stop) the stream");
 
-    AddButton(l, GTK_BOX(hbox), "_Save As ...", SaveAs_cb);
+    GtkWidget *b = AddButton(l, GTK_BOX(hbox), "_Save As ...", SaveAs_cb);
+    SetTooltip(b, "save graph as a super block to selected files");
  
     l->saveButton = AddButton(l, GTK_BOX(hbox), "_Save", Save_cb);
     gtk_widget_set_sensitive(l->saveButton, FALSE);
-    
-    AddButton(l, GTK_BOX(hbox), "Hi_de", Hide_cb);
+    SetTooltip(l->saveButton,
+            "save graph as a super block to the same files");
+
+    b = AddButton(l, GTK_BOX(hbox), "Hi_de", Hide_cb);
+    SetTooltip(b, "hide this button-bar");
 
     l->buttonBar = hbox;
 
