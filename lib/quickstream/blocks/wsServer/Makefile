@@ -6,9 +6,8 @@
 root := ../../../..
 
 
-
 WSS_CFLAGS := $(shell pkg-config --cflags wsserver)
-ifeq ($(WITHOUT_GTK3),) 
+ifeq ($(WITHOUT_WSS),) 
 WSS_LDFLAGS := $(shell pkg-config --libs wsserver)
 endif
 
@@ -20,6 +19,9 @@ ifeq ($(WSS_LDFLAGS),)
 # wsServer development libraries were not found so in this case we will
 # not be building or installing anything.
 $(warning "Not building wsServer blocks from $(shell pwd)")
+
+# We still need the generic make targets:
+include $(root)/quickbuild.make
 
 # --------------------------------------------------------------------
 else

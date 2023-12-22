@@ -19,6 +19,9 @@ ifeq ($(GTK_LDFLAGS),)
 # not be building or installing anything.
 $(warning "Not building GTK3 blocks from $(shell pwd))
 
+# We still need the generic make targets:
+include $(root)/quickbuild.make
+
 # --------------------------------------------------------------------
 else
 # --------------------------------------------------------------------
