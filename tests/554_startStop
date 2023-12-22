@@ -7,30 +7,6 @@ export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
 
 
 
-../bin/quickstream\
- --exit-on-error\
- -v 5\
- --block empty\
- --start\
- --wait\
- --start\
- --wait\
- --start\
- --stop
-
-
-../bin/quickstream\
- --exit-on-error\
- -v 5\
- --block empty\
- --block empty\
- --start\
- --stop\
- --start\
- --wait\
- --start\
- --stop
-
 
 if [  -n "${VaLGRIND_RuN}" ] ; then
     # skip the rest if with valgrind

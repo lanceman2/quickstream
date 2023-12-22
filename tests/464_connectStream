@@ -77,17 +77,6 @@ if ../bin/quickstream\
 fi
 
 
-# Graph has no stream ports connected,
-# but we let it try to run the stream
-../bin/quickstream\
- --exit-on-error\
- -v 5\
- --block sequenceCheck b0\
- --block sequenceCheck b1\
- --start\
- --wait
-
-
 # unsetting exit-on-error
 #
 ../bin/quickstream\
@@ -101,3 +90,18 @@ fi
  --connect b1 output 0 b0 input 0\
  --exit-on-error False\
  --connect b1 output 1 b0 input 1
+
+
+# Graph has no stream ports connected,
+# but we let it try to run the stream
+if ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block sequenceCheck b0\
+ --block sequenceCheck b1\
+ --start\
+ --wait ; then
+    exit 1
+fi
+
+

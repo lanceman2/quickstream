@@ -7,23 +7,25 @@ export QS_BLOCK_PATH=../lib/quickstream/misc/test_blocks
 
 
 # run a graph with just an empty block
-#
-# It should just pass through the start without doing anything.
-../bin/quickstream\
+if ../bin/quickstream\
  --exit-on-error\
  -v 5\
  --block empty b0\
  --start\
- --wait
+ --wait ; then
+    exit 1
+fi
 
 
-../bin/quickstream\
+if ../bin/quickstream\
  --exit-on-error\
  -v 5\
  --block empty\
  --block empty\
  --start\
- --wait
+ --wait ; then
+    exit 1
+fi
 
 
 ../bin/quickstream\
