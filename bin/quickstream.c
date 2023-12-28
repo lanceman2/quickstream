@@ -100,7 +100,9 @@ int main(int argc, const char * const *argv) {
     qsSetSpewLevel(spewLevel);
 
     // Hang the program for debugging, if we segfault.
-    ASSERT(SIG_ERR != signal(SIGSEGV, gdb_catcher));
+    ASSERT(signal(SIGSEGV, gdb_catcher) != SIG_ERR);
+    ASSERT(signal(SIGABRT, gdb_catcher) != SIG_ERR);
+
 
     int i = 1;
     int numArgs; // dummy

@@ -34,6 +34,8 @@ int main(int argc, char *argv[]) {
     ASSERT(signal(SIGSEGV, Catcher) != SIG_ERR);
     ASSERT(signal(SIGABRT, Catcher) != SIG_ERR);
 
+    // TODO: Add --help support.
+
     // qsGtk_init() is a gtk_init() wrapper that helps us use the pthreads
     // API and not the glib gthread stuff.
     //
@@ -44,7 +46,10 @@ int main(int argc, char *argv[]) {
     // Make one top level window to start with.
     //
     // We can make more as it runs.
-    CreateWindow(0);
+    if(argc < 2 || !argv[1][0])
+        CreateWindow(0);
+    else
+        CreateWindow(argv[1]);
 
     gtk_main();
 

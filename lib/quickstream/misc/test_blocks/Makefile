@@ -4,7 +4,7 @@
 
 root := ../../../..
 
-SUBDIRS := subDir_test
+SUBDIRS := subDir_test qs_examples
 
 ##############################
 # BUG FIX: temporary?? (not sure)

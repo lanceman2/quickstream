@@ -1,3 +1,6 @@
+#define _GNU_SOURCE
+#include <libgen.h>
+#include <sys/wait.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
@@ -6,6 +9,7 @@
 #include <gtk/gtk.h>
 
 #include "../lib/debug.h"
+#include "../lib/FindFullPath.h"
 #include "../lib/mprintf.h"
 #include "../lib/Dictionary.h"
 #include "../include/quickstream.h"
@@ -31,6 +35,9 @@ static GtkWidget *loadFlattenedBlock;
 // menu item to view block source code that is in the directory menu.
 static GtkWidget *viewSource_menu;
 
+static GtkWidget *viewExample_menu;
+
+
 
 // The blockPath depends on what treeView selection was made.
 static char *blockPath = 0;
@@ -38,6 +45,8 @@ static char *blockPath = 0;
 static char *dirPath = 0;
 
 static char *blockSourcePath = 0;
+
+static char *examplePath = 0;
 
 
 static GtkEntryBuffer *envBuffer = 0;
@@ -273,6 +282,82 @@ static void ViewSource_cb(GtkWidget *w, gpointer data) {
 }
 
 
+static void ViewExample_cb(GtkWidget *w, gpointer data) {
+
+    DASSERT(blockSourcePath);
+    DASSERT(examplePath);
+    DSPEW("Viewing ===> \"%s\"", examplePath);
+
+    // We'll need the parent (or grand-parent) PID in the child processes.
+    pid_t ppid = getpid();
+
+    // We wish to not make zombie processes and not wait for children, and
+    // so we fork() twice and so on ...:
+
+    pid_t pid = fork();
+
+    if(pid <= -1) {
+        WARN("fork() failed");
+        DASSERT(0);
+        return;
+    }
+    if(pid) {
+        // I am the parent.
+        int status = -1;
+        ASSERT(pid == waitpid(pid, &status, 0));
+        DASSERT(WEXITSTATUS(status) == 16);
+        INFO("waitpid() got child status of %d", WEXITSTATUS(status));
+        return;
+    }
+
+    // I'm the child.
+
+    pid = fork();
+
+    if(pid <= -1) {
+        WARN("fork() failed");
+        DASSERT(0);
+        return;
+    }
+
+    if(pid) {
+        // I am the second parent.
+        //
+        // Remove zombie children like by calling signal(SIGCHLD, SIG_IGN)
+        // which we could not do after the first fork() because calling
+        // signal(SIGCHLD, SIG_IGN) in that process broke other things.
+        // And since this is a parent if this exits there will be no
+        // zombie from its' child if this parent exits soon.  No need to
+        // do this:
+        //ASSERT(signal(SIGCHLD, SIG_IGN) != SIG_ERR);
+
+        // It's important to call _exit(0) and not exit(0) which does too
+        // many things that we do not want.
+        _exit(16);
+    }
+
+    // I am the child that will launch the program of interest.
+
+    // TODO: Linux specific use of the /proc/ file system
+    // to find the this program that we are running.
+    //
+    // Can this be any easier?  I think not.  Just run
+    // "/proc/PPID/exe".
+
+    char *run = mprintf("/proc/%u/exe", ppid);
+
+    // Note: there is no reason to free run because we will call
+    // execlp(3).
+
+    DSPEW("Running: \"%s %s\" in %s", run, examplePath, getcwd(0, 0));
+    execlp(run, "quickstreamGUI", examplePath, NULL);
+
+    WARN("execlp() failed");
+    exit(33);
+}
+
+
+
 
 static inline
 GtkWidget *MakeMenuItem(GtkWidget *menu, const char *text,
@@ -314,7 +399,12 @@ void CreatePathPopupMenu(void) {
     AddSeparator(pathMenu);
     viewSource_menu =
         MakeMenuItem(pathMenu,
-                "View Block Source in Editor ...", ViewSource_cb);
+                "View Source in Text Editor ...", ViewSource_cb);
+    viewExample_menu =
+        MakeMenuItem(pathMenu,
+                "View Graph Example in Editor ...", ViewExample_cb);
+
+
 
     g_object_ref(pathMenu);
 }
@@ -350,6 +440,17 @@ static inline void FreeBlockSourcePath(void) {
 #endif
         free(blockSourcePath);
         blockSourcePath = 0;
+    }
+}
+
+static inline void FreeExamplePath(void) {
+
+    if(examplePath) {
+#ifdef DEBUG
+        memset(examplePath, 0, strlen(examplePath));
+#endif
+        free(examplePath);
+        examplePath = 0;
     }
 }
 
@@ -413,6 +514,7 @@ void ShowTreeViewPopupMenu(GtkTreeView *treeView,
     FreeBlockPath();
     FreeBlockSourcePath();
     FreeDirPath();
+    FreeExamplePath();
 
 
     if(!newBlockPath) {
@@ -427,6 +529,50 @@ void ShowTreeViewPopupMenu(GtkTreeView *treeView,
 
     blockPath = newBlockPath;
 
+    if(blockPath) {
+        // TODO: Linux specific code: ".so" library suffix.
+        // TODO: Linux specific code: "/" directory string.
+        //
+        // Strip off ".so"
+        size_t l = strlen(blockPath);
+        char *p = 0;
+        if(l > 3 && strcmp(blockPath + l - 3, ".so") == 0) {
+            p = malloc(l - 2);
+            ASSERT(p, " strdup() failed");
+            strncpy(p, blockPath, l - 3);
+            p[l - 3] = '\0';
+        } else {
+            p = strdup(blockPath);
+            ASSERT(p, " strdup() failed");
+        }
+        examplePath = mprintf("%s/qs_examples/%s.so",
+                dirname(p), basename(p));
+
+        // We try two different functions to see if the example block
+        // exists.  realpath(3) and FindFullPath() from libquickstream.so.
+        //
+        // The returned value from realpath() must be free()ed, if it was
+        // set.
+        char *rp = realpath(examplePath, 0);
+
+        if(!rp)
+            // Function used to find/load blocks in libquickstream.so.
+            //
+            // The returned value from FindFullpath() must be free()ed,
+            // if it was set.
+            rp = FindFullPath(examplePath, qsBlockDir/*prefix*/, ".so",
+                    getenv("QS_BLOCK_PATH"));
+
+        // So much stupid dummy string memory:
+        free(p);
+        free(examplePath);
+
+        // If set rp is it:
+        examplePath = rp;
+        DSPEW("examplePath=\"%s\"", examplePath);
+        // If set examplePath will get free()ed later.
+    }
+
     if(window->layout->blocks)
         gtk_widget_set_sensitive(loadFlattenedBlock, FALSE);
     else
@@ -439,6 +585,12 @@ void ShowTreeViewPopupMenu(GtkTreeView *treeView,
     else
         gtk_widget_set_sensitive(viewSource_menu, FALSE);
 
+    if(examplePath)
+        gtk_widget_set_sensitive(viewExample_menu, TRUE);
+    else
+        gtk_widget_set_sensitive(viewExample_menu, FALSE);
+
+
     gtk_menu_popup_at_pointer(GTK_MENU(pathMenu), 0);
 }
 
@@ -448,6 +600,7 @@ void CleanupTreeViewPopupMenu(void) {
     FreeBlockPath();
     FreeBlockSourcePath();
     FreeDirPath();
+    FreeExamplePath();
 
     if(pathMenu) {
         g_object_unref(pathMenu);
