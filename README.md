@@ -347,6 +347,7 @@ radio).
   buffers are all "pass-through" ring buffers but some have
   zero pass-through ports (non-pass-through case).  The block's
   code must decide they want to be a "pass-through" stream block.
+  Looks like GNU radio 4.0 will have "pass-through" streams.
 
 - quickstream uses a similar stream ring buffer mapping to GNUradio but it
   uses a completely different flow pointer advancement model which gives
@@ -358,9 +359,6 @@ radio).
 
 - quickstream can have loops in the stream flow.  A block may directly
   connect from itself back to itself.
-
-- quickstream, more so, restricts what blocks can do (the idea is that
-  without restriction there is no modularity)
 
 - quickstream will make an effort to never let blocks use an inter-thread
   memory access method that corrupts memory, software frameworks should
@@ -411,5 +409,7 @@ other users/developers (to some extent).
 The same applies to the quickstream command-line program as it does with
 quickstreamGUI; quickstream command-line can be used in a user/developer
 workflow that is cyclic, but since it is not graphical in nature, it can
-be difficult to see complex flow graphs with it.
+be difficult to see complex flow graphs with it; but quickstream
+command-line program does have, on the fly, graph-viz dot display
+options.
 
