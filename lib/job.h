@@ -123,7 +123,7 @@ struct QsJob {
     // realloc() the array without having to change all job peer
     // structures.
     //
-    struct QsJob ***sharedPeers; // Ya, fuck'n 3 stars.
+    struct QsJob ***sharedPeers; // Ya, 3 stars.
     //
     // And either peers is set or sharedPeers is set, and not both.
     //

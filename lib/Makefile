@@ -81,6 +81,7 @@ libquickstream.a_SOURCES :=\
  qsGraph_flatten.c\
  qsGraph_saveSuperBlock.c\
  qsGraph_save.c\
+ epoll.c\
  metaData.c\
  listBuiltInBlocks.c\
  $(builtInBlocks_c)

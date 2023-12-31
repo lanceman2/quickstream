@@ -380,3 +380,53 @@ extern
 bool CheckStreamConnections(struct QsGraph *g, uint32_t *numInputs);
 
 
+static inline
+struct QsStreamJob *
+GetStreamJob(uint32_t inCallbacks, struct QsSimpleBlock **b_out) {
+
+    struct QsSimpleBlock *b = GetBlock(inCallbacks,
+            0, QsBlockType_simple);
+    ASSERT(b, "Not a simple block in declare()");
+
+    if(!b->streamJob) {
+        b->streamJob = calloc(1, sizeof(*b->streamJob));
+        ASSERT(b->streamJob, "calloc(1,%zu) failed",
+                sizeof(*b->streamJob));
+        CHECK(pthread_mutex_init(&b->streamJob->mutex, 0));
+
+        // RANT:
+        //
+        // This thread pool "job" construct makes the stream code so much
+        // better than the previous iterations of this code.  The job
+        // provides a generic under layer construct for any
+        // work()/inter-thread communication method; it's abstract.  Go
+        // down the rabbit hole and see for yourself.  Finding this magic
+        // coding "layer" required a month of research.  It's so wonky
+        // that theirs no fucking way to publish it, except to just use it
+        // in this code.
+        //
+        // The thread pool "job" abstraction is not seen by quickstream
+        // users at any level: not block writers, application builders,
+        // and certainly not graph builders or end application users.
+        // It's strictly a, very important, libquickstream.so developer
+        // abstraction; and it has lots of test programs in ../tests/
+        // which made it possible.  Without testing this would be total
+        // shit.
+        //
+        // Unless you go down the rabbit hole, you'll not understand or
+        // appreciate this.
+        //
+        qsJob_init((void *) b->streamJob, (void *) b,
+                (bool (*)(struct QsJob *j)) StreamWork,
+                0/*0=>no destroy*/, 0/*peers=0 => not shared*/);
+        qsJob_addMutex((void *) b->streamJob, &b->streamJob->mutex);
+    }
+
+    if(b_out)
+        *b_out = b;
+
+
+    return b->streamJob;
+}
+
+

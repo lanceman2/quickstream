@@ -1,4 +1,6 @@
 qsAddConfig
+qsAddEpollReadJob
+qsAddEpollWriteJob
 qsAddInterBlockJob
 qsAddRunFile
 qsAdvanceInput

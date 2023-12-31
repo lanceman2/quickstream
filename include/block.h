@@ -72,6 +72,7 @@ struct QsBlock;
 struct QsParameter;
 struct QsInterBlockJob;
 struct QsTask;
+struct QsPort;
 
 
 // DSO block options.
@@ -110,6 +111,17 @@ void qsAdvanceInput(uint32_t inputPortNum, size_t len);
 QS_EXPORT
 void qsAdvanceOutput(uint32_t outputPortNum, size_t len);
 
+
+// port is 0 for stream input or output otherwise it's a
+// control parameter.
+QS_EXPORT
+void qsAddEpollReadJob(int rfd, struct QsPort *port);
+
+
+// port is 0 for stream input or output, otherwise it's a
+// control parameter.
+QS_EXPORT
+void qsAddEpollWriteJob(int wfd, struct QsPort *port);
 
 
 QS_EXPORT void

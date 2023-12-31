@@ -253,6 +253,8 @@ struct QsGraph {
     // the last call of a given block attribute is saved.
     //
     bool saveAttributes;
+
+    bool hasEpollBlock;
 };
 
 

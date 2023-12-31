@@ -2,6 +2,7 @@
 # the DSO (dynamic shared object) blocks.  The function names of callbacks
 # in the built in blocks are a little different from the DSO blocks.
 
+file/Epoll
 file/FileIn
 file/FileOut
 file/PipeIn
