@@ -164,7 +164,7 @@ GNOME desktop, so here's a list of the deb packages that I think are
 needed to build quickstream:
 
 ~~~
-gcc make graphviz imagemagick doxygen libgtk-3-dev librtlsdr-dev gnuradio-dev
+gcc make graphviz imagemagick doxygen wget libgtk-3-dev librtlsdr-dev gnuradio-dev
 ~~~
 
 Some of these packages are optional, like the last three -dev packages.
@@ -238,7 +238,7 @@ really is impossible to make this fool proof given how things can vary.
 
 ~~~
 sudo apt install \
-gcc make graphviz imagemagick doxygen \
+gcc make graphviz imagemagick doxygen wget \
 libgtk-3-dev librtlsdr-dev gnuradio-dev \
 vim-gtk3 gnome-terminal
 ~~~
