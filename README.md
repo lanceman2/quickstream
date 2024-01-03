@@ -420,9 +420,7 @@ intent of the original program developer.  In this way quickstream keeps
 all quickstream programs (programs that link with libquickstream.so and
 load/run quickstream blocks) in the quickstream development workflow; and
 users/developers that do not like to share will be forced to share with
-other users/developers (to some extent).  It remains to be seen that
-having the quickstreamGUI default to saving super blocks can make a
-viable workflow.
+other users/developers (to some extent).
 
 Both quickstream command-line program and quickstreamGUI can both be used
 in a user/developer workflow that is cyclic, but since quickstream
