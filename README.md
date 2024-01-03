@@ -454,7 +454,7 @@ to understand the quickstream software framework.  There are some
 "special" simple blocks that can run a flow graph.  Simple blocks are not
 allowed to build a graph.  Writing a simple block that runs the flow
 graph and also acts as a filter would very likely be a bad thing.  The
-order of "graph runner" before "graph builder" may make sense, in that
+order of "graph builder" before "graph runner" may make sense, in that
 blocks (simple and super) are assembled by the "graph builder" super
 blocks.  Super blocks are not allowed to "run the graph", to do so would
 tend to render super blocks as unusable by future users of said super
