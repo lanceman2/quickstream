@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -ex
+
+# For now, we have not finished writing the code yet so:
+if ! ../bin/quickstream\
+ --exit-on-error\
+ -v 5\
+ --block Epoll epoll ; then
+    echo "Success"
+    exit 0
+fi
+
+exit 1 # fail
+
+
