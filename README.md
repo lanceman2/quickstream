@@ -454,12 +454,13 @@ five quickstream user domains:
 These user domains are in a sense fuzzy, but are still necessary in order
 to understand the quickstream software framework.  There are some
 "special" simple blocks that can run a flow graph.  Simple blocks are not
-allowed to build a graph.  Writing a simple block that runs the flow graph
-and also acts as filter would very likely be a bad thing.  The order of
-"graph runner" before "graph builder" may make sense, in that blocks
-(simple and super) are assembled by the "graph builder" super blocks.
-Super blocks are not allowed to "run the graph", to do so would tend to
-render super blocks as unusable by future users of said super blocks.
+allowed to build a graph.  Writing a simple block that runs the flow
+graph and also acts as a filter would very likely be a bad thing.  The
+order of "graph runner" before "graph builder" may make sense, in that
+blocks (simple and super) are assembled by the "graph builder" super
+blocks.  Super blocks are not allowed to "run the graph", to do so would
+tend to render super blocks as unusable by future users of said super
+blocks.
 
 The functions in libquickstream.so that let simple blocks do "graph
 runner" type tasks run asynchronously.  Additional simple block "graph
