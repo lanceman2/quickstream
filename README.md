@@ -485,7 +485,7 @@ GNU standard C library like so:
 /usr/lib/x86_64-linux-gnu/libc.so.6
 ~~~
 
-This will print information to 
+This will print information to stdout.
 
 The libquickstream.so run-time library top-block or graph object has no
 graph builder configuration.  libquickstream.so has no idea what a GUI
