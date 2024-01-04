@@ -10,7 +10,7 @@
 static bool isRunning = 0;
 
 
-
+static
 int SetCallback(const struct QsParameter *p,
         const bool *value,
         uint32_t readCount, uint32_t queueCount,
