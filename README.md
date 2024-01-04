@@ -463,11 +463,12 @@ blocks.
 The functions in libquickstream.so that let simple blocks do "graph
 runner" type tasks run asynchronously.  Additional simple block "graph
 runner" functions will likely be things that change the "scheduler" (a GNU
-radio term) like creating thread pools and assigning blocks to threads.  I
-know this possible to do, but I'm having a problem with the idea of having
-simple blocks that can know about all the simple blocks that are loaded in
-the graph.  Additional query interfaces in libquickstream.so for these
-special simple blocks that can manage the graph they are in.
+radio term) like creating thread pools and assigning blocks to threads.
+I know this is possible to do, but I'm having a problem with the idea of
+having simple blocks that can know about all the simple blocks that are
+loaded in the graph.  Additional query interfaces are needed in
+libquickstream.so for these special simple blocks that can manage the
+graph they are in.
 
 Having these special simple blocks that can manage the graph will make the
 two programs quickstream command-line and quickstreamGUI be able to
