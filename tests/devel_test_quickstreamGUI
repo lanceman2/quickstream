@@ -4,11 +4,20 @@ set -ex
 
 cd "$(dirname ${BASH_SOURCE[0]})"
 
+add_dir="$PWD/test_blocks"
+
 echo "PWD=${PWD}"
 
-cd ../lib/quickstream/blocks/examples/
+#cd ../lib/quickstream/blocks/examples/
 
+testBlockDir=../lib/quickstream/misc/test_blocks
 
-export QS_BLOCK_PATH="../../misc/test_blocks"
+if [ -n "$QS_BLOCK_PATH" ] ; then
+    export QS_BLOCK_PATH="$testBlockDir:$QS_BLOCK_PATH"
+else
+    export QS_BLOCK_PATH="$testBlockDir"
+fi
 
-exec ../../../../bin/quickstreamGUI
+echo "QS_BLOCK_PATH=$QS_BLOCK_PATH"
+
+exec ../bin/quickstreamGUI $*

@@ -64,6 +64,20 @@ place is currently here.
 #define QS_GUI_CONNECT_SIGNAL  SIGUSR2
 
 
+
+/** A file path to the systems the program interpreter for dynamically-linked
+    ELF programs.
+
+ELF (Executable and Linkable Format) is the common binary executable file
+format on Linux kernel based systems.  We need this so we can tell the
+compiler how to run DSO (dynamic shared object) file, which are ELF files.
+
+\todo port this to other operating systems.
+*/
+// Works on Debian GNU/Linux 12 (bookworm) 2023-12-12
+#define QS_DL_LOADER "/usr/lib64/ld-linux-x86-64.so.2"
+
+
 #define QUICKSTREAM_URL  "Unset"
 
 

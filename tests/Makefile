@@ -74,6 +74,7 @@ BUILD_NO_INSTALL :=\
  129_removeJobs\
  131_addMutexes\
  133_addMutexes\
+ 471_execBlock.so\
  801_qs_dlopen\
  _zerosInFile
 
@@ -101,6 +102,8 @@ mod_SOURCES := mod.c
 # and so also does not depend on libquickstream.so
 021_debug_SOURCES := 021_debug.c ../lib/debug.c
 
+471_execBlock.so_SOURCES := 471_execBlock.c ../lib/debug.c
+471_execBlock.so_LDFLAGS := -Wl,-e,main
 
 040_qsGraph_create_SOURCES := 040_qsGraph_create.c
 040_qsGraph_create_LDFLAGS := $(QS_LIB)
