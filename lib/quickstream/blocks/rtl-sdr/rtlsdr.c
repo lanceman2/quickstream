@@ -277,7 +277,7 @@ ERROR("tuner=%d", tuner);
 #endif
 
     // This will delay loading of librtlsdr.so until the just before the
-    // stream starts.
+    // first stream starts.
     //
     // I wonder if unloading this block after running the stream will find
     // resource leaks in librtlsdr.so (and other libraries).  How robust
