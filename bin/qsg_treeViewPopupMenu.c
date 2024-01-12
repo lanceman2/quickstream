@@ -183,6 +183,28 @@ static void ShowAllBlocks_cb(GtkWidget *w, gpointer data) {
 }
 
 
+static void CloseDirViews_cb(GtkWidget *w, gpointer data) {
+
+    DASSERT(window);
+    DASSERT(window->treeView);
+
+    // collapse all directories that are not we are not selected.
+
+
+    GtkTreePath *tpath = GetTreePath(window->treeView);
+    // pop up one directory in the tree view thingy.
+    //
+    // AND SO ON...
+    //
+ERROR("WRITE MORE CODE HERE  (%p) ++++++++++++++++++++++++++++++++++++++++++++", tpath);
+// LETS NOT ASSERT HERE JUST NOW We'll find this ---------------
+
+
+    //gtk_tree_view_expand_all(GTK_TREE_VIEW(window->treeView));
+}
+
+
+
 static void OpenTerminal_cb(GtkWidget *w, gpointer data) {
 
     DASSERT(window);
@@ -208,6 +230,7 @@ static void OpenTerminal_cb(GtkWidget *w, gpointer data) {
     }
 
     if(!run)
+        // Fallback default terminal to run:
         run = "gnome-terminal";
 
     // Note: there is no reason to free run because we will call
@@ -471,7 +494,8 @@ static void CreateDirPopupMenu(void) {
             ReloadBlocksEnv_cb);
     AddSeparator(dirMenu);
     MakeMenuItem(dirMenu, "Show All Blocks", ShowAllBlocks_cb);
-    AddSeparator(dirMenu);
+    MakeMenuItem(dirMenu, "Close Some Directory Views", CloseDirViews_cb);
+     AddSeparator(dirMenu);
     MakeMenuItem(dirMenu, "Open a Terminal in this Directory ...",
             OpenTerminal_cb);
 

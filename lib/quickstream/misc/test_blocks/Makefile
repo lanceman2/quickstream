@@ -34,10 +34,14 @@ CFLAGS := -I$(root)/include
 
 INSTALL_DIR = $(PREFIX)/lib/quickstream/misc/test_blocks
 
-c_plugins := $(sort $(patsubst %.c, %, $(wildcard [a-z]*.c) $(wildcard _[a-z]*.c)) empty)
+# skip Sequence
+c_plugins := $(filter-out Sequence,\
+ $(sort $(patsubst %.c, %, $(wildcard [a-z]*.c)\
+ $(wildcard _[a-z]*.c [A-Z]*.c)) empty))
 
 cpp_plugins := $(patsubst %.cpp, %, $(wildcard [a-z]*.cpp))
 
+CPPFLAGS := -I$(root)/include
 
 define makeSOURCES
 $(1)$(2)_SOURCES := $(1)$(3)
@@ -52,7 +56,8 @@ define ADDlib
 $(1)_LDFLAGS := -L$(root)/lib -lquickstream -Wl,-rpath=\$$$$ORIGIN/$(root)/lib
 endef
 
-BUILD_NO_INSTALL := $(patsubst %.c, %, $(wildcard [A-Z]*.c))
+
+BUILD_NO_INSTALL := Sequence
 
 
 empty.c:

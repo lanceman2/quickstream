@@ -1,15 +1,5 @@
-SUBDIRS :=\
- gtk3\
- runner\
- controlParameters\
- stream_type_converters\
- parameter_type_converters\
- rtl-sdr\
- gnuradio-3.10.1\
- wsServer\
- examples\
- file\
- misc
+# We make in all sub-directories in this directory:
+SUBDIRS := $(sort $(patsubst ./%/,%, $(dir $(wildcard ./*/))))
 
 
 INSTALL_DIR = $(PREFIX)/lib/quickstream/blocks

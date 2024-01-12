@@ -253,6 +253,10 @@ PrintPort(const char *name, const struct QsPort *p,
                     snprintf(size, SLEN, "\\ndouble[%zu]",
                             par->size / sizeof(double));
                     break;
+                case QsValueType_float:
+                    snprintf(size, SLEN, "\\nfloat[%zu]",
+                            par->size / sizeof(float));
+                    break;
                 case QsValueType_bool:
                     snprintf(size, SLEN, "\\nbool[%zu]",
                             par->size / sizeof(bool));

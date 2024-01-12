@@ -25,3 +25,7 @@ void ShowTreeViewPopupMenu(GtkTreeView *treeView,
 
 extern
 char *GetBlockSourcePath(GtkTreeView *treeView);
+
+
+extern
+GtkTreePath *GetTreePath(GtkTreeView *treeView);

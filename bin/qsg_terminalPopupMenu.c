@@ -113,6 +113,26 @@ SetValueEntry_cb(GtkWidget *entry, gpointer data) {
             qsParameter_setValue(p, value);
         }
             break;
+        case QsValueType_float:
+        {
+            DASSERT(size % sizeof(float) == 0);
+            size_t n = size/sizeof(float);
+            const char *s = text;
+            float *val = value;
+            for(size_t i = 0; i < n;) {
+                char *end = 0;
+                *val = strtof(s, &end);
+                if(end == s)
+                    goto finish;
+                s = end + 1; // skip to next char
+                while(*s && (IsNotNumber(*s) && *s != 'e' && *s != 'E'))
+                    ++s;
+                ++val;
+                ++i;
+            }
+            qsParameter_setValue(p, value);
+        }
+            break;
         case QsValueType_uint64:
         {
             DASSERT(size % sizeof(uint64_t) == 0);
@@ -133,6 +153,7 @@ SetValueEntry_cb(GtkWidget *entry, gpointer data) {
             qsParameter_setValue(p, value);
         }
             break;
+
         case QsValueType_bool:
         {
             DASSERT(size % sizeof(bool) == 0);

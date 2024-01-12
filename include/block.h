@@ -59,6 +59,7 @@ enum QsBlockType {
 enum QsValueType {
 
     QsValueType_double = 1,
+    QsValueType_float,
     QsValueType_uint64,
     QsValueType_bool,
     QsValueType_string32

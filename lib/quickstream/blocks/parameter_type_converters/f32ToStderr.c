@@ -1,3 +1,8 @@
+// TODO: Maybe make this a C++ template out of this so that there is
+// one source file for both this and f64ToStderr.so; or use CPP (C
+// preprocessor) code to macro-ize this (I'm not crazy about Large CPP
+// macros).
+
 #include <string.h>
 
 #include "../../../../include/quickstream.h"
@@ -5,14 +10,14 @@
 #include "../../../mprintf.h"
 
 
-#define DEFAULT_FMT  "%lg"
-#define FMT_LEN      54
+#define DEFAULT_FMT  "%g"
+#define FMT_LEN      40
 
 
 static char format[FMT_LEN];
 
 static
-int Value_setter(const struct QsParameter *p, double *value,
+int Value_setter(const struct QsParameter *p, float *value,
             uint32_t readCount, uint32_t queueCount,
             void *userData) {
 
@@ -23,7 +28,7 @@ int Value_setter(const struct QsParameter *p, double *value,
 }
 
 
-// TODO: Format_config() is the same in f32ToStderr.c
+// TODO: Format_config() is the same in f64ToStderr.c
 static
 char *Format_config(int argc, const char * const *argv,
             void *userData) {
@@ -48,7 +53,7 @@ char *Format_config(int argc, const char * const *argv,
 int declare(void) {
 
     qsCreateSetter("value",
-        sizeof(double), QsValueType_double, 0/*0=no initial value*/,
+        sizeof(float), QsValueType_float, 0/*0=no initial value*/,
         (int (*)(const struct QsParameter *, const void *,
             uint32_t readCount, uint32_t queueCount,
             void *)) Value_setter);

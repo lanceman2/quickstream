@@ -15,7 +15,7 @@
 
 
 
-static inline GtkTreePath *GetTreePath(GtkTreeView *treeView) {
+GtkTreePath *GetTreePath(GtkTreeView *treeView) {
 
     GtkTreeSelection *sel = gtk_tree_view_get_selection(treeView);
     DASSERT(sel);
@@ -496,7 +496,7 @@ TreeViewButtonRelease_cb(GtkTreeView *treeView, GdkEventButton *e,
         return FALSE; // FALSE => go to the next handler.
 
     // We have not selected a leaf node in the tree.  It must be a
-    // directory.
+    // directory in the file system.
 
     path = GetDirPath(treeView, tpath);
 

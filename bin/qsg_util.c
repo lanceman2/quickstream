@@ -79,6 +79,41 @@ char *GetParameterValueString(struct QsParameter *p) {
             }
         }
             break;
+        case QsValueType_float:
+        {
+            DASSERT(size % sizeof(float) == 0);
+            size_t n = size/sizeof(float);
+            ret = malloc(tlen += n*10);
+            ASSERT(ret, "malloc(%zu) failed", tlen);
+            size_t wlen = tlen;
+            char *s = ret;
+            float *val = value;
+            for(size_t i = 0; i < n;) {
+                char *fmt;
+                if(i)
+                    fmt = ",%g"; // TODO: For float ??
+                else
+                    fmt = "%g"; // TODO: For float ??
+
+                int w = snprintf(s, wlen, fmt, *val);
+                ASSERT(w > 0);
+                if(w >= wlen) {
+                    size_t keepSLen = s - ret;
+                    char *nt = realloc(ret, tlen += 32);
+                    ASSERT(nt, "realloc(,%zu) failed", tlen);
+                    wlen += 32;
+                    // s is to where we written to that is good so far.
+                    s = nt + keepSLen;
+                    ret = nt;
+                    continue;
+                }
+                s += w;
+                ++val;
+                wlen -= w;
+                ++i;
+            }
+        }
+            break;
         case QsValueType_uint64:
         {
             DASSERT(size % sizeof(uint64_t) == 0);

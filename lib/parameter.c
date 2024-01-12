@@ -373,7 +373,10 @@ void *CreateParameter(size_t psize/* struct size */,
         case QsValueType_double:
             ASSERT(0 == vsize % sizeof(double));
             break;
-        case QsValueType_uint64:
+        case QsValueType_float:
+            ASSERT(0 == vsize % sizeof(float));
+            break;
+         case QsValueType_uint64:
             ASSERT(0 == vsize % sizeof(uint64_t));
             break;
         case QsValueType_bool:
@@ -661,6 +664,37 @@ int qsParameter_setValueByString(struct QsParameter *p,
                 for(; i<argc && i<arrayLength; ++i) {
                     char *end = 0;
                     *val = strtod(argv[i], &end);
+                    if(argv[i] == end)
+                        *val = lastVal;
+                    else
+                        lastVal = *val;
+
+                    ++val;
+                }
+
+                for(; i<arrayLength;++i) {
+                    *val = lastVal;
+                    ++val;
+                }
+
+                qsParameter_setValue(p, value);
+            }
+            break;
+        case QsValueType_float:
+            {
+                DASSERT(p->size % sizeof(float) == 0);
+                arrayLength = p->size/sizeof(float);
+                DASSERT(arrayLength);
+                // We'll use stack memory for stuffing the values to and
+                // then copy it to the parameter values.
+                float value[arrayLength];
+                // Set default first value:
+                float lastVal = 0.0;
+                float *val = value;
+                // default value:
+                for(; i<argc && i<arrayLength; ++i) {
+                    char *end = 0;
+                    *val = strtof(argv[i], &end);
                     if(argv[i] == end)
                         *val = lastVal;
                     else

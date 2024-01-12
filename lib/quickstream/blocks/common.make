@@ -4,9 +4,10 @@
 # directories.  This make file defines make targets and rules to make all
 # the DSO (dynamic shared object) blocks in this quickstream package.  It
 # skips building DSOs for the source to built-in blocks.  Built-in blocks
-# are blocks that have there code compiled into libquickstream.so.
+# are blocks that have their code compiled into libquickstream.so.
 #
-# The make file that includes this file must define root.
+# The make file that includes this file must define root before including
+# this file.
 
 
 
@@ -39,6 +40,25 @@ builtInBlocks := $(patsubst $(block_dir)/%,%,\
 c_plugins :=\
  $(patsubst %.c, %, $(filter-out $(builtInBlocks),\
  $(wildcard [A-Za-z0-9]*.c) $(wildcard _[a-z0-9]*.c)))
+
+
+# $(blocks) is set to non-zero length if we have any blocks to build,
+# be they DSOs or built-in.
+blocks := $(sort $(builtInBlocks) c_plugins)
+
+
+# If there is a directory named qs_examples/ than we run make in there.
+# qs_examples/ is special to the program $(root)/bin/quickstreamGUI which
+# looks for the block use example flow graphs in that directory for the
+# blocks source (install too) directory.  Source and installation
+# directories are always same that is relative to the installation PREFIX
+# directory.  That's a hard developer rule for quickstream: that is source
+# directory tree is a mirror of the installed PREFIX directory tree, but
+# without "all" the source files (just most of them).
+ifndef SUBDIRS
+SUBDIRS := $(shell if [ -d qs_examples ] ; then echo qs_examples ; fi)
+endif
+
 
 
 # We need this, CPPFLAGS, for building libquickstream.so auto-generated

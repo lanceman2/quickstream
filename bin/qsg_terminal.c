@@ -512,6 +512,11 @@ void GetParameterPopoverText(const struct Port *p, char *text,
             num = size/sizeof(double);
             kind = "double";
             break;
+        case QsValueType_float:
+            DASSERT(!(size % sizeof(float)));
+            num = size/sizeof(float);
+            kind = "float";
+            break;
         case QsValueType_uint64:
             DASSERT(!(size % sizeof(uint64_t)));
             num = size/sizeof(uint64_t);
