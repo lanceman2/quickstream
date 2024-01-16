@@ -34,7 +34,7 @@ libquickstream.so_LDFLAGS :=\
 libquickstream.so: retain-symbols.txt libquickstream.a
 
 # running: nm --extern-only libquickstream.so will show just the symbols
-# that users can access.  Without the
+# that users can access when linking with this library.  Without the
 # -Wl,--retain-symbols-file=retain-symbols.txt we get more symbols that
 # libquickstream.so users can access, which we do not want.
 
