@@ -505,7 +505,7 @@ void CreateButtonBar(struct Layout *l) {
     SetTooltip(GTK_WIDGET(l->haltButton),
             "(un)halt all the thread pools");
 
-    l->runButton = AddCheckButton(l, GTK_BOX(hbox), "_Flow", Run_cb);
+    l->runButton = AddCheckButton(l, GTK_BOX(hbox), "_Run", Run_cb);
     SetTooltip(GTK_WIDGET(l->runButton), "run (or stop) the stream");
 
     GtkWidget *b = AddButton(l, GTK_BOX(hbox), "_Save As ...", SaveAs_cb);
