@@ -288,7 +288,7 @@ static void ViewSource_cb(GtkWidget *w, gpointer data) {
     char *run = getenv("QS_EDITOR");
 
     if(!run)
-        run = "gvim";
+        run = "gvim --servername quicksreamGUI_00 --remote";
 
     run = mprintf("%s %s", run, blockSourcePath);
 
