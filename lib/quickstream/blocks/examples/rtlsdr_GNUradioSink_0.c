@@ -11,7 +11,7 @@
 struct QsBlockOptions options = { .type = QsBlockType_super };
 
 // ERROR() will print a line number which is a big help.
-#define FAIL()   do { ERROR(); return -1; } while(0)
+#define FAIL_IF(x)   do {if( (x) ) { ERROR(); return -1; } } while(0)
 
 
 ///////////////////////////////////////////////////////////////////
@@ -42,133 +42,101 @@ int declare(void) {
     //    Load child blocks
     ///////////////////////////////////////////////////////////////
 
-    if(!qsGraph_createBlock(0, 0, "rtl-sdr/rtlsdr.so", "rtlsdr", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "rtl-sdr/rtlsdr.so", "rtlsdr", 0));
 
-    if(!qsGraph_createBlock(0, 0, "gnuradio-3.10.1/QT_GNUradio_sink.so", "QT_GNUradio_sink", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "gnuradio-3.10.1/QT_GNUradio_sink.so", "QT_GNUradio_sink", 0));
 
-    if(!qsGraph_createBlock(0, 0, "stream_type_converters/u8ToF32.so", "u8ToF32", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "stream_type_converters/u8ToF32.so", "u8ToF32", 0));
 
-    if(!qsGraph_createBlock(0, 0, "gtk3/slider.so", "freq slider", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "gtk3/slider.so", "freq slider", 0));
 
-    if(!qsGraph_createBlock(0, 0, "gtk3/slider.so", "gain slider", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "gtk3/slider.so", "gain slider", 0));
 
-    if(!qsGraph_createBlock(0, 0, "gtk3/button.so", "run button", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "gtk3/button.so", "run button", 0));
 
-    if(!qsGraph_createBlock(0, 0, "runner/run.so", "run", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "runner/run.so", "run", 0));
 
-    if(!qsGraph_createBlock(0, 0, "gtk3/base.so", "gtk base", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "gtk3/base.so", "gtk base", 0));
 
-    if(!qsGraph_createBlock(0, 0, "parameter_type_converters/f64ToString32.so", "f64ToString32", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "parameter_type_converters/f64ToString32.so", "f64ToString32", 0));
 
-    if(!qsGraph_createBlock(0, 0, "gtk3/text.so", "freq text", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "gtk3/text.so", "freq text", 0));
 
-    if(!qsGraph_createBlock(0, 0, "parameter_type_converters/f64ToStderr.so", "print gain", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "parameter_type_converters/f64ToStderr.so", "print gain", 0));
 
-    if(!qsGraph_createBlock(0, 0, "parameter_type_converters/f64ToStderr.so", "print freq", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "parameter_type_converters/f64ToStderr.so", "print freq", 0));
 
     ///////////////////////////////////////////////////////////////
     //    Setup Port Aliases to child block ports
     ///////////////////////////////////////////////////////////////
 
-    if(qsBlock_makePortAlias(0, "gtk base", "s", "show", "show GUI"))
-        FAIL();
+    FAIL_IF(qsBlock_makePortAlias(0, "gtk base", "s", "show", "show GUI"));
 
     ///////////////////////////////////////////////////////////////
     //    Configure child blocks
     ///////////////////////////////////////////////////////////////
 
-    if(qsBlock_configVByName(0/*graph*/, "freq slider",
+    FAIL_IF(qsBlock_configVByName(0/*graph*/, "freq slider",
              "label", "Center Frequency",
-             0/*null terminate*/))
-        FAIL();
+             0/*null terminate*/));
 
-    if(qsBlock_configVByName(0/*graph*/, "freq slider",
+    FAIL_IF(qsBlock_configVByName(0/*graph*/, "freq slider",
              "attributes", "92", "92", "110", "110", "1e+06", "181", "0", "%1.1lf MHz", "105.3",
-             0/*null terminate*/))
-        FAIL();
+             0/*null terminate*/));
 
-    if(qsBlock_configVByName(0/*graph*/, "gain slider",
+    FAIL_IF(qsBlock_configVByName(0/*graph*/, "gain slider",
              "label", "Gain",
-             0/*null terminate*/))
-        FAIL();
+             0/*null terminate*/));
 
-    if(qsBlock_configVByName(0/*graph*/, "gain slider",
+    FAIL_IF(qsBlock_configVByName(0/*graph*/, "gain slider",
              "attributes", "0", "0", "50", "50", "1", "501", "0", "%1.1lf dB", "48",
-             0/*null terminate*/))
-        FAIL();
+             0/*null terminate*/));
 
-    if(qsBlock_configVByName(0/*graph*/, "run button",
+    FAIL_IF(qsBlock_configVByName(0/*graph*/, "run button",
              "label", "Run",
-             0/*null terminate*/))
-        FAIL();
+             0/*null terminate*/));
 
-    if(qsBlock_configVByName(0/*graph*/, "gtk base",
+    FAIL_IF(qsBlock_configVByName(0/*graph*/, "gtk base",
              "title", "RTL-SDR Radio with GNURadio GUI Sink",
-             0/*null terminate*/))
-        FAIL();
+             0/*null terminate*/));
 
-    if(qsBlock_configVByName(0/*graph*/, "f64ToString32",
+    FAIL_IF(qsBlock_configVByName(0/*graph*/, "f64ToString32",
              "format", "%lg Hz",
-             0/*null terminate*/))
-        FAIL();
+             0/*null terminate*/));
 
-    if(qsBlock_configVByName(0/*graph*/, "freq text",
+    FAIL_IF(qsBlock_configVByName(0/*graph*/, "freq text",
              "label", "center frequency",
-             0/*null terminate*/))
-        FAIL();
+             0/*null terminate*/));
 
-    if(qsBlock_configVByName(0/*graph*/, "print gain",
+    FAIL_IF(qsBlock_configVByName(0/*graph*/, "print gain",
              "format", "gain= %lg dB",
-             0/*null terminate*/))
-        FAIL();
+             0/*null terminate*/));
 
-    if(qsBlock_configVByName(0/*graph*/, "print freq",
+    FAIL_IF(qsBlock_configVByName(0/*graph*/, "print freq",
              "format", "freq=%lg Hz",
-             0/*null terminate*/))
-        FAIL();
+             0/*null terminate*/));
 
     ///////////////////////////////////////////////////////////////
     //    Connect child blocks
     ///////////////////////////////////////////////////////////////
 
-    if(qsGraph_connectByStrings(0, "freq slider", "g", "value", "rtlsdr", "s", "freq"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "freq slider", "g", "value", "rtlsdr", "s", "freq"));
 
-    if(qsGraph_connectByStrings(0, "rtlsdr", "s", "freq", "print freq", "s", "value"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "rtlsdr", "s", "freq", "print freq", "s", "value"));
 
-    if(qsGraph_connectByStrings(0, "gain slider", "g", "value", "rtlsdr", "s", "gain"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "gain slider", "g", "value", "rtlsdr", "s", "gain"));
 
-    if(qsGraph_connectByStrings(0, "u8ToF32", "o", "0", "QT_GNUradio_sink", "i", "input"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "u8ToF32", "o", "0", "QT_GNUradio_sink", "i", "input"));
 
-    if(qsGraph_connectByStrings(0, "rtlsdr", "o", "0", "u8ToF32", "i", "0"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "rtlsdr", "o", "0", "u8ToF32", "i", "0"));
 
-    if(qsGraph_connectByStrings(0, "run button", "g", "value", "run", "s", "run"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "run button", "g", "value", "run", "s", "run"));
 
-    if(qsGraph_connectByStrings(0, "rtlsdr", "g", "freq", "f64ToString32", "s", "value"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "rtlsdr", "g", "freq", "f64ToString32", "s", "value"));
 
-    if(qsGraph_connectByStrings(0, "f64ToString32", "g", "value", "freq text", "s", "value"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "f64ToString32", "g", "value", "freq text", "s", "value"));
 
-    if(qsGraph_connectByStrings(0, "rtlsdr", "g", "gain", "print gain", "s", "value"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "rtlsdr", "g", "gain", "print gain", "s", "value"));
 
     ///////////////////////////////////////////////////////////////
     //    Maybe add some qsAddConfig() calls below here

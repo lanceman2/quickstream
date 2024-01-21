@@ -61,15 +61,14 @@ int PrintConfigureCall(const char *name, struct QsAttribute *a,
     }
 
     fprintf(h->f,
-"    if(qsBlock_configVByName(0/*graph*/, \"%s\",\n"
+"    FAIL_IF(qsBlock_configVByName(0/*graph*/, \"%s\",\n"
 "            ",
         bname);
 
     for(int i = 0; i < a->lastArgc; ++i)
         fprintf(h->f," \"%s\",", a->lastArgv[i]);
     fprintf(h->f,"\n"
-"             0/*null terminate*/))\n"
-"        FAIL();\n"
+"             0/*null terminate*/));\n"
 "\n"
             );
 
@@ -238,10 +237,9 @@ static inline void PrintConnectParmeters(const struct QsBlock *b,
 
 
     fprintf(f,
-"    if(qsGraph_connectByStrings(0, "
+"    FAIL_IF(qsGraph_connectByStrings(0, "
         "%s%s%s, \"%c\", \"%s\", "
-        "%s%s%s, \"%c\", \"%s\"))\n"
-"        FAIL();\n"
+        "%s%s%s, \"%c\", \"%s\"));\n"
 "\n"
 ,
         blockName1?"\"":"", blockName1?blockName1:"0", blockName1?"\"":"", 
@@ -370,10 +368,9 @@ PrintStreamConnection(const char *name, struct QsInput *in,
 
 
     fprintf(h->f,
-"    if(qsGraph_connectByStrings(0, "
+"    FAIL_IF(qsGraph_connectByStrings(0, "
         "%s%s%s, \"o\", \"%s\", "
-        "%s%s%s, \"i\", \"%s\"))\n"
-"        FAIL();\n"
+        "%s%s%s, \"i\", \"%s\"));\n"
 "\n",
         oBlockName?"\"":"", oBlockName?oBlockName:"0", oBlockName?"\"":"", 
         oPortName,
@@ -432,8 +429,7 @@ PrintAlias(const char *name, struct QsPort *p,
     DASSERT(p->name);
 
     fprintf(h->f,
-"    if(qsBlock_makePortAlias(0, \"%s\", \"%s\", \"%s\", \"%s\"))\n"
-"        FAIL();\n"
+"    FAIL_IF(qsBlock_makePortAlias(0, \"%s\", \"%s\", \"%s\", \"%s\"));\n"
 "\n"
         , p->block->name, GetPortTypeString(p), p->name, name);
 
@@ -483,8 +479,7 @@ PrintLoadChildBlocks(FILE *f, const struct QsParentBlock *p) {
     for(struct QsBlock *b = p->firstChild; b; b = b->nextSibling) {
         struct QsModule *m = Get_Module(b);
         fprintf(f,
-"    if(!qsGraph_createBlock(0, 0, \"%s\", \"%s\", 0))\n"
-"        FAIL();\n"
+"    FAIL_IF(!qsGraph_createBlock(0, 0, \"%s\", \"%s\", 0));\n"
 "\n"
                 , m->fileName, b->name);
     }
@@ -590,7 +585,7 @@ int qsGraph_saveSuperBlock(const struct QsGraph *g,
 "struct QsBlockOptions options = { .type = QsBlockType_super };\n"
 "\n"
 "// ERROR() will print a line number which is a big help.\n"
-"#define FAIL()   do { ERROR(); return -1; } while(0)\n"
+"#define FAIL_IF(x)   do {if( (x) ) { ERROR(); return -1; } } while(0)\n"
 "\n"
 "\n"
     );
