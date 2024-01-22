@@ -12,6 +12,7 @@
 #include "debug.h"
 #include "Dictionary.h"
 #include "name.h"
+#include "mprintf.h"
 
 #include "c-rbtree.h"
 #include "threadPool.h"
@@ -647,31 +648,18 @@ int qsGraph_saveSuperBlock(const struct QsGraph *g,
     // -- Using environment variable(s).
     // In the end it's just getting a command line string.
     //
-#define COMPILE1 "cc -shared -I"
-// TODO: maybe remove the "/lib/.." from this composed compile
-// command-line string.  But this is maybe more robust.  Not sure.
-#define COMPILE3 "/../include -g -Wall -Werror -fPIC -DDEBUG -DSPEW_LEVEL_DEBUG "
-#define OUT_OPT " -o "
 
     DASSERT(qsLibDir);
     DASSERT(qsLibDir[0] == '/');
 
     pid_t pid = fork();
 
-    size_t rlen = strlen(COMPILE1) + strlen(qsLibDir) +
-        strlen(COMPILE3) + strlen(OUT_OPT) +
-        strlen(cPath) + strlen(dsoPath) + 1;
-
-    // TODO: Should we just use stack memory to do this?
-    // Then again, compile command-lines can get very long.
-    //
-    run = calloc(1, rlen);
-    ASSERT(run, "calloc(1, %zu) failed", rlen);
-    sprintf(run, "%s%s%s%s%s%s",
-            COMPILE1, qsLibDir, COMPILE3,
-            cPath, OUT_OPT, dsoPath);
+    run = mprintf("cc -shared -I%s/../include -g -Wall -Werror"
+            " -DDEBUG -DSPEW_LEVEL_DEBUG %s -o %s",
+            qsLibDir, cPath, dsoPath);
 
     if(pid == -1) {
+
         ERROR("fork() failed");
         ret = -4; // error
         goto cleanup;

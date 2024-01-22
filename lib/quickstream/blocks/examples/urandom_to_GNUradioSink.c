@@ -11,7 +11,7 @@
 struct QsBlockOptions options = { .type = QsBlockType_super };
 
 // ERROR() will print a line number which is a big help.
-#define FAIL()   do { ERROR(); return -1; } while(0)
+#define FAIL_IF(x)   do {if( (x) ) { ERROR(); return -1; } } while(0)
 
 
 ///////////////////////////////////////////////////////////////////
@@ -36,14 +36,11 @@ int declare(void) {
     //    Load child blocks
     ///////////////////////////////////////////////////////////////
 
-    if(!qsGraph_createBlock(0, 0, "gnuradio-3.10.1/QT_GNUradio_sink.so", "QT_GNUradio_sink", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "gnuradio-3.10.1/QT_GNUradio_sink.so", "QT_GNUradio_sink", 0));
 
-    if(!qsGraph_createBlock(0, 0, "stream_type_converters/u8ToF32.so", "u8ToF32", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "stream_type_converters/u8ToF32.so", "u8ToF32", 0));
 
-    if(!qsGraph_createBlock(0, 0, "FileIn", "URandom", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "FileIn", "URandom", 0));
 
     ///////////////////////////////////////////////////////////////
     //    Setup Port Aliases to child block ports
@@ -53,20 +50,17 @@ int declare(void) {
     //    Configure child blocks
     ///////////////////////////////////////////////////////////////
 
-    if(qsBlock_configVByName(0/*graph*/, "URandom",
+    FAIL_IF(qsBlock_configVByName(0/*graph*/, "URandom",
              "Filename", "/dev/urandom",
-             0/*null terminate*/))
-        FAIL();
+             0/*null terminate*/));
 
     ///////////////////////////////////////////////////////////////
     //    Connect child blocks
     ///////////////////////////////////////////////////////////////
 
-    if(qsGraph_connectByStrings(0, "u8ToF32", "o", "0", "QT_GNUradio_sink", "i", "input"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "u8ToF32", "o", "0", "QT_GNUradio_sink", "i", "input"));
 
-    if(qsGraph_connectByStrings(0, "URandom", "o", "0", "u8ToF32", "i", "0"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "URandom", "o", "0", "u8ToF32", "i", "0"));
 
     ///////////////////////////////////////////////////////////////
     //    Maybe add some qsAddConfig() calls below here

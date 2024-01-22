@@ -2,7 +2,7 @@
 #
 # This is a generated file
 
-set-block-path ../../misc/test_blocks
+set-block-path ../lib/quickstream/misc/test_blocks
 graph g1 2 tp0 /home/lance/git/quickstream/lib/quickstream/blocks/examples/3sliders
 ############################################
 # Create More Thread Pools

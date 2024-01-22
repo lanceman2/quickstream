@@ -16,6 +16,9 @@
 //
 // Returns a pointer to a malloced string.
 //
+// Lets see warnings for format errors:
+static char *mprintf(const char *fmt, ...) __attribute__ ( ( format (printf, 1, 2 ) ) );
+//
 static inline char *mprintf(const char *fmt, ...) {
 
     DASSERT(fmt);

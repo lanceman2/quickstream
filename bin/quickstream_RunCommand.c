@@ -710,7 +710,7 @@ bool RunCommand(int c, int argc, const char *command,
                 for(;blockName != end; ++blockName) {
                     struct QsBlock *b =
                         qsGraph_getBlock(graph, *blockName);
-                    if(!b && exitOnError)
+                    if(!b)
                         return ErrorRet(2, argc, argv, command,
                                 "block \"%s\" not found\n", *blockName);
                     qsThreadPool_addBlock(tp, b);

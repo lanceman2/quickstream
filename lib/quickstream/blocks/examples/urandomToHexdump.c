@@ -11,7 +11,7 @@
 struct QsBlockOptions options = { .type = QsBlockType_super };
 
 // ERROR() will print a line number which is a big help.
-#define FAIL()   do { ERROR(); return -1; } while(0)
+#define FAIL_IF(x)   do {if( (x) ) { ERROR(); return -1; } } while(0)
 
 
 ///////////////////////////////////////////////////////////////////
@@ -35,11 +35,9 @@ int declare(void) {
     //    Load child blocks
     ///////////////////////////////////////////////////////////////
 
-    if(!qsGraph_createBlock(0, 0, "FileIn", "URandom", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "FileIn", "URandom", 0));
 
-    if(!qsGraph_createBlock(0, 0, "PipeOut", "Hexdump", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "PipeOut", "Hexdump", 0));
 
     ///////////////////////////////////////////////////////////////
     //    Setup Port Aliases to child block ports
@@ -49,22 +47,19 @@ int declare(void) {
     //    Configure child blocks
     ///////////////////////////////////////////////////////////////
 
-    if(qsBlock_configVByName(0/*graph*/, "URandom",
+    FAIL_IF(qsBlock_configVByName(0/*graph*/, "URandom",
              "Filename", "/dev/urandom",
-             0/*null terminate*/))
-        FAIL();
+             0/*null terminate*/));
 
-    if(qsBlock_configVByName(0/*graph*/, "Hexdump",
+    FAIL_IF(qsBlock_configVByName(0/*graph*/, "Hexdump",
              "Program", "hexdump", "-v",
-             0/*null terminate*/))
-        FAIL();
+             0/*null terminate*/));
 
     ///////////////////////////////////////////////////////////////
     //    Connect child blocks
     ///////////////////////////////////////////////////////////////
 
-    if(qsGraph_connectByStrings(0, "URandom", "o", "0", "Hexdump", "i", "0"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "URandom", "o", "0", "Hexdump", "i", "0"));
 
     ///////////////////////////////////////////////////////////////
     //    Maybe add some qsAddConfig() calls below here

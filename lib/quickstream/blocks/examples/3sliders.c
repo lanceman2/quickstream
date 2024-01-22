@@ -11,7 +11,7 @@
 struct QsBlockOptions options = { .type = QsBlockType_super };
 
 // ERROR() will print a line number which is a big help.
-#define FAIL()   do { ERROR(); return -1; } while(0)
+#define FAIL_IF(x)   do {if( (x) ) { ERROR(); return -1; } } while(0)
 
 
 ///////////////////////////////////////////////////////////////////
@@ -37,24 +37,19 @@ int declare(void) {
     //    Load child blocks
     ///////////////////////////////////////////////////////////////
 
-    if(!qsGraph_createBlock(0, 0, "gtk3/slider.so", "slider", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "gtk3/slider.so", "slider", 0));
 
-    if(!qsGraph_createBlock(0, 0, "gtk3/slider.so", "slider_2", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "gtk3/slider.so", "slider_2", 0));
 
-    if(!qsGraph_createBlock(0, 0, "gtk3/slider.so", "slider_3", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "gtk3/slider.so", "slider_3", 0));
 
-    if(!qsGraph_createBlock(0, 0, "parameter_type_converters/f64SettersToGetter.so", "f64SettersToGetter", 0))
-        FAIL();
+    FAIL_IF(!qsGraph_createBlock(0, 0, "parameter_type_converters/f64SettersToGetter.so", "f64SettersToGetter", 0));
 
     ///////////////////////////////////////////////////////////////
     //    Setup Port Aliases to child block ports
     ///////////////////////////////////////////////////////////////
 
-    if(qsBlock_makePortAlias(0, "slider", "s", "show", "show"))
-        FAIL();
+    FAIL_IF(qsBlock_makePortAlias(0, "slider", "s", "show", "show"));
 
     ///////////////////////////////////////////////////////////////
     //    Configure child blocks
@@ -64,23 +59,17 @@ int declare(void) {
     //    Connect child blocks
     ///////////////////////////////////////////////////////////////
 
-    if(qsGraph_connectByStrings(0, "f64SettersToGetter", "g", "out", "slider", "s", "display"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "f64SettersToGetter", "g", "out", "slider", "s", "display"));
 
-    if(qsGraph_connectByStrings(0, "slider", "s", "display", "slider_2", "s", "display"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "slider", "s", "display", "slider_2", "s", "display"));
 
-    if(qsGraph_connectByStrings(0, "slider", "s", "display", "slider_3", "s", "display"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "slider", "s", "display", "slider_3", "s", "display"));
 
-    if(qsGraph_connectByStrings(0, "slider", "g", "value", "f64SettersToGetter", "s", "0"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "slider", "g", "value", "f64SettersToGetter", "s", "0"));
 
-    if(qsGraph_connectByStrings(0, "slider_2", "g", "value", "f64SettersToGetter", "s", "4"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "slider_2", "g", "value", "f64SettersToGetter", "s", "4"));
 
-    if(qsGraph_connectByStrings(0, "slider_3", "g", "value", "f64SettersToGetter", "s", "1"))
-        FAIL();
+    FAIL_IF(qsGraph_connectByStrings(0, "slider_3", "g", "value", "f64SettersToGetter", "s", "1"));
 
     ///////////////////////////////////////////////////////////////
     //    Maybe add some qsAddConfig() calls below here
