@@ -226,12 +226,12 @@ struct QsModule {
     // This is likely not a full path.
     //
     // 1. For a built-in block this is the prefix for a series of function
-    //    symbols like "File"; so as to find symbol "File_declare" for the
-    //    function File_declare() that was in a source file
-    //    builtInBlocks/File/File.c.
+    //    symbols like "FileIn"; so as to find symbol "FileIn_declare" for the
+    //    function FileIn_declare() that was in a source file
+    //    lib/quickstream/blocks/File/FileIn.c.
     //
-    // Note: the sub-directory File/ is only used to help classify the
-    // block module; but the word "File" must be unique to that built-in
+    // Note: the sub-directory /File/ is only used to help classify the
+    // block module; but the word "FileIn" must be unique to that built-in
     // block module.  DSO block modules do not have such a naming
     // restriction; as they can be in files with file names that have
     // non-unique base file names; only the full path needs to be

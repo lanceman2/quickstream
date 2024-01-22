@@ -83,8 +83,19 @@ quickstream would not exist without these tests.
 
 # Bash script to run ./run_tests many times.
 
+Note: since there are many test programs that do not run in a
+deterministic fashion, some tests can fail just some of the time.  I have
+seen bugs from tests that fail only 1 time in about 100 runs of a test.
+You may be able to find bugs in tests more easily by changing the test to
+make it take a longer time to run.  Of course, please do not make and
+check-in tests that run with ./run_tests and take longer that about a
+second to run.
+
+Try this:
+
+~~~
 $ x=0; start="$(date)"; while ./run_tests ;\
 do let x=$x+1; echo -e "\n\n\n\
 $x   \n\n\n"; sleep 0.8 ; done; echo -e "\nStart: $start\n";\
 echo -n "Failed: "; date
-
+~~~

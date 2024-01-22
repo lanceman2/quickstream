@@ -305,7 +305,7 @@ void *GetRunFileDlhandle(struct QsSimpleBlock *b) {
     }
 
     if(fullPath)
-        // This will load a copy if this DSO if it is already loaded;
+        // This will load a copy of this DSO if it is already loaded;
         // unless runFileLoadCopy is set (for simple blocks).
         dlhandle = GetDLHandle(fullPath, b->runFileLoadCopy);
 
@@ -533,8 +533,16 @@ struct QsBlock *qsGraph_createBlock(struct QsGraph *g,
     }
 
     DASSERT(g);
-    ASSERT(fileName_in);
-    ASSERT(fileName_in[0]);
+
+    char *name = 0;
+
+    // We used to have ASSERT(fileName_in); here
+    // but now if fileName_in == 0 is a special of a super block
+    // running itself.
+
+    ASSERT(!fileName_in || fileName_in[0]);
+
+
     if(name_in && !name_in[0])
         name_in = 0;
 
@@ -593,12 +601,13 @@ struct QsBlock *qsGraph_createBlock(struct QsGraph *g,
     // 1. Get a per graph unique name for the block.
     /////////////////////////////////////////////////////////////////////
 
-    char *name = 0;
-
     // Find surname from a parent block if a super block declare or
     // configure block callback function called this.
     //
     if(parent) {
+
+        // This cannot be the case of a super block loading itself.
+        DASSERT(fileName_in);
 
         // There is a super block loading this block.
         //
@@ -638,8 +647,47 @@ struct QsBlock *qsGraph_createBlock(struct QsGraph *g,
                 fullName);
         name = fullName;
     } else {
-        // This new block will be a child of the top block, graph.
-        if(name_in) {
+
+        if(!fileName_in) {
+            // This is a super block loading itself as the
+            // first block in a super block main().
+            ASSERT(g);
+            DASSERT(!parent);
+            ASSERT(!g->parentBlock.firstChild);
+            DASSERT(!g->parentBlock.lastChild);
+            ASSERT(!name_in,
+                    "For special case of super block loading itself");
+
+            // Get the name of the super block from the filename that
+            // is running.
+
+            // TODO: Note: This is very Linux specific code.
+            //
+
+            const char *exe = "/proc/self/exe";
+            char *bin = realpath(exe, 0);
+            ASSERT(bin, "realpath(\"%s\",0) failed", exe);
+            DASSERT(*bin == '/');
+            //
+            // example bin = '/usr/foo/bar/block_name.so
+            char *s = bin;
+            char *lastSlash = s;
+            while(*s) {
+                if(*s == '/')
+                    lastSlash = s;
+                s++;
+            }
+            DASSERT(*lastSlash == '/');
+            ++lastSlash;
+            ASSERT(*lastSlash);
+            // This should be a unique name for this only block in the graph.
+            name = strdup(lastSlash);
+            free(bin);
+
+        } else if(name_in) {
+            //
+            // This new block will be a child of the top block, graph.
+            //
             if(!qsDictionaryFind(g->blocks, name_in)) {
                 name = strdup(name_in);
                 ASSERT(name, "strdup() failed");
@@ -676,6 +724,7 @@ struct QsBlock *qsGraph_createBlock(struct QsGraph *g,
                 snprintf(name, len, "%*.*s_%" PRIu32, l, l,
                         basename, ++count);
         }
+
         if(!name) {
             CHECK(pthread_mutex_unlock(&g->mutex));
             // Fail.
@@ -697,8 +746,14 @@ struct QsBlock *qsGraph_createBlock(struct QsGraph *g,
     void *dlhandle = 0;
 
     DASSERT(qsBlockDir);
-    fullPath = FindFullPath(fileName_in, qsBlockDir, ".so",
-            getenv("QS_BLOCK_PATH"));
+
+    if(fileName_in)
+        fullPath = FindFullPath(fileName_in, qsBlockDir, ".so",
+                getenv("QS_BLOCK_PATH"));
+
+    //else
+    // fullPath = 0;
+    // This is the case of a super block loading itself from main().
 
     // Make sure that we do not load the same path as the parent's path.
     // That would recurse forever.
@@ -713,9 +768,13 @@ struct QsBlock *qsGraph_createBlock(struct QsGraph *g,
         }
     }
 
-    if(fullPath)
-        dlhandle = GetDLHandle(fullPath, true);
-    if(!dlhandle)
+    if(fullPath || !fileName_in) {
+        dlhandle = GetDLHandle(fullPath, (bool) fileName_in);
+        // fileName_in is not set for super block loading itself from
+        // main() so we should have:
+        DASSERT(fileName_in || dlhandle);
+    }
+    if(!dlhandle && fullPath)
         FreeString(&fullPath);
 
     /////////////////////////////////////////////////////////////////////
