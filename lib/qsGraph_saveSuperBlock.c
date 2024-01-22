@@ -654,7 +654,7 @@ int qsGraph_saveSuperBlock(const struct QsGraph *g,
 
     pid_t pid = fork();
 
-    run = mprintf("cc -shared -I%s/../include -g -Wall -Werror"
+    run = mprintf("cc -shared -fPIC -I%s/../include -g -Wall -Werror"
             " -DDEBUG -DSPEW_LEVEL_DEBUG %s -o %s",
             qsLibDir, cPath, dsoPath);
 

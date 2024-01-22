@@ -165,6 +165,8 @@ int _qsGraph_save(const struct QsGraph *g,
         goto cleanup;
     }
 
+    INFO("Created file: \"%s\"", gpath);
+
 cleanup:
 
     if(f)
