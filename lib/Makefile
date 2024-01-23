@@ -83,6 +83,7 @@ libquickstream.a_SOURCES :=\
  qsGraph_save.c\
  epoll.c\
  metaData.c\
+ qsBlock_printPorts.c\
  listBuiltInBlocks.c\
  $(builtInBlocks_c)
 

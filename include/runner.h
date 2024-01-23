@@ -68,6 +68,9 @@ int qsParameter_setValueByString(struct QsParameter *p,
         int argc, const char * const *argv);
 
 QS_EXPORT
+int qsBlock_printPorts(struct QsBlock *b, FILE *file);
+
+QS_EXPORT
 int qsGraph_printDot(const struct QsGraph *graph, FILE *file,
         uint32_t optionsMask);
 

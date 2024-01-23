@@ -52,6 +52,20 @@ _quickstream()
             modtype=blocks
             ;;
 
+        -S|--parameter-set-mk)
+            COMPREPLY=( ""
+                "MK BLOCK_NAME PARAMETER_NAME [VALUE ...] MK"
+            )
+            return 0
+            ;;
+
+        -P|--print-ports)
+            COMPREPLY=( ""
+                "BLOCK_NAME"
+            )
+            return 0
+            ;;
+
         -t|--threads)
             # This is a nice hack:  Print a hint for the user in a
             # otherwise broken COMPREPLY array.

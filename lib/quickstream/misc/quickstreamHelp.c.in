@@ -477,6 +477,11 @@ static struct QsOption
         "Print KEY metadata for the graph."
     },
 /*----------------------------------------------------------------------*/
+    { "--print-ports", 'P', "BLOCK_NAME",
+
+        "Print the port names for a given block to stdout."
+    },
+/*----------------------------------------------------------------------*/
     { "--rename-block", 'n', "BLOCK_NAME NEW_NAME",
 
         "Change the name of a block."

@@ -16,6 +16,7 @@ qsBlockGetName
 qsBlock_getPort
 qsBlock_getSetter
 qsBlock_makePortAlias
+qsBlock_printPorts
 qsBlock_rename
 qsBuiltInBlocks
 qsCloseDLHandle

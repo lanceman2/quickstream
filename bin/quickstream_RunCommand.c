@@ -446,8 +446,7 @@ bool RunCommand(int c, int argc, const char *command,
                 return ErrorRet(2, argc, argv, command,
                          "graph not set\n");
             if(qsBlock_makePortAlias(graph, argv[1], argv[2],
-                        argv[3], argv[4])
-                    && exitOnError)
+                        argv[3], argv[4]))
                     return ErrorRet(2, argc, argv, command, "\n");
             break;
 
@@ -466,18 +465,22 @@ bool RunCommand(int c, int argc, const char *command,
                          "graph not set\n");
             {
                 struct QsBlock *b = qsGraph_getBlock(graph, argv[2]);
-                if(!b && exitOnError)
+                if(!b)
                     return ErrorRet(2, argc, argv, command,
                          "block \"%s\" not found\n", argv[2]);
                 if(!b) break;
-                struct QsParameter *p = qsBlock_getSetter(
-                        b, argv[3]);
-                if(!p && exitOnError)
+                // Change this make it work through super block aliases to
+                // setters in simple blocks:
+                //struct QsParameter *p = qsBlock_getSetter(b, argv[3]);
+                struct QsParameter *p = (void *) qsBlock_getPort(b,
+                        QsPortType_setter, argv[3]);
+
+                if(!p)
                     return ErrorRet(2, argc, argv, command,
                          "parameter \"%s:%s\" not found\n", argv[2],
                          argv[3]);
                 int ret = qsParameter_setValueByString(p, argc-5, argv + 4);
-                if(ret && exitOnError)
+                if(ret)
                     return ErrorRet(2, argc, argv, command,
                          "parameter \"%s:%s\" cannot set\n", argv[2],
                          argv[3]);
@@ -517,6 +520,26 @@ bool RunCommand(int c, int argc, const char *command,
                 }
                 free(str);
                 printf("\n");
+            }
+            break;
+
+
+        case PRINT_PORTS: // --print-ports BLOCK_NAME
+            //
+            if(argc < 2)
+                 return ErrorRet(2, argc, argv, command,
+                         "bad usage\n");
+            if(!graph)
+                return ErrorRet(2, argc, argv, command,
+                         "graph not set\n");
+            {
+                struct QsBlock *b = qsGraph_getBlock(graph, argv[1]);
+                if(!b)
+                    return ErrorRet(2, argc, argv, command,
+                             "block \"%s\" not found\n", argv[1]);
+                if(qsBlock_printPorts(b, stdout))
+                    return ErrorRet(2, argc, argv, command,
+                             "failed\n");
             }
             break;
 
