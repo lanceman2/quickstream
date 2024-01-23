@@ -431,7 +431,7 @@ static struct QsOption
         "    start\n"
         "    wait\n"
         "\n"
-        "In this case the \"interpreter\" mode of reading commands will\n"
+        "In this case the \"interpreter\" mode of reading commands will"
         " start at the 2nd line after the --interpreter option argument.\n"
         "\n"
         " And yet another: It also works in an interactive shell session:"
