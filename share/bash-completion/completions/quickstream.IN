@@ -36,7 +36,6 @@ _quickstream()
         fi
     fi
 
-    local modtype;
 
     case "${prev}" in
 
@@ -49,7 +48,6 @@ _quickstream()
 
         -b|--block|--block-help|-B)
             # We'll get a list of blocks below
-            modtype=blocks
             ;;
 
         -S|--parameter-set-mk)
@@ -102,7 +100,7 @@ _quickstream()
     # This will even work when the software is not installed yet and is
     # built in the source directory; a major major plus for developers.
 
-    local mod_dirs=($mod_dir/../../../lib/quickstream/$modtype/)
+    local mod_dirs=($mod_dir/../../../lib/quickstream/blocks)
     local dirs
     local d
 
@@ -110,13 +108,13 @@ _quickstream()
     if [ -n "$QS_BLOCK_PATH" ] ; then
         IFS=':' read -r -a dirs <<< "$QS_BLOCK_PATH"
         for d in $dirs ; do
-            #echo "d=$d/$modtype"
-            mod_dirs+=($d/$modtype/)
+            #echo "d=$d"
+            mod_dirs+=($d)
         done
         #echo -e "\n\n   mod_dirs=${mod_dirs[@]}\n\n"
     fi
 
-    mod_dirs+=($PWD/$modtype)
+    mod_dirs+=($PWD)
     #echo "mod_dirs[]= ${mod_dirs[@]}"
 
     local i
