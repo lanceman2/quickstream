@@ -59,7 +59,7 @@
 // and ERROR().  That could be handy for making new filter modules.
 
 
-// LEVEL maybe debug, info, notice, warn, error, and
+// LEVEL may be debug, info, notice, warn, error, and
 // off which translates to: 5, 4, 3, 2, 1, and 0 respectively.
 //
 // We need spewLevel to be thread safe so we make spewLevel atomic.  Note
@@ -74,7 +74,7 @@ int qsGetLibSpewLevel(void) {
 }
 
 
-// This is where the user of libquickstream can quiet down the code in the
+// This is where the user of libquickstream.so can quiet down the code in the
 // library, assuming that the library was not quiet already.
 void qsSetSpewLevel(int level) {
     if(level > 5) level = 5;
@@ -87,12 +87,15 @@ void qsSetSpewLevel(int level) {
 
 #define BUFLEN  1024
 
-
+// in-lining _vspew() with inline may make debugging code a little harder.
+//
 static void _vspew(FILE *stream, int errn, const char *pre, const char *file,
-        int line, const char *func, const char *fmt, va_list ap)
-{
-    // We try to buffer this so that prints do not get intermixed with
-    // other prints in multi-threaded programs.
+        int line, const char *func, const char *fmt, va_list ap) {
+
+    // TODO: What the hell good is buffer when stream is 0?
+
+    // We try to buffer this "spew" so that prints do not get intermixed
+    // with other prints in multi-threaded programs.
     char buffer[BUFLEN];
     int len;
 
@@ -102,13 +105,13 @@ static void _vspew(FILE *stream, int errn, const char *pre, const char *file,
         errno = 0;
         char estr[128];
         strerror_r(errn, estr, 128);
+        // TODO: very Linux specific code here:
         len = snprintf(buffer, BUFLEN,
                 "%s%s:%d:pid=%u:%zu %s():errno=%d:%s: ",
                 pre, file, line,
                 getpid(), syscall(SYS_gettid), func,
                 errn, estr);
-    }
-    else
+    } else
         len = snprintf(buffer, BUFLEN, "%s%s:%d:pid=%u:%zu %s(): ",
                 pre, file, line,
                 getpid(), syscall(SYS_gettid), func);

@@ -309,7 +309,7 @@ static void qsLibrary_destroy(void) {
     CHECK(pthread_mutex_lock(&gmutex));
 
     if(numGraphs) {
-        WARN("Automatically destroying %" PRIu32 " remaining graphs",
+        NOTICE("Automatically destroying %" PRIu32 " remaining graphs",
                 numGraphs);
         ASSERT(qsDictionaryForEach(graphs,
                     (int (*) (const char *, void *, void *))

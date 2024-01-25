@@ -1,9 +1,9 @@
-# This file defines possible make configuration variables.
+# This file defines possible make "configuration" variables.
 #
 # This make file is used when building/installing using the quickbuild
 # build system to build/install quickstream.   This file is ignored when
 # building/installing quickbuild with the GNU autotools build system, and
-# when building/installing with meson.
+# when building/installing with meson (TODO).
 #
 # We try to keep similar make variables in the GNU autotools build method.
 #
@@ -12,9 +12,12 @@
 # if dependences are available.
 
 
-# We really want there to be very little to configure in this file:
+# We really want there to be very little to configure in this file.
+# PREFIX is (or will be) a directory that contains all the files
+# that are installed for this software project.
 
 PREFIX = /usr/local/encap/quickstream
+
 
 # Set CPPFLAGS for debug build options:
 #
@@ -23,8 +26,10 @@ PREFIX = /usr/local/encap/quickstream
 #
 # The following may be defined; defining them turns on the following CPP
 # macro functions that are in debug.h which is a source file for
-# libquickstream.so
+# libquickstream.so and other binary files.
 #
+# CPP macro flag         makes SPEW CPP marco functions
+#-----------------       ------------------------------
 #
 # DEBUG             -->  DASSERT()
 #
@@ -34,12 +39,19 @@ PREFIX = /usr/local/encap/quickstream
 # SPEW_LEVEL_WARN   -->  WARN() ERROR()
 # SPEW_LEVEL_ERROR  -->  ERROR()
 #
+#
+# If you really need to understand what these do look in
+# the file lib/debug.h
+#
 # always on is      -->  ASSERT()
+#
 
 
-# Example:
+# Examples:
 #CPPFLAGS := -DSPEW_LEVEL_NOTICE
-CPPFLAGS := -DDEBUG -DSPEW_LEVEL_DEBUG
+#CPPFLAGS := -DDEBUG -DSPEW_LEVEL_DEBUG
+
+CPPFLAGS := -DDEBUG -DSPEW_LEVEL_INFO
 
 
 # C compiler option flags
