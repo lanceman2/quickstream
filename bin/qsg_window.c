@@ -127,7 +127,7 @@ void CreateWindow(const char *path) {
     gtk_container_set_border_width(GTK_CONTAINER(win), 0);
 
     // TODO: this setting is somewhat arbitrary;
-    gtk_window_set_default_size(GTK_WINDOW(win), 1200, 900);
+    gtk_window_set_default_size(GTK_WINDOW(win), 1560, 900);
 
 
     struct Window *w = calloc(1, sizeof(*w));
