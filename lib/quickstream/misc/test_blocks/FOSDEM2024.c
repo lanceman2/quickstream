@@ -18,13 +18,13 @@ struct QsBlockOptions options = { .type = QsBlockType_super };
 //  Block Meta Data
 ///////////////////////////////////////////////////////////////////
 const char *QS_quickstreamGUI =
-    "ZW1wdHkAcnVuAGJ1dHRvbgBGaWxlT3V0AHNlcXVlbmNlR2VuAHNlcXVlbmNlQ2hl"
-    "Y2tfNABzZXF1ZW5jZUNoZWNrXzMAc2VxdWVuY2VDaGVja18yAHNlcXVlbmNlQ2hl"
-    "Y2sAAAAAAAAAAAAAALSZQAAAAAAABJhA5AAAAAAAAAAAAAAAACCkQAAAAAAAPJtA"
-    "5AAAAAAAAAAAAAAAACSkQAAAAAAA1JhA5AAAAAAAAAAAAAAAAIKjQAAAAAAA5J1A"
-    "5AAAAAAAAAAAAAAAAOCbQAAAAAAAOJlA5AAAAAAAAAAAAAAAAIqgQAAAAAAABJ5A"
-    "yQAAAAAAAAAAAAAAAMydQAAAAAAA7J1A5AAAAAAAAAAAAAAAAGChQAAAAAAA1JhA"
-    "bAAAAAAAAAAAAAAAAGifQAAAAAAAzJhA5AAAAAAAAAA=";
+    "bWF0cml4AGVtcHR5AHJ1bgBidXR0b24Ac2VxdWVuY2VHZW4Ac2VxdWVuY2VDaGVj"
+    "a180AHNlcXVlbmNlQ2hlY2tfMwBzZXF1ZW5jZUNoZWNrXzIAc2VxdWVuY2VDaGVj"
+    "awAAAAAAAAAAAABmo0AAAAAAAMCfQOQAAAAAAAAAAAAAAAC0mUAAAAAAAASYQOQA"
+    "AAAAAAAAAAAAAAAApEAAAAAAAPiaQOQAAAAAAAAAAAAAAADwo0AAAAAAANiYQOQA"
+    "AAAAAAAAAAAAAADgm0AAAAAAADiZQOQAAAAAAAAAAAAAAAB2oEAAAAAAAACeQMkA"
+    "AAAAAAAAAAAAAADMnUAAAAAAAOydQOQAAAAAAAAAAAAAAABgoUAAAAAAANSYQGwA"
+    "AAAAAAAAAAAAAABon0AAAAAAAMyYQOQAAAAAAAAA";
 
 // A null terminated array of all metaData symbol suffixes above:
 const char *qsMetaDataKeys[] = {
@@ -50,13 +50,13 @@ int declare(void) {
 
     FAIL_IF(!qsGraph_createBlock(0, 0, "sequenceGen.so", "sequenceGen", 0));
 
-    FAIL_IF(!qsGraph_createBlock(0, 0, "FileOut", "FileOut", 0));
-
     FAIL_IF(!qsGraph_createBlock(0, 0, "gtk3/button.so", "button", 0));
 
     FAIL_IF(!qsGraph_createBlock(0, 0, "runner/run.so", "run", 0));
 
     FAIL_IF(!qsGraph_createBlock(0, 0, "empty.so", "empty", 0));
+
+    FAIL_IF(!qsGraph_createBlock(0, 0, "matrix.so", "matrix", 0));
 
     ///////////////////////////////////////////////////////////////
     //    Setup Port Aliases to child block ports
@@ -128,13 +128,15 @@ int declare(void) {
 
     FAIL_IF(qsGraph_connectByStrings(0, "sequenceCheck", "o", "2", "sequenceCheck_3", "i", "0"));
 
+    FAIL_IF(qsGraph_connectByStrings(0, "sequenceCheck_4", "o", "1", "sequenceCheck_3", "i", "1"));
+
     FAIL_IF(qsGraph_connectByStrings(0, "sequenceCheck_2", "o", "0", "sequenceCheck_4", "i", "0"));
 
     FAIL_IF(qsGraph_connectByStrings(0, "sequenceCheck_2", "o", "1", "sequenceCheck_4", "i", "1"));
 
-    FAIL_IF(qsGraph_connectByStrings(0, "sequenceCheck", "o", "3", "FileOut", "i", "0"));
-
     FAIL_IF(qsGraph_connectByStrings(0, "button", "g", "value", "run", "s", "run"));
+
+    FAIL_IF(qsGraph_connectByStrings(0, "sequenceCheck", "o", "3", "matrix", "i", "input"));
 
     ///////////////////////////////////////////////////////////////
     //    Maybe add some qsAddConfig() calls below here
