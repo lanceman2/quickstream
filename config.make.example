@@ -28,7 +28,7 @@ PREFIX = /usr/local/encap/quickstream
 # macro functions that are in debug.h which is a source file for
 # libquickstream.so and other binary files.
 #
-# CPP macro flag         makes SPEW CPP marco functions
+# CPP macro flag         makes SPEW CPP macro functions
 #-----------------       ------------------------------
 #
 # DEBUG             -->  DASSERT()
