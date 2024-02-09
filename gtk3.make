@@ -9,5 +9,5 @@ GTK3_CFLAGS := $(shell pkg-config --cflags gtk+-3.0)
 endif
 
 # Spew what GTK3 stuff we have found
-$(warning GTK3_CFLAGS="$(GTK3_CFLAGS)" GTK3_LDFLAGS="$(GTK3_LDFLAGS)")
+#$(warning GTK3_CFLAGS="$(GTK3_CFLAGS)" GTK3_LDFLAGS="$(GTK3_LDFLAGS)")
 
