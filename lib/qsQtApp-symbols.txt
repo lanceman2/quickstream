@@ -1,0 +1,3 @@
+qsQtApp_construct
+qsQtApp_exec
+qsQtApp_destroy

@@ -98,13 +98,12 @@ listBuiltInBlocks.c: listBuiltInBlocks.bash libbuiltInBlocks.a
 	if ! ./listBuiltInBlocks.bash libbuiltInBlocks.a > $@ ; then rm $@ ; fi
 
 
-GTK_CFLAGS := $(shell pkg-config --cflags gtk+-3.0)
-ifeq ($(WITHOUT_GTK3),) 
-GTK_LDFLAGS := $(shell pkg-config --libs gtk+-3.0)
-endif
+
+# define GTK3_CFLAGS and GTK3_LDFLAGS, or not.
+include ../gtk3.make
 
 # --------------------------------------------------------------------
-ifeq ($(GTK_LDFLAGS),)
+ifeq ($(GTK3_LDFLAGS),)
 # --------------------------------------------------------------------
 
 # GTK3 development libraries were not found so in this case we will
@@ -116,12 +115,49 @@ else
 # --------------------------------------------------------------------
 
 libqsGtk_init.so_SOURCES := qsGtk_init.c
-libqsGtk_init.so_CPPFLAGS := -DBUILD_LIB $(GTK_CFLAGS)
+libqsGtk_init.so_CPPFLAGS := -DBUILD_LIB $(GTK3_CFLAGS)
 libqsGtk_init.so_LDFLAGS :=\
  -Wl,--retain-symbols-file=qsGtk_init-symbols.txt
 libqsGtk_init.so: qsGtk_init-symbols.txt
 
+# --------------------------------------------------------------------
 endif
+# --------------------------------------------------------------------
+
+
+
+# define QT6_CFLAGS and QT6_LDFLAGS, or not.
+include ../qt6.make
+
+# --------------------------------------------------------------------
+ifeq ($(QT6_LDFLAGS),)
+# --------------------------------------------------------------------
+
+$(warning NOTICE Not building Qt6 blocks from $(DIR))
+
+# --------------------------------------------------------------------
+else
+# --------------------------------------------------------------------
+
+libqsQtApp.so_SOURCES := qsQtApp.cpp
+libqsQtApp.so_CPPFLAGS := -DBUILD_LIB $(QT6_CFLAGS)
+libqsQtApp.so_LDFLAGS := -Wl,--retain-symbols-file=qsQtApp-symbols.txt\
+ $(QT6_LDFLAGS)
+libqsQtApp.so: qsQtApp-symbols.txt
+
+qsQtApp_test_SOURCES := qsQtApp_test.cpp debug.c
+# I do not know why I need to include the QT6_LDFLAGS here and in the
+# building of libqsQtApp.so above; but qsQtApp_test will not link without
+# this redundancy.
+qsQtApp_test_LDFLAGS := $(QT6_LDFLAGS) -L../lib -lqsQtApp -Wl,-rpath=\$$ORIGIN
+qsQtApp_test_CPPFLAGS := $(QT6_CFLAGS)
+qsQtApp_test: libqsQtApp.so
+
+BUILD_NO_INSTALL += qsQtApp_test
+
+# --------------------------------------------------------------------
+endif
+# --------------------------------------------------------------------
 
 
 

@@ -38,62 +38,12 @@ INSTALL_DIR = $(PREFIX)/bin
 BUILD_NO_INSTALL :=
 
 
-# apt install libgtk-3-dev qt6-wayland
-#
-# Get the GTK3 specific compiler options (if we can):
-GTK_CFLAGS := $(shell pkg-config --cflags gtk+-3.0)
-ifeq ($(WITHOUT_GTK3),)
-GTK_LDFLAGS := $(shell pkg-config --libs gtk+-3.0)
-endif
+# define GTK3_CFLAGS and GTK3_LDFLAGS, or not.
+include ../gtk3.make
 
 
-# apt install qt6-base-dev qt6-tools-dev
-#
-# Get the QT6 (Qt version 6) specific compiler options (if we can).  We do
-# this in a not so common way given that we are not married to QT; i.e. we
-# are not using gmake (or Cmake) to make our make files and we do not want
-# this quickstream software project to require QT, Cmake, et al.  This
-# seems to work.  QT does not provide a pkg-config file so we cannot use
-# pkg-config to find QT6 compiler options on Debian GNU/Linux 12
-# (bookworm).
-#
-# The scripts below will find this QT_INSTALL_LIBS
-# (/usr/lib/x86_64-linux-gnu/ at this try) path and we see by running:
-#
-#       % ldd /usr/lib/x86_64-linux-gnu/libQt6Widgets.so.6
-#
-# it looks like all the libraries we may need.  We are just guessing at
-# this point.  We see it is using libX11.so.6 at this time but hope that it
-# will use libwayland-client.so (or like thing) in the future.  This test
-# was on a gnome desktop (Feb 2024) on Debian 12.  This shit was not in
-# QT6 documentation anywhere that I could find, hence all this
-# commenting is here; for when this breaks.
-#
-ifeq ($(WITHOUT_QT6),)
-QT6_PATHS := $(shell qtpaths6 --query)
-endif
-#
-ifneq ($(QT6_PATHS),)
-QT6_CFLAGS := $(sort $(shell qtpaths6 --query QT_INSTALL_HEADERS))
-ifeq ($(QT6_CFLAGS),)
-$(error "Failed to get QT_INSTALL_HEADERS from qtpaths6 --query")
-endif
-QT6_LDFLAGS := $(sort $(shell qtpaths6 --query QT_INSTALL_LIBS))
-ifeq ($(QT6_LDFLAGS),)
-$(error "Failed to get QT_INSTALL_LIBS from qtpaths6 --query")
-endif
-QT6_CFLAGS := -I$(QT6_CFLAGS) -DQT_NO_VERSION_TAGGING
-# output of running: ldd libQt6Widgets.so
-# shows that libQt6Widgets.so should already be linked with libQt6Core.so
-# but this still fails to compile without the redundant "-lQt6Core"
-# must be some kind of compiler voodoo on my system, at least.
-#QT6_LDFLAGS := -L$(QT6_LDFLAGS) -lQt6Widgets -Wl,-rpath=$(QT6_LDFLAGS)
-QT6_LDFLAGS := -L$(QT6_LDFLAGS) -lQt6Widgets -lQt6Core -Wl,-rpath=$(QT6_LDFLAGS) 
-endif
-#
-# Spew what Qt6 stuff we have found
-#$(warning QT6_CFLAGS="$(QT6_CFLAGS)" QT6_LDFLAGS="$(QT6_LDFLAGS)")
-
+# define QT6_CFLAGS and QT6_LDFLAGS, or not.
+include ../qt6.make
 
 
 common_sources :=\
@@ -145,13 +95,13 @@ endif # ifeq ($(QT6_LDFLAGS),)
 
 
 # --------------------------------------------------------------------
-ifeq ($(GTK_LDFLAGS),)
+ifeq ($(GTK3_LDFLAGS),)
 # --------------------------------------------------------------------
 
 $(warning NOTICE Not building GTK3 based quickstreamGUI program.)
 
 # --------------------------------------------------------------------
-else # ifeq ($(GTK_LDFLAGS),)
+else # ifeq ($(GTK3_LDFLAGS),)
 # --------------------------------------------------------------------
 
 BUILD_NO_INSTALL += scribble treeView treeView_directoryTest gtk_cells
@@ -161,8 +111,8 @@ gtk_cells_SOURCES :=\
  gtk_cells.c\
  ../lib/debug.c
 gtk_cells_LDFLAGS :=\
- $(GTK_LDFLAGS)
-gtk_cells_CPPFLAGS := $(GTK_CFLAGS)
+ $(GTK3_LDFLAGS)
+gtk_cells_CPPFLAGS := $(GTK3_CFLAGS)
 
 
 quickstreamGUI_attach_SOURCES :=\
@@ -194,37 +144,37 @@ quickstreamGUI_SOURCES :=\
  qsg_buttonBar.c
 
 quickstreamGUI_LDFLAGS :=\
- $(GTK_LDFLAGS)\
+ $(GTK3_LDFLAGS)\
  -L../lib -lqsGtk_init\
  -L../lib -lquickstream\
  -Wl,-rpath=\$$ORIGIN/../lib\
  -ldl -lm
 
-quickstreamGUI_CPPFLAGS := $(GTK_CFLAGS)
+quickstreamGUI_CPPFLAGS := $(GTK3_CFLAGS)
 
 
 scribble_SOURCES := scribble.c
-scribble_LDFLAGS := $(GTK_LDFLAGS)
-scribble_CPPFLAGS := $(GTK_CFLAGS)
+scribble_LDFLAGS := $(GTK3_LDFLAGS)
+scribble_CPPFLAGS := $(GTK3_CFLAGS)
 
 gtk_overlay_SOURCES := gtk_overlay.c
-gtk_overlay_LDFLAGS := $(GTK_LDFLAGS)
-gtk_overlay_CPPFLAGS := $(GTK_CFLAGS)
+gtk_overlay_LDFLAGS := $(GTK3_LDFLAGS)
+gtk_overlay_CPPFLAGS := $(GTK3_CFLAGS)
 
 
 treeView_SOURCES := treeView.c
-treeView_LDFLAGS := $(GTK_LDFLAGS)
-treeView_CPPFLAGS := $(GTK_CFLAGS)
+treeView_LDFLAGS := $(GTK3_LDFLAGS)
+treeView_CPPFLAGS := $(GTK3_CFLAGS)
 
 treeView_directoryTest_SOURCES :=\
  treeView_directoryTest.c\
  ../lib/debug.c\
  treeView_test.c
-treeView_directoryTest_LDFLAGS := $(GTK_LDFLAGS)
-treeView_directoryTest_CPPFLAGS := $(GTK_CFLAGS)
+treeView_directoryTest_LDFLAGS := $(GTK3_LDFLAGS)
+treeView_directoryTest_CPPFLAGS := $(GTK3_CFLAGS)
 
 # --------------------------------------------------------------------
-endif # ifeq ($(GTK_LDFLAGS),)
+endif # ifeq ($(GTK3_LDFLAGS),)
 # --------------------------------------------------------------------
 
 
