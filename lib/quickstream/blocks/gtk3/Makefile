@@ -17,7 +17,7 @@ ifeq ($(GTK_LDFLAGS),)
 
 # GTK3 development libraries were not found so in this case we will
 # not be building or installing anything.
-$(warning "Not building GTK3 blocks from $(shell pwd))
+$(warning NOTICE Not building GTK3 blocks from $(shell pwd))
 
 # We still need the generic make targets:
 include $(root)/quickbuild.make

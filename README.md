@@ -148,7 +148,8 @@ really is impossible to make this fool proof given how things can vary.
 sudo apt install \
 gcc make graphviz imagemagick doxygen wget \
 libgtk-3-dev librtlsdr-dev gnuradio-dev \
-vim-gtk3 gnome-terminal
+vim-gtk3 gnome-terminal qt6-base-dev qt6-tools-dev \
+qt6-wayland
 ~~~
 
 

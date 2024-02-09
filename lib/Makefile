@@ -109,7 +109,7 @@ ifeq ($(GTK_LDFLAGS),)
 
 # GTK3 development libraries were not found so in this case we will
 # not be building anything.
-$(warning "Not building GTK3 blocks from $(DIR))
+$(warning NOTICE Not building GTK3 blocks from $(DIR))
 
 # --------------------------------------------------------------------
 else

@@ -18,7 +18,7 @@ ifeq ($(WSS_LDFLAGS),)
 
 # wsServer development libraries were not found so in this case we will
 # not be building or installing anything.
-$(warning "Not building wsServer blocks from $(shell pwd)")
+$(warning NOTICE Not building wsServer blocks from $(shell pwd)")
 
 # We still need the generic make targets:
 include $(root)/quickbuild.make
