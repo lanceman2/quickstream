@@ -72,10 +72,11 @@ GNOME desktop.  Here's a list of the deb packages that I think are needed
 to build quickstream:
 
 ~~~
-gcc make graphviz imagemagick doxygen wget libgtk-3-dev librtlsdr-dev gnuradio-dev
+gcc make graphviz imagemagick doxygen wget libgtk-3-dev librtlsdr-dev gnuradio-dev vim-gtk3 gnome-terminal qt6-base-dev qt6-tools-dev qt6-wayland
 ~~~
 
-Some of these packages are optional, like the last three -dev packages.
+Some of these packages are optional, like all the packages after the wget
+package.
 
 Next download the source from github and cd to the top source directory.
 

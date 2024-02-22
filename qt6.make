@@ -37,6 +37,13 @@ QT6_LDFLAGS := $(sort $(shell $(find) QT_INSTALL_LIBS))
 ifeq ($(QT6_LDFLAGS),)
 $(error "Failed to get QT_INSTALL_LIBS from $(find)")
 endif
+QT6_LIBEXECSC := $(sort $(shell $(find) QT_INSTALL_LIBEXECS))
+ifeq ($(QT6_LIBEXECSC),)
+$(error "Failed to get QT_INSTALL_LIBEXECS from $(find)")
+endif
+
+
+
 QT6_CFLAGS := -I$(QT6_CFLAGS) -DQT_NO_VERSION_TAGGING
 # output of running: ldd libQt6Widgets.so
 # shows that libQt6Widgets.so should already be linked with libQt6Core.so

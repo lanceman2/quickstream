@@ -80,11 +80,53 @@ $(warning NOTICE Not building Qt version 6 based quickstream programs)
 # --------------------------------------------------------------------
 else # ifeq ($(QT6_LDFLAGS),)
 # --------------------------------------------------------------------
-BUILD_NO_INSTALL += qt6_test
+BUILD_NO_INSTALL += qt6_test qt6_treeview_test
 
-qt6_2app_test_SOURCES := qt6_2app_test.cpp ../lib/debug.c
-qt6_2app_test_LDFLAGS := $(QT6_LDFLAGS)
+qt6_2app_test_SOURCES := qt6_2app_test.cpp
+qt6_2app_test_LDFLAGS :=$(QT6_LDFLAGS)
 qt6_2app_test_CPPFLAGS := $(QT6_CFLAGS)
+
+
+qt6_treeview_test_SOURCES :=\
+ qt6_treeview_test.cpp\
+ qsQt_treeview_moc.cpp
+qt6_treeview_test_LDFLAGS :=\
+ $(QT6_LDFLAGS)\
+ -L../lib -lqsQtApp\
+ -L../lib -lQt6Gui\
+ -L../lib -lquickstream\
+ -Wl,-rpath=\$$ORIGIN/../lib
+
+qt6_treeview_test_CPPFLAGS := $(QT6_CFLAGS)
+
+
+quickstreamQt_SOURCES :=\
+ quickstreamQt.cpp\
+ qsQt_window.cpp\
+ qsQt_treeview_moc.cpp
+
+CLEANFILES := qsQt_treeview_moc.cpp qt6_treeview_test_moc.cpp
+
+
+# ../lib/libqsQtApp.so is linked to the QT6 libraries already;
+# so we do not need a $(QT6_LDFLAGS) in this; unless compiler voodoo
+# requires it:
+quickstreamQt_LDFLAGS :=\
+ $(QT6_LDFLAGS)\
+ -L../lib -lqsQtApp\
+ -L../lib -lQt6Gui\
+ -L../lib -lquickstream\
+ -Wl,-rpath=\$$ORIGIN/../lib\
+ -ldl -lm
+
+quickstreamQt_CPPFLAGS := $(QT6_CFLAGS)
+
+
+%_moc.cpp: %.cpp
+	cat $< > $@
+	$(QT6_LIBEXECSC)/moc -i $< >> $@
+
+
 
 # --------------------------------------------------------------------
 endif # ifeq ($(QT6_LDFLAGS),)

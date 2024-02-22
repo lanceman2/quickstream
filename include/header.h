@@ -78,7 +78,7 @@ compiler how to run DSO (dynamic shared object) file, which are ELF files.
 #define QS_DL_LOADER "/usr/lib64/ld-linux-x86-64.so.2"
 
 
-#define QUICKSTREAM_URL  "Unset"
+#define QUICKSTREAM_URL  "https://github.com/lanceman2/quickstream"
 
 
 /** @} */ // endof \defgroup macros
@@ -86,6 +86,10 @@ compiler how to run DSO (dynamic shared object) file, which are ELF files.
 
 #ifndef QS_EXPORT
 #  define QS_EXPORT extern
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 
