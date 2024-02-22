@@ -395,7 +395,7 @@ bool TreeModel::AddPaths(QList<Entry> &state, int dirfd,
 void TreeModel::addBlockDirectory(const char *path, const char *label) {
 
     if(AddPaths(state, -1, path, label, 1) == false)
-        rootItem.get()->removeChildren();
+        state.constLast().item->removeChildren();
 }
 
 
@@ -406,22 +406,29 @@ TreeModel::TreeModel(QObject *parent)
     addBlockDirectory(qsBlockDir, "Core");
 
     char *env = getenv("QS_BLOCK_PATH");
-
     if(env && env[0]) {
-
         char *e = strdup(env);
         ASSERT(e, "strdup() failed");
         size_t len = strlen(e);
         char *path = e + len - 1;
-        while(path != e) {
-            while(path != e && *path == ':') {
+        // TODO: This is UNIX specific code.  Using ':' as the directory
+        // separator.
+        while(path > e) {
+            while(path > e && *path == ':') {
                 *path = '\0';
                 --path;
             }
-            while(path != e && *path != ':') {
+            while(path > e && *path != ':') {
                 --path;
             }
-            DSPEW("path=%s", path);
+            if(*path == ':')
+                ++path;
+            if(path[0]) {
+                DSPEW("Adding block path %s", path);
+                addBlockDirectory(path, path);
+            }
+            if(path > e)
+                --path;
         }
 
 #ifdef DEBUG
@@ -429,8 +436,6 @@ TreeModel::TreeModel(QObject *parent)
 #endif
         free(e);
     }
-
-    addBlockDirectory("/home/lance/git/glib", "/home/lance/git/glib");
 
     // We do not want to change the order of the first generation of children,
     // so that the user gets them listed in the order that they required

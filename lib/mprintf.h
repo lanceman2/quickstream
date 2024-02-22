@@ -18,7 +18,12 @@
 //
 // Lets see warnings for format errors:
 static char *mprintf(const char *fmt, ...) __attribute__ ( ( format (printf, 1, 2 ) ) );
-//
+
+
+#ifdef _cplusplus
+extern "C" {
+#endif
+
 static inline char *mprintf(const char *fmt, ...) {
 
     DASSERT(fmt);
@@ -33,7 +38,7 @@ static inline char *mprintf(const char *fmt, ...) {
     // and these should be small strings (< 2048 bytes).
 
     size_t len = strlen(fmt);
-    char *str = calloc(1, len);
+    char *str = (char *) calloc(1, len);
     ASSERT(str, "calloc(%zu) failed", len);
     va_start(ap, fmt);
     int nwr = vsnprintf(str, len, fmt, ap);
@@ -43,7 +48,7 @@ static inline char *mprintf(const char *fmt, ...) {
 
     //ERROR("str=\"%s\" len=%zu nwr=%d", str, len, nwr);
 
-    if(len > nwr) return str;
+    if(len > (size_t) nwr) return str;
 
     // We will remake the memory larger for the returned string.
 #ifdef DEBUG
@@ -54,7 +59,7 @@ static inline char *mprintf(const char *fmt, ...) {
     len = nwr + 1;
 
     // Trying again.
-    str = calloc(1, len);
+    str = (char *) calloc(1, len);
     ASSERT(str, "calloc(%zu) failed", len);
     va_start(ap, fmt);
     nwr = vsnprintf(str, len, fmt, ap);
@@ -65,7 +70,7 @@ static inline char *mprintf(const char *fmt, ...) {
     // It should have worked on the second try given the first try
     // measured the memory (string length) that was needed.
     //DASSERT(len > nwr);
-    DASSERT(len == nwr + 1);
+    DASSERT(len == (size_t) nwr + 1);
 
     // To watch it in action:
     //ASSERT(0, "str=\"%s\" len=%zu nwr=%d", str, len, nwr);
@@ -73,4 +78,8 @@ static inline char *mprintf(const char *fmt, ...) {
     return str;
 }
 
+#endif
+
+#ifdef _cplusplus
+}
 #endif

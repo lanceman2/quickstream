@@ -82,7 +82,7 @@ else # ifeq ($(QT6_LDFLAGS),)
 # --------------------------------------------------------------------
 BUILD_NO_INSTALL += qt6_test qt6_treeview_test
 
-qt6_2app_test_SOURCES := qt6_2app_test.cpp
+qt6_2app_test_SOURCES := qt6_2app_test.cpp ../lib/debug.c
 qt6_2app_test_LDFLAGS :=$(QT6_LDFLAGS)
 qt6_2app_test_CPPFLAGS := $(QT6_CFLAGS)
 
