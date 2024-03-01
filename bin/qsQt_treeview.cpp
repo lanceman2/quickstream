@@ -278,6 +278,7 @@ TreeItem *TreeModel::AddItem(QList<Entry> &state,
 }
 
 
+
 static bool CheckFile(const char *path) {
 
     if(path[0] == '.')
@@ -303,6 +304,12 @@ static bool CheckDir(const char *path) {
 //
 bool TreeModel::AddPaths(QList<Entry> &state, int dirfd,
         const char *path, const char *label, int depth) {
+
+    if(depth > 200)
+        // We have a loop in this directory? Is that even possible? In any
+        // case that is far enough.
+        return false;
+
 
     struct stat statbuf;
 
@@ -437,9 +444,24 @@ TreeModel::TreeModel(QObject *parent)
         free(e);
     }
 
-    // We do not want to change the order of the first generation of children,
-    // so that the user gets them listed in the order that they required
-    // them.  We just sort each sub-tree and below.
+    // At this point you may be weary of file leaks, given we just opened
+    // over 100 (maybe 1000) files.  As of this time, 2024 Feb 22, I see
+    // just the bunch of stupid files from Qt.  I wonder why a GUI needs
+    // so many files (about 30).  I could understand needing say 5 files.
+    // It's most likely just Qt programmers being stupid and lazy; adding
+    // crap that we'll never use in this program.  Looks like Qt keeps all
+    // it's files when we make a new QApplication after destroying the old
+    // one.  Looks kind-of like the QApplication is a singleton object
+    // that exists in a "hidden form", not defined by it's user interface.
+    // If you try to make 2 QApplication objects, in one process, at one
+    // time, the program crashes.  Seems to me they should have at least
+    // made that case have a failure mode of some kind, and not just let
+    // the program crash.  It's still greatly better than what GTK3 does
+    // when we try to make consecutive gtk_init() objects.
+    //
+    // We do not want to change the order of the first generation of
+    // children, so that the user gets them listed in the order that they
+    // required them.  We just sort each sub-tree and below.
     rootItem.get()->sortChildrensChildren();
 }
 
@@ -470,8 +492,7 @@ Qt::ItemFlags TreeModel::flags(const QModelIndex &index) const {
 }
 
 QVariant TreeModel::headerData(int section, Qt::Orientation orientation,
-                               int role) const
-{
+                               int role) const {
     return orientation == Qt::Horizontal && role == Qt::DisplayRole
         ? rootItem->data(section) : QVariant{};
 }

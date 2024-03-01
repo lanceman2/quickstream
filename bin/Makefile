@@ -80,12 +80,23 @@ $(warning NOTICE Not building Qt version 6 based quickstream programs)
 # --------------------------------------------------------------------
 else # ifeq ($(QT6_LDFLAGS),)
 # --------------------------------------------------------------------
-BUILD_NO_INSTALL += qt6_test qt6_treeview_test
+BUILD_NO_INSTALL +=\
+ qt6_test\
+ qt6_treeview_test\
+ qt6_module_test\
+ qt6_DSO_test.so
 
 qt6_2app_test_SOURCES := qt6_2app_test.cpp ../lib/debug.c
 qt6_2app_test_LDFLAGS :=$(QT6_LDFLAGS)
 qt6_2app_test_CPPFLAGS := $(QT6_CFLAGS)
 
+qt6_DSO_test.so_SOURCES := qt6_DSO_test.cpp ../lib/debug.c
+qt6_DSO_test.so_LDFLAGS :=$(QT6_LDFLAGS)
+qt6_DSO_test.so_CPPFLAGS := $(QT6_CFLAGS)
+
+qt6_module_test_SOURCES := qt6_module_test.cpp ../lib/debug.c
+qt6_module_test_LDFLAGS :=$(QT6_LDFLAGS)
+qt6_module_test_CPPFLAGS := $(QT6_CFLAGS)
 
 qt6_treeview_test_SOURCES :=\
  qt6_treeview_test.cpp\

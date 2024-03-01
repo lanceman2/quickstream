@@ -50,6 +50,7 @@ int main(int argc, char* argv[]) {
 
     // See if QApplication is robust under reuse.
     RunApp(argc, argv);
+
     RunApp(argc, argv);
     // If we did not crash before here than yes we can make create and
     // destroy a QApplication many times in one process.

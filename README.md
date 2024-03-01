@@ -176,3 +176,17 @@ If you see the GUI now, great.  Try "right click"; I think that there is a
 "right click" menu pop-up for every thing you see.  And, left click to
 make connections and select/grab blocks.
 
+
+# Latest News
+
+__February 2024__
+I gave a talk at FOSDOM 2024 on quickstream.  So far, I do not know that
+anyone has any interest in quickstream, except myself.  I'll continue to
+develop it without adding documentation or software releases (git tags).
+Having no users has its benefits.
+
+__March 2024__
+Adding optional Qt6 widgets; likely a replacement to GTK3 in general.  In
+short: GTK3 is too limited compared to Qt6 widgets.  Note: adding Qt6 C++
+code will increase quickstream package compile times considerably.
+

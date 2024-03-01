@@ -21,7 +21,6 @@ int main(int argc, char *argv[]) {
     memset(path, 0, strlen(path));
     free(path);
 
-
     QTreeView *view = MakeTreeview();
 
     const auto screenSize = view->screen()->availableSize();
