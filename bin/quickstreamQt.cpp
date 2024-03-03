@@ -15,7 +15,16 @@
 #include "qsQt.h"
 
 
+static void
+Catcher(int sig) {
+
+    ASSERT(0, "Caught signal %d\n", sig);
+}
+
 int main(int argc, const char * const *argv) {
+
+    ASSERT(signal(SIGSEGV, Catcher) != SIG_ERR);
+    ASSERT(signal(SIGABRT, Catcher) != SIG_ERR);
 
     DSPEW();
 

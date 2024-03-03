@@ -6,7 +6,6 @@ cd "$(dirname ${BASH_SOURCE[0]})"
 
 echo "PWD=${PWD}"
 
-#cd ../lib/quickstream/blocks/examples/
 
 testBlockDir=../lib/quickstream/misc/test_blocks
 
@@ -18,4 +17,5 @@ fi
 
 echo "QS_BLOCK_PATH=$QS_BLOCK_PATH"
 
-exec ../bin/quickstreamGUI $*
+exec ../bin/quickstreamQt $*
+

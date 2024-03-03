@@ -15,6 +15,7 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
 
     char *path = mprintf("%s/quickstream/misc/test_blocks", qsLibDir);
+    //char *path = strdup("../lib/quickstream/misc/test_blocks");
 
     // This will add more blocks to the treeview.
     setenv("QS_BLOCK_PATH", path, 1);

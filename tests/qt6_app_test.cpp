@@ -1,3 +1,5 @@
+// ref: https://bugreports.qt.io/browse/QTBUG-122824
+
 // Tested on Debian GNU/Linux 12 (bookworm)
 // Latest as of around February 2024
 //

@@ -107,7 +107,7 @@ public:
     explicit TreeItem(QVariantList data, TreeItem *parentItem = nullptr);
      ~TreeItem(void);
 
-    void appendChild(std::unique_ptr<TreeItem> &&child);
+    TreeItem *appendChild(std::unique_ptr<TreeItem> &&child);
 
     TreeItem *child(int row);
     int childCount() const;
@@ -206,9 +206,9 @@ TreeItem::TreeItem(QVariantList data, TreeItem *parent)
 }
 
 
-
-void TreeItem::appendChild(std::unique_ptr<TreeItem> &&child) {
-    m_childItems.push_back(std::move(child));
+TreeItem *TreeItem::appendChild(std::unique_ptr<TreeItem> &&chiLd) {
+    m_childItems.push_back(std::move(chiLd));
+    return child(childCount() - 1);
 }
 
 
@@ -273,23 +273,45 @@ TreeItem *TreeModel::AddItem(QList<Entry> &state,
 
     // Append a new item to the current parent's list of children.
     auto *lastItem = state.constLast().item;
-    lastItem->appendChild(std::make_unique<TreeItem>(columnData, path, lastItem));
-    return state.constLast().item;
+    return lastItem->appendChild(std::make_unique<TreeItem>(columnData, path, lastItem));
 }
 
 
 
-static bool CheckFile(const char *path) {
+static bool CheckFile(const char *name) {
 
-    if(path[0] == '.')
+
+    // Based on the file name.
+
+    // Skip file names starting with "_" and "."
+    //
+    // TODO: add this valid file names to documentation.
+    if(name[0] == '.' || name[0] == '_')
         return false;
+
+    size_t len = strlen(name);
+    if(len < 3)
+        return false;
+
+    // Require names match glob *.so
+    if(name[len-3] != '.' || name[len-2] != 's' || name[len-1] != 'o')
+        return false;
+
+fprintf(stderr, "%s\n", name);
+
 
     return true;
 }
 
-static bool CheckDir(const char *path) {
 
-    if(path[0] == '.')
+static bool CheckDir(const char *name) {
+
+    // Note: we do allow having the directory file named ".." and "."
+
+    // We do not allow the directory file named some thing like .[A-Za-z]*
+    // so it skips directories like .git/ and .config/
+    //
+    if(name[0] == '.' && name[1] >= 'A' && name[1] <= 'z')
         return false;
 
     return true;
@@ -300,14 +322,16 @@ static bool CheckDir(const char *path) {
 // depth:  starts at 0 at the root directory as we define it.
 //
 // Returns true if there is a file (leaf node) in somewhere in
-// the path being added.
+// the file path being added.
 //
 bool TreeModel::AddPaths(QList<Entry> &state, int dirfd,
         const char *path, const char *label, int depth) {
 
     if(depth > 200)
         // We have a loop in this directory? Is that even possible? In any
-        // case that is far enough.
+        // case that is far enough.  We don't need to blowup the function
+        // call stack.  Having this deep (deeper) of a sub-directory would
+        // be a total pain in the ass for the user.
         return false;
 
 
@@ -325,6 +349,8 @@ bool TreeModel::AddPaths(QList<Entry> &state, int dirfd,
 
 
     if((statbuf.st_mode & S_IFMT) == S_IFDIR) {
+
+        // This path is a directory.
 
         int fd;
 
@@ -346,12 +372,12 @@ bool TreeModel::AddPaths(QList<Entry> &state, int dirfd,
         DIR *dir = fdopendir(fd);
 
         if(!dir) {
-            //DSPEW("fdopendir(%d) path \"%s\" failed", fd, path);
+            DSPEW("fdopendir(%d) path \"%s\" failed", fd, path);
             close(fd);
             return false;
         }
 
-        //ERROR("Adding directory: %s", path);
+fprintf(stderr, "Maybe Adding directory: %s\n", path);
 
         bool gotOne = false;
 
@@ -373,7 +399,15 @@ bool TreeModel::AddPaths(QList<Entry> &state, int dirfd,
                 // We added this directory for nothing, so now we start
                 // removing it, by removing children in it.  The parent
                 // directory will remove this after we return from here.
-                //DSPEW("Removing empty directory %s", path);
+                //
+                // We are doing this in one pass through the directories,
+                // but if we did this in two passes we may have not needed
+                // to add this directory to begin with which would require
+                // that we store more state than just this state that we
+                // have in the function call stack.  This seems to be the
+                // simplest way to code this.
+                DSPEW("Removing empty directory %s ==> \"%s\"", path,
+                        item->getPath());
                 item->removeChildren();
             }
         }
@@ -386,6 +420,8 @@ bool TreeModel::AddPaths(QList<Entry> &state, int dirfd,
         return gotOne;
 
     } else if((statbuf.st_mode & S_IFMT) == S_IFREG) {
+
+        // This path is a regular file.
 
         if(CheckFile(path)) {
             // ADD a regular file.
@@ -401,6 +437,8 @@ bool TreeModel::AddPaths(QList<Entry> &state, int dirfd,
 
 void TreeModel::addBlockDirectory(const char *path, const char *label) {
 
+    DSPEW("Adding block directory \"%s\" from directory %s",
+            label, path);
     if(AddPaths(state, -1, path, label, 1) == false)
         state.constLast().item->removeChildren();
 }
@@ -431,7 +469,6 @@ TreeModel::TreeModel(QObject *parent)
             if(*path == ':')
                 ++path;
             if(path[0]) {
-                DSPEW("Adding block path %s", path);
                 addBlockDirectory(path, path);
             }
             if(path > e)

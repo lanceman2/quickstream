@@ -318,11 +318,18 @@ $(warning NOTICE Not building Qt version 6 based quickstream test programs)
 # --------------------------------------------------------------------
 else # ifeq ($(QT6_LDFLAGS),)
 # --------------------------------------------------------------------
-BUILD_NO_INSTALL += qt6_app_test
+BUILD_NO_INSTALL += qt6_app_test qt6_fileLeak_test qt6_fileLeak_DSO.so
 
 qt6_app_test_SOURCES := qt6_app_test.cpp
 qt6_app_test_LDFLAGS :=$(QT6_LDFLAGS)
 qt6_app_test_CPPFLAGS := $(QT6_CFLAGS)
+
+qt6_fileLeak_test_SOURCES := qt6_fileLeak_test.cpp
+
+qt6_fileLeak_DSO.so_SOURCES := qt6_fileLeak_DSO.cpp
+qt6_fileLeak_DSO.so_LDFLAGS :=$(QT6_LDFLAGS)
+qt6_fileLeak_DSO.so_CPPFLAGS := $(QT6_CFLAGS)
+
 
 # --------------------------------------------------------------------
 endif # ifeq ($(QT6_LDFLAGS),)
