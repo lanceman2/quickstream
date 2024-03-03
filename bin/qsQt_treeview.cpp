@@ -62,21 +62,14 @@ public:
 
 private:
 
-    struct Entry {
-        TreeItem *item;
-        int dirlevel;
-    };
-
     // Adds either a directory or a file.
-    bool AddPaths(QList<Entry> &state, int dirfd,
+    bool AddPaths(TreeItem *parent, int dirfd,
             const char *path, const char *label, int depth);
 
     // Adds just one item in the tree view.
-    TreeItem *AddItem(QList<Entry> &state, int depth, const char *path, const char *label);
+    TreeItem *AddItem(TreeItem *parent, const char *path, const char *label);
 
-    std::unique_ptr<TreeItem> rootItem;
-
-    QList<Entry> state{{rootItem.get(), 0}};
+    TreeItem *rootItem;
 };
 
 
@@ -88,7 +81,7 @@ QTreeView *MakeTreeview(QWidget *parent) {
     view->setModel(model);
     view->setWindowTitle(TreeModel::tr("Simple Tree Model"));
 
-    for (int c = 0; c < model->columnCount(); ++c)
+    for(int c = 0; c < model->columnCount(); ++c)
         view->resizeColumnToContents(c);
     //view.expandAll();
     view->expandToDepth(0);
@@ -104,10 +97,9 @@ class TreeItem {
 public:
     explicit TreeItem(QVariantList data,
             const char *path, TreeItem *parentItem = nullptr);
-    explicit TreeItem(QVariantList data, TreeItem *parentItem = nullptr);
-     ~TreeItem(void);
+    ~TreeItem(void);
 
-    TreeItem *appendChild(std::unique_ptr<TreeItem> &&child);
+    void appendChild(TreeItem *child);
 
     TreeItem *child(int row);
     int childCount() const;
@@ -149,7 +141,25 @@ public:
     }
 
     inline void removeChildren(void) {
-        m_childItems.clear();
+
+        auto it = m_childItems.rbegin();
+        while(it != m_childItems.rend()) {
+            TreeItem *child = *it;
+            m_childItems.pop_back();
+            it = m_childItems.rbegin();
+            delete child;
+        }
+        DASSERT(m_childItems.empty());
+    }
+
+    inline void removeChild(TreeItem *child) {
+
+        for(std::vector<TreeItem *>::iterator  it = m_childItems.begin();
+                it != m_childItems.end(); ++it)
+            if(*it == child) {
+                m_childItems.erase(it);
+                break;
+            }
     }
 
     inline const char *getPath(void) const {
@@ -168,16 +178,29 @@ public:
     };
 
 private:
-    std::vector<std::unique_ptr<TreeItem>> m_childItems;
+    std::vector<TreeItem *> m_childItems;
     QVariantList m_itemData;
     TreeItem *m_parentItem;
     char *path;
 };
 
+
+#ifdef DEBUG
+// This is just to check that we delete all the TreeItems when the
+// TreeModel is destroyed.
+static int itemCount = 0;
+#endif
+
+
 TreeItem::~TreeItem(void) {
 
-    // Seems to cleanup correctly.
-    //DSPEW("Destroying %s", data(0).toString().toStdString().c_str());
+    //DSPEW("Destroying %s", path);
+
+    // Destroy children:
+    removeChildren();
+
+    if(m_parentItem)
+        m_parentItem->removeChild(this);
 
     if(path) {
 #ifdef DEBUG
@@ -186,6 +209,10 @@ TreeItem::~TreeItem(void) {
         free(path);
         path = 0;
     }
+
+#ifdef DEBUG
+    --itemCount;
+#endif
 }
 
 
@@ -193,28 +220,39 @@ TreeItem::TreeItem(QVariantList data,
         const char *path_in, TreeItem *parent)
     : m_itemData(std::move(data)), m_parentItem(parent) {
 
-    DASSERT(path_in);
-    DASSERT(path_in[0]);
+#ifdef DEBUG
+    ++itemCount;
+#endif
 
-    path = strdup(path_in);
-    ASSERT(path, "strdup() failed");
+
+#ifdef DEBUG
+    if(parent) {
+        DASSERT(path_in);
+        DASSERT(path_in[0]);
+    }
+#endif
+
+    if(path_in) {
+        path = strdup(path_in);
+        ASSERT(path, "strdup() failed");
+    } else {
+        path = 0;
+    }
+
+    if(parent)
+        parent->appendChild(this);
 }
 
 
-TreeItem::TreeItem(QVariantList data, TreeItem *parent)
-    : m_itemData(std::move(data)), m_parentItem(parent), path(0) {
-}
-
-
-TreeItem *TreeItem::appendChild(std::unique_ptr<TreeItem> &&chiLd) {
-    m_childItems.push_back(std::move(chiLd));
-    return child(childCount() - 1);
+void TreeItem::appendChild(TreeItem *chiLd) {
+    DASSERT(chiLd);
+    m_childItems.push_back(chiLd);
 }
 
 
 TreeItem *TreeItem::child(int row) {
     return row >= 0 && row < childCount() ?
-        m_childItems.at(row).get() : nullptr;
+        m_childItems.at(row) : nullptr;
 }
 
 int TreeItem::childCount() const {
@@ -239,8 +277,8 @@ int TreeItem::row() const
         return 0;
     const auto it = std::find_if(m_parentItem->m_childItems.cbegin(),
             m_parentItem->m_childItems.cend(),
-                    [this](const std::unique_ptr<TreeItem> &treeItem) {
-                                return treeItem.get() == this;
+                    [this](const TreeItem *treeItem) {
+                                return treeItem == this;
                     });
 
     if (it != m_parentItem->m_childItems.cend())
@@ -251,37 +289,24 @@ int TreeItem::row() const
 
 
 
-TreeItem *TreeModel::AddItem(QList<Entry> &state, 
-        int dirlevel, const char *path, const char *label) {
+TreeItem *TreeModel::AddItem(TreeItem *parent, const char *path, const char *label) {
+
+    DASSERT(parent);
 
     QVariantList columnData;
-
     columnData.reserve(1);
     columnData << label;
 
-    if(dirlevel > state.constLast().dirlevel) {
-        // Adding to a new directory:
-        auto *lastItem = state.constLast().item;
-        if (lastItem->childCount() > 0) {
-            state.append({lastItem->child(lastItem->childCount() - 1), dirlevel});
-        }
-    } else {
-        while(dirlevel < state.constLast().dirlevel && !state.isEmpty()) {
-            state.removeLast();
-        }
-    }
+    //DSPEW("Adding \"%s\"", path);
 
-    // Append a new item to the current parent's list of children.
-    auto *lastItem = state.constLast().item;
-    return lastItem->appendChild(std::make_unique<TreeItem>(columnData, path, lastItem));
+    return new TreeItem(columnData, path, parent);
 }
 
 
 
 static bool CheckFile(const char *name) {
 
-
-    // Based on the file name.
+    // return true to add block based on the file name.
 
     // Skip file names starting with "_" and "."
     //
@@ -297,8 +322,7 @@ static bool CheckFile(const char *name) {
     if(name[len-3] != '.' || name[len-2] != 's' || name[len-1] != 'o')
         return false;
 
-fprintf(stderr, "%s\n", name);
-
+    //fprintf(stderr, "%s\n", name);
 
     return true;
 }
@@ -324,8 +348,10 @@ static bool CheckDir(const char *name) {
 // Returns true if there is a file (leaf node) in somewhere in
 // the file path being added.
 //
-bool TreeModel::AddPaths(QList<Entry> &state, int dirfd,
+bool TreeModel::AddPaths(TreeItem *parent, int dirfd,
         const char *path, const char *label, int depth) {
+
+    DASSERT(parent);
 
     if(depth > 200)
         // We have a loop in this directory? Is that even possible? In any
@@ -351,7 +377,6 @@ bool TreeModel::AddPaths(QList<Entry> &state, int dirfd,
     if((statbuf.st_mode & S_IFMT) == S_IFDIR) {
 
         // This path is a directory.
-
         int fd;
 
         errno = 0;
@@ -377,20 +402,20 @@ bool TreeModel::AddPaths(QList<Entry> &state, int dirfd,
             return false;
         }
 
-fprintf(stderr, "Maybe Adding directory: %s\n", path);
+        //fprintf(stderr, "Maybe Adding directory: %s\n", path);
 
         bool gotOne = false;
 
         if(CheckDir(path)) {
 
             // ADD a directory.
-            TreeItem *item = AddItem(state, depth, path, label);
+            TreeItem *item = AddItem(parent, path, label);
 
             struct dirent *ent;
             while((ent = readdir(dir))) {
                 if(strcmp(ent->d_name, "..") != 0 &&
                         strcmp(ent->d_name, ".") != 0) {
-                    if(AddPaths(state, fd, ent->d_name, ent->d_name, depth + 1))
+                    if(AddPaths(item, fd, ent->d_name, ent->d_name, depth + 1))
                         gotOne = true;
                 }
             }
@@ -406,9 +431,10 @@ fprintf(stderr, "Maybe Adding directory: %s\n", path);
                 // that we store more state than just this state that we
                 // have in the function call stack.  This seems to be the
                 // simplest way to code this.
-                DSPEW("Removing empty directory %s ==> \"%s\"", path,
-                        item->getPath());
-                item->removeChildren();
+                //DSPEW("Removing empty directory %s ==> \"%s\"",
+                //path, item->getPath());
+
+                delete item;
             }
         }
 
@@ -425,7 +451,7 @@ fprintf(stderr, "Maybe Adding directory: %s\n", path);
 
         if(CheckFile(path)) {
             // ADD a regular file.
-            AddItem(state, depth, path, path);
+            AddItem(parent, path, path);
             //DSPEW("Adding file: %s", path);
             return true; // got one
         }
@@ -439,14 +465,15 @@ void TreeModel::addBlockDirectory(const char *path, const char *label) {
 
     DSPEW("Adding block directory \"%s\" from directory %s",
             label, path);
-    if(AddPaths(state, -1, path, label, 1) == false)
-        state.constLast().item->removeChildren();
+
+    AddPaths(rootItem, -1, path, label, 0);
 }
 
 
 TreeModel::TreeModel(QObject *parent)
-    : QAbstractItemModel(parent)
-    , rootItem(std::make_unique<TreeItem>(QVariantList{tr("Blocks")})) {
+    : QAbstractItemModel(parent) {
+
+    rootItem = new TreeItem(QVariantList{tr("Blocks")}, 0);
 
     addBlockDirectory(qsBlockDir, "Core");
 
@@ -499,15 +526,23 @@ TreeModel::TreeModel(QObject *parent)
     // We do not want to change the order of the first generation of
     // children, so that the user gets them listed in the order that they
     // required them.  We just sort each sub-tree and below.
-    rootItem.get()->sortChildrensChildren();
+    rootItem->sortChildrensChildren();
 }
 
 
-TreeModel::~TreeModel() = default;
+TreeModel::~TreeModel() {
+
+    DASSERT(rootItem);
+
+    delete rootItem;
+
+    DASSERT(itemCount == 0, "Is there more than one TreeModel?");
+}
+
 
 int TreeModel::columnCount(const QModelIndex &parent) const {
 
-    if (parent.isValid())
+    if(parent.isValid())
         return static_cast<TreeItem*>(parent.internalPointer())->columnCount();
     return rootItem->columnCount();
 }
@@ -537,12 +572,12 @@ QVariant TreeModel::headerData(int section, Qt::Orientation orientation,
 QModelIndex TreeModel::index(int row, int column,
         const QModelIndex &parent) const {
 
-    if (!hasIndex(row, column, parent))
+    if(!hasIndex(row, column, parent))
         return {};
 
     TreeItem *parentItem = parent.isValid()
         ? static_cast<TreeItem*>(parent.internalPointer())
-        : rootItem.get();
+        : rootItem;
 
     if (auto *childItem = parentItem->child(row))
         return createIndex(row, column, childItem);
@@ -557,7 +592,7 @@ QModelIndex TreeModel::parent(const QModelIndex &index) const {
     auto *childItem = static_cast<TreeItem*>(index.internalPointer());
     TreeItem *parentItem = childItem->parentItem();
 
-    return parentItem != rootItem.get()
+    return parentItem != rootItem
         ? createIndex(parentItem->row(), 0, parentItem) : QModelIndex{};
 }
 
@@ -568,7 +603,7 @@ int TreeModel::rowCount(const QModelIndex &parent) const {
 
     const TreeItem *parentItem = parent.isValid()
         ? static_cast<const TreeItem*>(parent.internalPointer())
-        : rootItem.get();
+        : rootItem;
 
     return parentItem->childCount();
 }
