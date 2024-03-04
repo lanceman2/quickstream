@@ -50,6 +50,10 @@ BUILD_NO_INSTALL := $(builtInBlocks_bi)
 
 # Rule used to make a built-in block marker file:
 # Note: it does not depend on anything as seen by this make.
+#
+# In the future we could put more information in these *.bi files;
+# maybe keep these files in the source and installed, and remove
+# the file builtInBlocks.txt.
 %.bi:
 	echo "# This is a generated file for the quickstream built-in block $(patsubst quickstream/blocks/%.bi,%,$@)" > $@
 
