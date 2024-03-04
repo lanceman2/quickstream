@@ -304,7 +304,8 @@ TreeItem *TreeModel::AddItem(TreeItem *parent, const char *path, const char *lab
 
 
 
-static bool CheckFile(const char *name) {
+// If non-zero the returned value must be freed.
+static char *CheckFile(const char *name) {
 
     // return true to add block based on the file name.
 
@@ -312,19 +313,33 @@ static bool CheckFile(const char *name) {
     //
     // TODO: add this valid file names to documentation.
     if(name[0] == '.' || name[0] == '_')
-        return false;
+        return 0;
 
     size_t len = strlen(name);
     if(len < 3)
-        return false;
+        return 0;
 
-    // Require names match glob *.so
-    if(name[len-3] != '.' || name[len-2] != 's' || name[len-1] != 'o')
-        return false;
+    char *ret = 0;
+
+    if(name[len-3] == '.') {
+        if(name[len-2] == 's' && name[len-1] == 'o') {
+            // Name matches glob *.so
+            ret = strdup(name);
+            ASSERT(ret, "strdup() failed");
+            return ret;
+        }
+        if(name[len-2] == 'b' && name[len-1] == 'i') {
+            // Name matches glob *.bi, a built-in module.
+            ret = (char *) calloc(1, len -2);
+            ASSERT(ret, "calloc(1,%zu) failed", len-2);
+            strncpy(ret, name, len-3);
+            return ret;
+        }
+    }
 
     //fprintf(stderr, "%s\n", name);
 
-    return true;
+    return 0;
 }
 
 
@@ -448,11 +463,15 @@ bool TreeModel::AddPaths(TreeItem *parent, int dirfd,
     } else if((statbuf.st_mode & S_IFMT) == S_IFREG) {
 
         // This path is a regular file.
-
-        if(CheckFile(path)) {
-            // ADD a regular file.
-            AddItem(parent, path, path);
-            //DSPEW("Adding file: %s", path);
+        char *name = CheckFile(path);
+        if(name) {
+            // ADD a block.
+            AddItem(parent, name, name);
+            //DSPEW("Adding file: %s", name);
+#ifdef DEBUG
+            memset(name, 0, strlen(name));
+#endif
+            free(name);
             return true; // got one
         }
     }
@@ -476,6 +495,10 @@ TreeModel::TreeModel(QObject *parent)
     rootItem = new TreeItem(QVariantList{tr("Blocks")}, 0);
 
     addBlockDirectory(qsBlockDir, "Core");
+
+    // We should have some Blocks in the tree view.
+    DASSERT(rootItem->childCount() > 0);
+    DASSERT(rootItem->child(0));
 
     char *env = getenv("QS_BLOCK_PATH");
     if(env && env[0]) {

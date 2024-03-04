@@ -38,9 +38,24 @@ libquickstream.so: retain-symbols.txt libquickstream.a
 # -Wl,--retain-symbols-file=retain-symbols.txt we get more symbols that
 # libquickstream.so users can access, which we do not want.
 
+builtInBlocks := $(shell cat builtInBlocks.txt | grep -ve '^\#')
+builtInBlocks_bi := $(addprefix quickstream/blocks/,$(addsuffix .bi, $(builtInBlocks)))
+
+
+# We install little place holder files in place of built-in blocks.
+#
+# Note: we will not install these files from running "make install" here;
+# we will install these *.bi files from the corresponding block directory.
+BUILD_NO_INSTALL := $(builtInBlocks_bi)
+
+# Rule used to make a built-in block marker file:
+# Note: it does not depend on anything as seen by this make.
+%.bi:
+	echo "# This is a generated file for the quickstream built-in block $(patsubst quickstream/blocks/%.bi,%,$@)" > $@
+
+
 builtInBlocks_c :=\
- $(addprefix quickstream/blocks/,\
-$(addsuffix .c, $(shell cat builtInBlocks.txt | grep -ve '^\#')))
+ $(addprefix quickstream/blocks/,$(addsuffix .c, $(builtInBlocks)))
 
 
 # Why build a library archive (libquickstream.a)?  We need it to make test
@@ -89,7 +104,7 @@ libquickstream.a_SOURCES :=\
 
 libbuiltInBlocks.a_SOURCES := $(builtInBlocks_c)
 
-BUILD_NO_INSTALL := listBuiltInBlocks.c libbuiltInBlocks.a
+BUILD_NO_INSTALL += listBuiltInBlocks.c libbuiltInBlocks.a
 
 # compiling c-rbtree.c requires this:
 libquickstream.a_CPPFLAGS := -I.

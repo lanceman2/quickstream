@@ -37,6 +37,12 @@ builtInBlocks := $(patsubst $(block_dir)/%,%,\
 #$(warning "builtInBlocks=$(builtInBlocks)")
 
 
+# Add the *.bi files to be installed in the particular block directory.
+#
+# Note: the *.bi files are created from running make in $(root)/lib/
+INSTALLED := $(patsubst %.c,%.bi,$(builtInBlocks))
+
+
 c_plugins :=\
  $(patsubst %.c, %, $(filter-out $(builtInBlocks),\
  $(wildcard [A-Za-z0-9]*.c) $(wildcard _[a-z0-9]*.c)))

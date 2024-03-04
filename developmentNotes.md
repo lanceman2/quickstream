@@ -55,7 +55,4 @@ of git hashes that work together to build a coherent libgtk-4.so (or
 whatever) that depends on libgdk-4.so (??) and the myriad of other
 libraries.
 
-See also bin/qt6_module_test.  Should I move qt6_module_test from ./bin/
-to ./tests/.
-
 
