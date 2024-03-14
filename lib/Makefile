@@ -21,8 +21,8 @@ libquickstream.so_SOURCES :=
 # that they need to export symbols for the library.
 #
 libquickstream.so_CFLAGS :=\
- -fvisibility=hidden\
- -DQS_EXPORT="__attribute__((visibility("default"))) extern"
+ -fvisibility=hidden
+# -DQS_EXPORT="__attribute__((visibility(\"default\"))) extern"
 #
 libquickstream.so_LDFLAGS :=\
  -Wl,--whole-archive\
