@@ -8,7 +8,7 @@
 
 set -ex
 
-# Go to the directory there this script is.
+# Go to the directory where this script is.
 cd $(dirname ${BASH_SOURCE[0]})
 
 # File config.make is not checked in and it may have user
