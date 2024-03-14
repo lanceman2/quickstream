@@ -88,7 +88,7 @@ files.  WTF is this paragraph doing here...
 #include <errno.h>
 
 
-#ifndef QS_EXPOST
+#ifndef QS_EXPORT
 #  define QS_EXPORT extern
 #endif
 
