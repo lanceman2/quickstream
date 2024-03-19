@@ -31,7 +31,7 @@ This file provides some CPP (C pre processor) macro debug functions
 which use functions in libquickstream.so.  If your not following this,
 just ignore this and you will not be missing anything.
 
-ASSERT(), CHECK(), and RET_ERROR() are allows defined.
+ASSERT(), CHECK(), and RET_ERROR() are always defined.
 
 and compile time conditionally the following
 are defined ERROR(), WARN(), NOTICE(), INFO(), DSPEW(), and DASSERT().
