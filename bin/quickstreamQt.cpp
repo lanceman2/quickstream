@@ -37,6 +37,8 @@ int main(int argc, const char * const *argv) {
 
     // Add block path argument if it's given in the command-line.
     CreateWindow();
+    CreateWindow();
+    CreateWindow();
 
     qsQtApp_exec();
 

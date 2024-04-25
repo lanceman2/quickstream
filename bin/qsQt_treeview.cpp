@@ -43,7 +43,7 @@ class TreeModel : public QAbstractItemModel {
     Q_OBJECT
 
 public:
-    Q_DISABLE_COPY_MOVE(TreeModel)
+    //Q_DISABLE_COPY_MOVE(TreeModel)
 
     explicit TreeModel(QObject *parent = nullptr);
     ~TreeModel() override;
@@ -185,12 +185,6 @@ private:
 };
 
 
-#ifdef DEBUG
-// This is just to check that we delete all the TreeItems when the
-// TreeModel is destroyed.
-static int itemCount = 0;
-#endif
-
 
 TreeItem::~TreeItem(void) {
 
@@ -209,20 +203,12 @@ TreeItem::~TreeItem(void) {
         free(path);
         path = 0;
     }
-
-#ifdef DEBUG
-    --itemCount;
-#endif
 }
 
 
 TreeItem::TreeItem(QVariantList data,
         const char *path_in, TreeItem *parent)
     : m_itemData(std::move(data)), m_parentItem(parent) {
-
-#ifdef DEBUG
-    ++itemCount;
-#endif
 
 
 #ifdef DEBUG
@@ -558,8 +544,6 @@ TreeModel::~TreeModel() {
     DASSERT(rootItem);
 
     delete rootItem;
-
-    DASSERT(itemCount == 0, "Is there more than one TreeModel?");
 }
 
 

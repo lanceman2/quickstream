@@ -115,9 +115,14 @@ quickstreamQt_SOURCES :=\
  quickstreamQt.cpp\
  qsQt_window.cpp\
  qsQt_treeview_moc.cpp\
- qsQt_tab_moc.cpp
+ qsQt_notebook_moc.cpp\
+ qsQt_graph_moc.cpp
 
-CLEANFILES := qsQt_treeview_moc.cpp qt6_treeview_test_moc.cpp qsQt_tab_moc.cpp
+CLEANFILES :=\
+ qsQt_treeview_moc.cpp\
+ qt6_treeview_test_moc.cpp\
+ qsQt_notebook_moc.cpp\
+ qsQt_graph_moc.cpp
 
 
 # ../lib/libqsQtApp.so is linked to the QT6 libraries already;

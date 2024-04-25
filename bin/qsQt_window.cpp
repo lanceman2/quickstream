@@ -6,6 +6,8 @@
 #include "../lib/debug.h"
 #include "../include/quickstream.h"
 
+#include "qsQt_notebook.h"
+
 #include "qsQt.h"
 #include "qsQt_treeview.h"
 
@@ -59,11 +61,10 @@ Window::Window(const char *blockPath_in):
     QSplitter *splitter = new QSplitter(Qt::Horizontal);
     layout->addWidget(splitter);
 
-
-    AddTab("TabName1", splitter);
-    AddTab("TabName2");
-    AddTab("TabName3");
-    AddTab("TabName4");
+    Notebook *notebook = CreateNotebook(splitter);
+    Notebook_AddTab(notebook, "TabName1");
+    Notebook_AddTab(notebook, "TabName2");
+    Notebook_AddTab(notebook, "TabName3");
 
     MakeTreeview(splitter);
 

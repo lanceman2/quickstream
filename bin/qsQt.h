@@ -1,7 +1,6 @@
 
-extern
-void CreateWindow(const char *blockPath=0);
+class Notebook;
 
 extern
-void AddTab(const char *name, QWidget *parent = 0);
+void CreateWindow(const char *blockPath=0);
 
