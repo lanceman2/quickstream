@@ -1,6 +1,7 @@
 // This is like quickstreamGUI but with Qt 6 and not GTK3.
 
 #include <inttypes.h>
+#include <errno.h>
 //#include <string.h>
 //#include <stdlib.h>
 //#include <pthread.h>
@@ -23,6 +24,7 @@ Catcher(int sig) {
 
 int main(int argc, const char * const *argv) {
 
+    errno = 0;
     ASSERT(signal(SIGSEGV, Catcher) != SIG_ERR);
     ASSERT(signal(SIGABRT, Catcher) != SIG_ERR);
 

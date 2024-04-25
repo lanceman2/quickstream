@@ -14,9 +14,9 @@
 # initialize the GTK main loop thingy your process is committed for the
 # life of the process, and the GTK main loop code will bleed system
 # resources if you try to remove the GTK code at runtime.  This GTK
-# behavior is undocumented.  I call it "not robust" by design in the UNIX
-# sense of the word, given that they do not document this behavior, as
-# would be required for it to be robust.
+# behavior is undocumented [and Qt does about the same thing].  I call it
+# "not robust" by design in the UNIX sense of the word, given that they do
+# not document this behavior, as would be required for it to be robust.
 #
 # I expect that QT may also have similar "center-of-the-universe"-like
 # behavior; but that should be expected given QT seems to be designed with
@@ -114,9 +114,10 @@ qt6_treeview_test_CPPFLAGS := $(QT6_CFLAGS)
 quickstreamQt_SOURCES :=\
  quickstreamQt.cpp\
  qsQt_window.cpp\
- qsQt_treeview_moc.cpp
+ qsQt_treeview_moc.cpp\
+ qsQt_tab_moc.cpp
 
-CLEANFILES := qsQt_treeview_moc.cpp qt6_treeview_test_moc.cpp
+CLEANFILES := qsQt_treeview_moc.cpp qt6_treeview_test_moc.cpp qsQt_tab_moc.cpp
 
 
 # ../lib/libqsQtApp.so is linked to the QT6 libraries already;

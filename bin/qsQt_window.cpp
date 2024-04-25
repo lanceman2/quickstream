@@ -59,10 +59,11 @@ Window::Window(const char *blockPath_in):
     QSplitter *splitter = new QSplitter(Qt::Horizontal);
     layout->addWidget(splitter);
 
-    {
-        QTextEdit *textedit = new QTextEdit("foo", splitter);
-        textedit->show();
-    }
+
+    AddTab("TabName1", splitter);
+    AddTab("TabName2");
+    AddTab("TabName3");
+    AddTab("TabName4");
 
     MakeTreeview(splitter);
 
