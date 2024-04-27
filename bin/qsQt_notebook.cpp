@@ -22,27 +22,36 @@ class Notebook : public QTabWidget
     Q_OBJECT // MOC voodoo
 
 public:
-    explicit Notebook(QWidget *parent);
+    explicit Notebook(QWidget *window, QWidget *parent);
     ~Notebook(void);
 
 private slots: // MOC voodoo.
     void closeTab(const int& index);
+
+private:
+    QWidget *window; // The main window that this notebook is in.
 };
 
 
 void Notebook::closeTab(const int& index) {
 
-    delete widget(index);
+    if(count() == 1)
+        // This is the last tab left, that will be destroyed with the main
+        // window which is a super (top) parent of these tabs.
+        delete window;
+    else
+        delete widget(index);
 }
 
-Notebook::Notebook(QWidget *parent) :
-    QTabWidget(parent) {
+
+Notebook::Notebook(QWidget *win, QWidget *parent) :
+    QTabWidget(parent), window(win) {
+
     setTabsClosable(true);
 
-    // I hate MOC voodoo.  This works with Qt6 v6.7.0
+    // MOC voodoo.  This works with Qt6 v6.7.0
     connect(this, SIGNAL(tabCloseRequested(int)),
             this, SLOT(closeTab(int)));
-
     show();
 }
 
@@ -51,16 +60,19 @@ Notebook::~Notebook(void) {
     ERROR();
 }
 
+// To hell with OOP (object oriented programming).
 
 // We did not want to expose any more Qt MOC code to the other code,
-// hence we just expose these two functions:
+// hence we just expose these two functions (symbols) to the other
+// source files:
 
-Notebook *CreateNotebook(QWidget *parent) {
+Notebook *CreateNotebook(QWidget *window, QWidget *parent) {
+    DASSERT(window);
     DASSERT(parent);
-    return new Notebook(parent);
+    return new Notebook(window, parent);
 }
 
-void Notebook_AddTab(Notebook *notebook, const char *name,
+void Notebook_AddTab(Notebook *notebook, const char *name/*tab label*/,
         const char *blockPath) {
 
     DASSERT(notebook);

@@ -116,7 +116,9 @@ quickstreamQt_SOURCES :=\
  qsQt_window.cpp\
  qsQt_treeview_moc.cpp\
  qsQt_notebook_moc.cpp\
- qsQt_graph_moc.cpp
+ qsQt_graph_moc.cpp\
+ qsQt_block.cpp
+
 
 CLEANFILES :=\
  qsQt_treeview_moc.cpp\

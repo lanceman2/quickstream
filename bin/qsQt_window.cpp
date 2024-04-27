@@ -61,10 +61,9 @@ Window::Window(const char *blockPath_in):
     QSplitter *splitter = new QSplitter(Qt::Horizontal);
     layout->addWidget(splitter);
 
-    Notebook *notebook = CreateNotebook(splitter);
+    Notebook *notebook = CreateNotebook(win, splitter);
     Notebook_AddTab(notebook, "TabName1");
     Notebook_AddTab(notebook, "TabName2");
-    Notebook_AddTab(notebook, "TabName3");
 
     MakeTreeview(splitter);
 
