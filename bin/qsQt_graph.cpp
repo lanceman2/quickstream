@@ -85,19 +85,6 @@ Graph::~Graph(void) {
 
 }
 
-#if 0
-static void SetAlphaColor(QWidget *w) {
-
-    // Ref: https://doc.qt.io/qt-6/stylesheet-examples.html
-
-    w->setStyleSheet(
-            "QCheckBox, QPushButton {\n"
-            "      background-color: rgba(80, 0, 0, 10);\n"
-            "}");
-    w->show();
-}
-#endif
-
 
 QWidget *CreateGraph(const char *blockPath) {
 
@@ -113,14 +100,17 @@ QWidget *CreateGraph(const char *blockPath) {
         b->setCheckable(true);
         b->move(x, y);
         b->show();
-        b->setToolTip("Toggle Running the Flow Graph");
+        b->setToolTip("Toggle Running the Flow Graph.  "
+                "Blocks can run start(), flow(), "
+                "and stop() functions.");
         x += b->width() + padding;
 
         b = new QCheckBox("Halt", graph);
         b->setCheckable(true);
         b->move(x, y);
         b->show();
-        b->setToolTip("Toggle Halting the Flow Graph");
+        b->setToolTip("Toggle Halting the Flow Graph.  "
+                "Blocks don't know they are halted.");
         x += b->width() + padding;
 
         b = new QPushButton("Save as ...", graph);
@@ -133,7 +123,8 @@ QWidget *CreateGraph(const char *blockPath) {
         b->move(x, y);
         b->setEnabled(false);
         b->show();
-        b->setToolTip("Save the Flow Graph to the Same File Again");
+        b->setToolTip("Save the Flow Graph to the Same "
+                "Selected File Again");
         x += b->width() + padding;
 
         b = new QPushButton("Hide", graph);

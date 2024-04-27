@@ -96,13 +96,14 @@ void Block::paint(QPainter *painter,
     painter->drawText(textRect, message);
 }
 
-QVariant Block::itemChange(GraphicsItemChange change, const QVariant &value) {
+QVariant Block::itemChange(GraphicsItemChange change,
+        const QVariant &value) {
 
-    switch (change) {
+    switch(change) {
         case ItemPositionHasChanged:
-        break;
-    default:
-        break;
+            break;
+        default:
+            break;
     };
 
     return QGraphicsItem::itemChange(change, value);
