@@ -1,4 +1,4 @@
-SUBDIRS := pkgconfig quickstream/misc
+SUBDIRS := pkgconfig
 
 
 INSTALL_DIR = $(PREFIX)/lib
@@ -22,6 +22,7 @@ libquickstream.so_SOURCES :=
 #
 libquickstream.so_CFLAGS :=\
  -fvisibility=hidden\
+ -DEXPORT=QS_EXPORT\
  -DQS_EXPORT="__attribute__((visibility(\"default\"))) extern"
 #
 libquickstream.so_LDFLAGS :=\

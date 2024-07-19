@@ -9,6 +9,7 @@ SUBDIRS :=\
  include\
  lib\
  lib/quickstream/blocks\
+ lib/quickstream/misc\
  bin\
  share/doc/quickstream\
  share/bash-completion/completions

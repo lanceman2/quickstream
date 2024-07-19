@@ -27,7 +27,7 @@ qsFreeMemory
 qsGetDLSymbol
 qs_getGraph
 qsGetMemory
-qsGetLibSpewLevel
+getLibSpewLevel
 qsGetterPush
 qsGraph_clearMetaData
 qsGraph_connect
@@ -91,11 +91,11 @@ qsSetInputMax
 qsSetNumInputs
 qsSetNumOutputs
 qsSetOutputMax
-qsSetSpewLevel
+setSpewLevel
 qsSetUserData
 qsSignalJobCreate
 qsSignalJobDestroy
-qs_spew
+spew
 qsStart
 qsStop
 qsThreadPool_addBlock

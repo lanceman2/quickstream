@@ -101,6 +101,11 @@ mod_SOURCES := mod.c
 # Just tests that debug.c is independent of other files,
 # and so also does not depend on libquickstream.so
 021_debug_SOURCES := 021_debug.c ../lib/debug.c
+022_debug_SOURCES := 021_debug.c
+# Test the debug.h interfaces that need to be exposed in
+# ../lib/libquickstream.so
+022_debug_LDFLAGS := -L../lib -lquickstream -Wl,-rpath=\$$ORIGIN/../lib
+
 
 471_execBlock.so_SOURCES := 471_execBlock.c ../lib/debug.c
 471_execBlock.so_LDFLAGS := -Wl,-e,main

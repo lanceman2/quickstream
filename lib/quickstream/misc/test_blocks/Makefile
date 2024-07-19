@@ -41,20 +41,14 @@ c_plugins := $(filter-out Sequence,\
 
 cpp_plugins := $(patsubst %.cpp, %, $(wildcard [a-z]*.cpp))
 
-CPPFLAGS := -I$(root)/include
 
 define makeSOURCES
 $(1)$(2)_SOURCES := $(1)$(3)
+$(1)$(2)_CPPFLAGS := -I$(root)/include
+#We do not appear to need to do this next line:
+#$(1)$(2)_LDFLAGS := -L$(root)/lib -lquickstream -Wl,-rpath=\$$$$ORIGIN/$(root)/lib
 endef
 
-
-# If it turns out we need to link with libquickstream.so we'll have to
-# change the order in which make runs in subdirectories of lib/; that is
-# this directory need to make after ../../../../lib/.
-#
-define ADDlib
-$(1)_LDFLAGS := -L$(root)/lib -lquickstream -Wl,-rpath=\$$$$ORIGIN/$(root)/lib
-endef
 
 
 BUILD_NO_INSTALL := Sequence
@@ -69,7 +63,6 @@ CLEANFILES := empty.c
 $(foreach targ,$(c_plugins),$(eval $(call makeSOURCES,$(targ),.so,.c)))
 $(foreach targ,$(cpp_plugins),$(eval $(call makeSOURCES,$(targ),.so,.cpp)))
 $(foreach targ,$(BUILD_NO_INSTALL),$(eval $(call makeSOURCES,$(targ),,.c)))
-#$(foreach targ,$(BUILD_NO_INSTALL),$(eval $(call ADDlib,$(targ),)))
 
 
 Sequence_SOURCES += $(root)/lib/debug.c
