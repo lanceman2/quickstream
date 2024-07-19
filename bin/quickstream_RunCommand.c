@@ -792,7 +792,7 @@ bool RunCommand(int c, int argc, const char *command,
                 return ErrorRet(2, argc, argv, command,
                          "missing verbose LEVEL not between 0 and 5\n");
 
-            qsSetSpewLevel(spewLevel = x);
+            setSpewLevel(spewLevel = x);
             if(spewLevel >= 5)
                 fprintf(stderr, "Spew level set to %d\n", spewLevel);
             break;

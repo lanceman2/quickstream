@@ -6,12 +6,18 @@
 #qb_tag=9bbddd7ba52043850221df15115108f06a48105e 
 qb_tag=b8c9897173b2daa6c0566dcf74a6f32adf445074
 qb_url=https://raw.githubusercontent.com/lanceman2/quickbuild/$qb_tag/quickbuild.make
-
 qb_sha512sum=37fecdb53c5cb8d0ebdadf80cc77df65af0\
 36e56ea1cc76ae0af4d7857f25a3d557a1685938b7dc12de\
 46964d140b203fd4fcae749ecf03ac93a361fa6769762
 
-
+debug_tag=52cd14fab044ea217e2dd3b4ebdc2faf63cd4fcb
+debug_url=https://raw.githubusercontent.com/lanceman2/debug/$debug_tag/
+debug_c_sha512sum=6b85e9448641b2e2f34caef4a4323b3\
+57cb0c43fd3401c0955a9a29dd5210de0a0e08638dc5ddd4f\
+69bf67e871c132e38d24cd19aa608450a2b7dfe676df90b1
+debug_h_sha512sum=3ea899b49cd23959a6d265a05d9bdbc\
+1dc9d6a29822413ada99aa47df7bf746ff856f5fb6fc9c893\
+348370451fb27e14913340cd831828afdfe889edcdaefcaf
 
 c_rbtree_tag=v3.1.0
 c_rbtree_url=https://raw.githubusercontent.com/c-util/c-rbtree/$c_rbtree_tag/src/c-rbtree
@@ -25,7 +31,6 @@ c_rbtree_private_h_sha512sum=47563a66ff477f173eb43\
 66d334b395b56de0e11d642dc561b3aed61a9e96e51922eff3\
 bc0dd0425c5789aca1586d4d3e1f9115224a4f7ff8828fffad\
 c8b011f
-
 
 c_stdaux_tag=v1.3.0
 c_stdaux_url=https://raw.githubusercontent.com/c-util/c-stdaux/$c_stdaux_tag/src/c-stdaux
@@ -45,8 +50,6 @@ c_stdaux_unix_h_sha512sum=0e2a4a1e91ef27e1794411\
 f6bb49e10f69333300c6a5287fd64da26c7282a05f2c7787\
 83d73655f2e2471581d0c0b258dc29ae3b6e7876511a8e19\
 59a2c4836e
-
-
 
 
 set -ex
@@ -69,10 +72,8 @@ function GetFile() {
     fi
 
     if [ -n "$4" ] ; then
-        set +x
         # We wanted a particular file, so we check its' sha512 sum.
         echo "$4  $2" | sha512sum -c
-        set -x
     else
         sha512sum "$2"
     fi
@@ -83,6 +84,10 @@ function GetFile() {
 # GetFile DIR FILENAME URL [SHA512SUM]
 
 GetFile . quickbuild.make $qb_url $qb_sha512sum
+
+GetFile lib debug.c $debug_url/debug.c $debug_c_sha512sum
+GetFile lib debug.h $debug_url/debug.h $debug_h_sha512sum
+
 GetFile lib c-rbtree.c ${c_rbtree_url}.c $c_rbtree_c_sha512sum
 GetFile lib c-rbtree.h ${c_rbtree_url}.h $c_rbtree_h_sha512sum
 GetFile lib c-rbtree-private.h ${c_rbtree_url}-private.h $c_rbtree_private_h_sha512sum

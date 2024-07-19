@@ -97,7 +97,7 @@ int exitStatus = 0;
 
 int main(int argc, const char * const *argv) {
 
-    qsSetSpewLevel(spewLevel);
+    setSpewLevel(spewLevel);
 
     // Hang the program for debugging, if we segfault.
     ASSERT(signal(SIGSEGV, gdb_catcher) != SIG_ERR);

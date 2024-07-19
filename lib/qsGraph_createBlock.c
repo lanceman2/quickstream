@@ -20,6 +20,7 @@
 #include "FindFullPath.h"
 #include "LoadDSOFromTmpFile.h"
 #include "stream.h"
+#include "dir.h"
 
 #include "builtInBlocks.h"
 

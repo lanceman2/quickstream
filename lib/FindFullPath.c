@@ -7,6 +7,7 @@
 
 #include "debug.h"
 #include "FindFullPath.h"
+#include "dir.h"
 
 
 #define SEPCHR (':')

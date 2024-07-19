@@ -325,7 +325,7 @@ There may be other "auto-generated block ports" like:
   Another property of this "stream count" is that it may be "tagged" with
   a point in the stream that it is measuring.
 
-## On Unconneced Control Parameters
+## On Unconnected Control Parameters
 
 We need to not call getter callbacks if there is nothing connected to the
 getter port.  The issue is that the block with the getter calls the push()
@@ -343,14 +343,14 @@ control parameters.  A good and obvious example is an oscilloscope.  The
 GUI (graphical user interface) would not be so usable one hundred plus
 setter ports.
 
-In the code we already have a very fast dictionary for each of the four
-types of ports (setter, getter, input, output).  For the case of the GUI
-making a connection we can made with a patch panel GUI using the port
-names and port descriptions, that will be represented as a single port
-to port connection when the patch panel is not displayed.  A patch
-panel is property of a super block???  Extend the connection alias idea
-making "connection aliases" as a singular case of patch panel port.  This
-also necessitates (??) generalizing the port connection API (application
+In the code we already have a very fast dictionary lookup for each of the
+four types of ports (setter, getter, input, output).  For the case of the
+GUI making a connection we can made with a patch panel GUI using the port
+names and port descriptions, that will be represented as a single port to
+port connection when the patch panel is not displayed.  A patch panel is
+property of a super block???  Extend the connection alias idea making
+"connection aliases" as a singular case of patch panel port.  This also
+necessitates (??) generalizing the port connection API (application
 programming interface) in libquickstream.so.
 
 ### Patch Panel GUI

@@ -64,7 +64,7 @@ static void gdb_catcher(int signum) {
 
 int main(int argc, const char * const *argv) {
 
-    qsSetSpewLevel(spewLevel);
+    setSpewLevel(spewLevel);
 
     // Hang the program for debugging, if we segfault.
     ASSERT(SIG_ERR != signal(SIGSEGV, gdb_catcher));
