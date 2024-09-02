@@ -31,7 +31,7 @@ endif
 
 
 test:
-	cd tests && $(MAKE) test
+	$(MAKE) && cd tests && $(MAKE) test
 
 
 include quickbuild.make

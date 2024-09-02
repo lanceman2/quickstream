@@ -10,14 +10,10 @@ qb_sha512sum=37fecdb53c5cb8d0ebdadf80cc77df65af0\
 36e56ea1cc76ae0af4d7857f25a3d557a1685938b7dc12de\
 46964d140b203fd4fcae749ecf03ac93a361fa6769762
 
-debug_tag=52cd14fab044ea217e2dd3b4ebdc2faf63cd4fcb
+debug_tag=master
 debug_url=https://raw.githubusercontent.com/lanceman2/debug/$debug_tag/
-debug_c_sha512sum=6b85e9448641b2e2f34caef4a4323b3\
-57cb0c43fd3401c0955a9a29dd5210de0a0e08638dc5ddd4f\
-69bf67e871c132e38d24cd19aa608450a2b7dfe676df90b1
-debug_h_sha512sum=3ea899b49cd23959a6d265a05d9bdbc\
-1dc9d6a29822413ada99aa47df7bf746ff856f5fb6fc9c893\
-348370451fb27e14913340cd831828afdfe889edcdaefcaf
+debug_c_sha512sum=
+debug_h_sha512sum=
 
 c_rbtree_tag=v3.1.0
 c_rbtree_url=https://raw.githubusercontent.com/c-util/c-rbtree/$c_rbtree_tag/src/c-rbtree
