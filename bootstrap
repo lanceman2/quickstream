@@ -4,11 +4,9 @@
 
 
 #qb_tag=9bbddd7ba52043850221df15115108f06a48105e 
-qb_tag=b8c9897173b2daa6c0566dcf74a6f32adf445074
+qb_tag=master
 qb_url=https://raw.githubusercontent.com/lanceman2/quickbuild/$qb_tag/quickbuild.make
-qb_sha512sum=37fecdb53c5cb8d0ebdadf80cc77df65af0\
-36e56ea1cc76ae0af4d7857f25a3d557a1685938b7dc12de\
-46964d140b203fd4fcae749ecf03ac93a361fa6769762
+qb_sha512sum=
 
 debug_tag=master
 debug_url=https://raw.githubusercontent.com/lanceman2/debug/$debug_tag/
