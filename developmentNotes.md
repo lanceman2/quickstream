@@ -1,4 +1,45 @@
 
+One can think of Python as a C program that when running can
+(on-the-fly) change the code of the running program; though
+most python modules cannot unload completely.  Most of the
+underlying binary libraries cannot unload completely; and
+so running Python programs can have code added, but have
+difficulty removing code (though they could give the
+appearance of unloading at the Python interface).
+
+Q1: Can a running Python program save itself?
+
+A1: I need to search and research this idea ...
+
+
+Q2: How is a running program saving itself different from
+   using checkpoint and restart (CPR)?
+
+A2:
+    1. We are trying to edit the running program on the fly,
+  whereas CPR is not concerned with editing the program as it
+  is running.
+    2. We are writing the code with a framework (libaries)
+  that limit the interactions between modules; so that
+  defines inter-module interfaces (Python does this).
+    3. a) The run-time overhead and complexity of using CPR is
+  huge, but program (module) developer time imposed by it
+  is zero.
+       b) The run-time overhead of using small and/or negative
+  given the use of fast framework inter-module interfaces,
+  but the users code is constrained by the framework; so
+  foresight is required when coding the programs.
+
+Two kinds of module unload: clean and dirty.
+  clean: makes it like it was before the module (and its dependencies)
+    was loaded.  Of course not exactly that, there will some state
+    changes in the process.
+  dirty: can't unload some module libraries, but framework and modules
+    pretends and removes the inter-module interfaces from the process.
+
+I need to see what python does to handle unloading leaky libraries...
+
+
 # DSO Plugin Qt6 Widgets
 
 I was thinking of fixing the file leaks in the QCoreApplication.  The way
