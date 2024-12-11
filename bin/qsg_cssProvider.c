@@ -23,7 +23,7 @@ void CleanupCSS(void) {
 
 void AddCSS(void) {
 
-    GtkCssProvider *provider = gtk_css_provider_new();
+    provider = gtk_css_provider_new();
     DASSERT(provider);
 
     GError *error = 0;
