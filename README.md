@@ -67,9 +67,9 @@ block or a super block.  Super blocks are similar to GNU Radio hier
 
 ### Dependences
 
-As noted before, it's currently be developed on Debian GNU/Linux 12 with a
-GNOME desktop.  Here's a list of the deb packages that I think are needed
-to build quickstream:
+As noted before, it's currently being developed on Debian GNU/Linux 12
+with a GNOME desktop.  Here's a list of the deb packages that I think are
+needed to build quickstream:
 
 ~~~
 gcc make graphviz imagemagick doxygen wget libgtk-3-dev librtlsdr-dev gnuradio-dev vim-gtk3 gnome-terminal qt6-base-dev qt6-tools-dev qt6-wayland
