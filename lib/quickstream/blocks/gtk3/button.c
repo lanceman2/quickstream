@@ -114,8 +114,7 @@ int declare(void) {
             (void (*)(void *)) SetValue,
             sizeof(bool), 7/*queueMax*/);
 
-    struct Window *win = CreateWidget(&button.widget);
-    DASSERT(win);
+    ASSERT(CreateWidget(&button.widget));
 
     DSPEW();
     return 0;

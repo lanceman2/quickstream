@@ -57,8 +57,7 @@ int declare(void) {
             uint32_t readCount, uint32_t queueCount,
             void *)) Value_setter);
 
-    struct Window *win = CreateWidget(&text.widget);
-    DASSERT(win);
+    ASSERT(CreateWidget(&text.widget));
 
     DSPEW();
     return 0;

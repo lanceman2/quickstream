@@ -364,8 +364,7 @@ int declare(void) {
             (void (*)(void *)) SetActive,
             sizeof(bool), 10/*queueMax*/);
 
-    struct Window *win = CreateWidget(&slider.widget);
-    DASSERT(win);
+    ASSERT(CreateWidget(&slider.widget));
 
     DSPEW();
     return 0;
