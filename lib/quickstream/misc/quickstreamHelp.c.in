@@ -249,7 +249,7 @@ static struct QsOption
         "given in the command-line.  The block names must be unique "
         "for a given graph.\n"
         "\n"
-        "If that has been no --graph option given yet in the command "
+        "If there has been no --graph option given yet in the command "
         "a graph will be automatically generated before loading the "
         "block into it.\n"
         "\n"
