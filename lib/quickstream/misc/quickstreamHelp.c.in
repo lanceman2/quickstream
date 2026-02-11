@@ -22,7 +22,8 @@
 
    This program will make the building of the quickstream project fail
    if quickstream options that are defined in the file are found to be
-   inconsistent at quickstream project build time.
+   inconsistent at quickstream project build time, and that's a good
+   thing.
  */
 #include <stdio.h>
 #include <string.h>
